@@ -8,22 +8,23 @@ Fits script
 """
 from analysisfunctions import * # includes numpy and constants
 import matplotlib.pyplot as plt
+from matplotlib.axes import Axes
 import os 
 import scipy.optimize as curve_fit
 from get_data import *
 from tabulate import tabulate # pip install tabulate
-import seaborn as sns
+# import seaborn as sns
 ###
 
 # importing data 
 
 def data(filename):
-	names = ["time (us)", "sum95"] #choosing x , y columns from .dat 
+	names = ["time (ms)", "sum95"] #choosing x , y columns from .dat 
 	path = os.getcwd() #getting the path 
 	parent = os.path.dirname(path) #getting the directory name 
 	parentparent = os.path.dirname(parent)
 	file = os.path.join(parentparent, "Data", "2023", "10 October2023", 
-					 "04October2023", "D_dimer_rabi_osc_9VVAscantime", filename) #making path for the filename
+					 "04October2023", "E_dimer_rabi_osc_9VVAscantime", filename) #making path for the filename
 	data = data_from_dat(file, names) #making array of chosen data
 	x = data[:,0] 
 	y = data[:,1]
@@ -68,7 +69,7 @@ def plotgaussian(filename, guess=None):
 	plt.plot(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),ym)
 	errors = np.sqrt(np.diag(pcov))
 	print(tabulate([['Values', *popt], ['Errors', *errors]], 
-				headers=['Amplitude', 'Frequency','Width','Background']))
+				headers=['Amplitude','Frequency','Width','Background']))
 
 
 #plotting raw data with linear function 
@@ -159,11 +160,14 @@ def plottrapfreq(filename, guess=None):
 	plt.title(f"Trap Freq fit for {filename}")
 	plt.xlabel(xlabel)
 	plt.ylabel(ylabel)
-# 	plt.ylim(90, 110) # sets y axis limits
+	plt.xlim(-0.01, 0.2) # sets y axis limits
 	# fit data
+	for i in range(len(fitdata[2])) :
+		if fitdata[2][i] == 0.7 :
+ 			fitdata[2][i] = 0 
 	plt.plot(fitdata[2],fitdata[3],'go')
 	if guess is None:
-		guess = [6000, 0.25, 2  ,-2 , 100, -0.1] # 'Amplitude', 'tau', 'f', 'phase', 'C', 'm'
+		guess = [10000, 0.05, 20  ,-2 , 100, -0.1] # 'Amplitude', 'tau', 'omega', 'phase', 'C', 'm'
 					# where m is the slope of linear term 
 	popt, pcov = curve_fit.curve_fit(TrapFreq, fitdata[2], fitdata[3],p0=guess)
 	num = 200
@@ -180,8 +184,45 @@ def plottrapfreq(filename, guess=None):
 	plt.xlabel(xlabel)
 	plt.ylabel(ylabel +" Residuals")
 	plt.show(fig1,fig2)
+	
+	
 
-
+# plotting raw data with Trap Freq function 
+# guess=['Amplitude', 'tau', 'f', 'fc', 's', 'C']
+def plottrapfreq2(filename, guess=None):
+	fitdata = data(filename)
+	xlabel = f"{fitdata[0]}"
+	ylabel = f"{fitdata[1]}"
+	# plot data
+	fig1 = plt.figure(0)
+	plt.title(f"Trap Freq fit no linear term for {filename}")
+	plt.xlabel(xlabel)
+	plt.ylabel(ylabel)
+	plt.xlim(-0.01, 0.2) # sets y axis limits
+	# fit data
+	for i in range(len(fitdata[2])) :
+		if fitdata[2][i] == 0.7 :
+ 			fitdata[2][i] = 0 
+	plt.plot(fitdata[2],fitdata[3],'go')
+	if guess is None:
+		guess = [10000, 0.05, 20  ,-2 , 100] # 'Amplitude', 'tau', 'omega', 'phase', 'C', 'm'
+					# where m is the slope of linear term 
+	popt, pcov = curve_fit.curve_fit(TrapFreq2, fitdata[2], fitdata[3],p0=guess)
+	num = 200
+	ym = TrapFreq2(np.linspace(max(fitdata[2]),min(fitdata[2]),num=num),*popt)
+	plt.plot(np.linspace(max(fitdata[2]),min(fitdata[2]),num=num),ym)
+	errors = np.sqrt(np.diag(pcov))
+	print(tabulate([['Values',*popt], ['Errors',*errors]], 
+				headers=['Amplitude', 'tau', 'omega', 'phase', 'Offset']))
+	# plot residuals
+	residuals = fitdata[3] - TrapFreq2(fitdata[2],*popt)
+	fig2 = plt.figure(1)
+	plt.plot(fitdata[2],fitdata[3]*0,'-')
+	plt.plot(fitdata[2], residuals,'g+')
+	plt.xlabel(xlabel)
+	plt.ylabel(ylabel +" Residuals")
+	plt.show(fig1,fig2)
+	
 ## 
 #plotting raw data with Rabi Freq function  
 #guess=['Amplitude', 'b', 'x0', 'C']
@@ -236,7 +277,8 @@ def plotexp(filename, guess=None):
 	ym = Expontial(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),*popt)
 	plt.plot(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),ym)
 	errors = np.sqrt(np.diag(pcov))
-	print(tabulate([['Values',*popt], ['Errors',*errors]], headers=['Amplitude', 'sigma']))
+	print(tabulate([['Values',*popt], ['Errors',*errors]], 
+				headers=['Amplitude', 'sigma']))
 
 
 #plotting raw data with Rabiline function 

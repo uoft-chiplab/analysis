@@ -24,6 +24,9 @@ def Sinc2(x, A, x0, sigma, C):
 def TrapFreq(x, A, b, l, x0, C, D):
 	return A*np.exp(-x/b)*(np.sin(l * x - x0)) +  C + D*x
 
+def TrapFreq2(x, A, b, l, x0, C):
+	return A*np.exp(-x/b)*(np.sin(l * x - x0)) +  C 
+
 def RabiFreq(x, A, b, x0, C):
 	return A*(np.sin(b/2 * x - x0))**2 + C
 
