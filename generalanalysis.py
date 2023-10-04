@@ -15,15 +15,14 @@ from tabulate import tabulate # pip install tabulate
 import statsmodels.api as sm
 from statsmodels.formula.api import ols
 
-##
 
 # importing data 
 
 def data(filename):
-	names = ["freq", "sum95"] #choosing x , y columns from .dat 
+	names = ["time (us)", "sum95"] #choosing x , y columns from .dat 
 	path = os.getcwd() #getting the path 
 	parent = os.path.dirname(path) #getting the directory name 
-	file = os.path.join(parent, "Data", "2023", "10 October2023", "03October2023", "E_202p1G_bcspinmix_to_ac_dimer_8VVA5ms", filename) #making path for the filename
+	file = os.path.join(parent, "Data", "2023", "10 October2023", "04October2023", "D_dimer_rabi_osc_9VVAscantime", filename) #making path for the filename
 	data = data_from_dat(file, names) #making array of chosen data
 	x = data[:,0] 
 	y = data[:,1]
@@ -65,13 +64,7 @@ def plotgaussian(filename, guess=None):
 	plt.plot(np.linspace(max(data(filename)[2]),min(data(filename)[2]),num=200),ym)
 	errors = np.sqrt(np.diag(pcov))
 	print(tabulate([['Values',popt[0],popt[1],popt[2],popt[3]], ['Errors',errors[0],errors[1],errors[2],errors[3]]], headers=['Amplitude', 'Frequency','Width','Background']))
-	# fit simple linear regression model
-	linear_model = ols('sum95 ~ freq',
-                   data=(data(filename)[2],data(filename)[3]).fit()
-# 	print(linear_model.summary())
-	fig = sm.graphics.plot_regress_exog(linear_model,
-                                    'Head_size',
-                                    fig=fig)
+
 
 #plotting raw data with linear function 
 #guess=['Slope', 'Offset']
@@ -113,7 +106,7 @@ def plotsinc(filename, guess=None):
 	plt.ylabel(f"{data(filename)[1]}")
 	plt.plot(data(filename)[2],data(filename)[3],'go')
 	if guess is None:
-	guess = [(max(data(filename)[3])-(sorted(set(data(filename)[3]))[2])), (sorted(set(data(filename)[3]))[3]+sorted(set(data(filename)[3]))[2]), 4, np.mean(data(filename)[3])]
+		guess = [(max(data(filename)[3])-(sorted(set(data(filename)[3]))[2])), (sorted(set(data(filename)[3]))[3]+sorted(set(data(filename)[3]))[2]), 4, np.mean(data(filename)[3])]
 	popt, pcov = curve_fit.curve_fit(Sinc, data(filename)[2], data(filename)[3],p0=guess)
 	ym = Sinc(np.linspace(max(data(filename)[2]),min(data(filename)[2]),num=200),*popt)
 	plt.plot(np.linspace(max(data(filename)[2]),min(data(filename)[2]),num=200),ym)
@@ -147,12 +140,12 @@ def plottrapfreq(filename, guess=None):
 # 	plt.ylim(90, 110) # sets y axes
 	plt.plot(data(filename)[2],data(filename)[3],'go')
 	if guess is None:
-		guess = [6, 5, 2  ,-2 , -0.1, 100] # 'Amplitude', 'tau', 'f', 'fc', 's', 'C'
+		guess = [6000, 0.25, 2  ,-2 , 100, -0.1] # 'Amplitude', 'tau', 'f', 'fc', 'C' # extra slope to account for loss over time ?? 
 	popt, pcov = curve_fit.curve_fit(TrapFreq, data(filename)[2], data(filename)[3],p0=guess)
 	ym = TrapFreq(np.linspace(max(data(filename)[2]),min(data(filename)[2]),num=200),*popt)
 	plt.plot(np.linspace(max(data(filename)[2]),min(data(filename)[2]),num=200),ym)
 	errors = np.sqrt(np.diag(pcov))
-	print(tabulate([['Values',popt[0],popt[1],popt[2],popt[3],popt[4],popt[5]], ['Errors',errors[0],errors[1],errors[2],errors[3],errors[4],errors[5]]], headers=['Amplitude', 'tau', 'f', 'fc', 's', 'C']))
+	print(tabulate([['Values',popt[0],popt[1],popt[2],popt[3],popt[4],popt[5]], ['Errors',errors[0],errors[1],errors[2],errors[3],errors[4],errors[5]]], headers=['Amplitude', 'tau', 'omega', 'phase', 'Offset', 'Slope']))
 
 
 
