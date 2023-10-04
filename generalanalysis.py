@@ -14,7 +14,7 @@ from get_data import *
 from tabulate import tabulate # pip install tabulate
 import statsmodels.api as sm
 from statsmodels.formula.api import ols
-
+###
 
 # importing data 
 
@@ -22,7 +22,8 @@ def data(filename):
 	names = ["time (us)", "sum95"] #choosing x , y columns from .dat 
 	path = os.getcwd() #getting the path 
 	parent = os.path.dirname(path) #getting the directory name 
-	file = os.path.join(parent, "Data", "2023", "10 October2023", "04October2023", "D_dimer_rabi_osc_9VVAscantime", filename) #making path for the filename
+	parentparent = os.path.dirname(parent)
+	file = os.path.join(parentparent, "Data", "2023", "10 October2023", "04October2023", "D_dimer_rabi_osc_9VVAscantime", filename) #making path for the filename
 	data = data_from_dat(file, names) #making array of chosen data
 	x = data[:,0] 
 	y = data[:,1]
