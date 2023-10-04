@@ -12,8 +12,7 @@ import os
 import scipy.optimize as curve_fit
 from get_data import *
 from tabulate import tabulate # pip install tabulate
-import statsmodels.api as sm
-from statsmodels.formula.api import ols
+import seaborn as sns
 ###
 
 # importing data 
@@ -147,9 +146,10 @@ def plottrapfreq(filename, guess=None):
 	plt.plot(np.linspace(max(data(filename)[2]),min(data(filename)[2]),num=200),ym)
 	errors = np.sqrt(np.diag(pcov))
 	print(tabulate([['Values',popt[0],popt[1],popt[2],popt[3],popt[4],popt[5]], ['Errors',errors[0],errors[1],errors[2],errors[3],errors[4],errors[5]]], headers=['Amplitude', 'tau', 'omega', 'phase', 'Offset', 'Slope']))
+	residuals = data(filename)[3]
+	plt.scatter(residuals, y)
 
-
-
+## 
 #plotting raw data with Rabi Freq function  
 #guess=['Amplitude', 'b', 'x0', 'C']
 #being weird?? 
