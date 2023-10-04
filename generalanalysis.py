@@ -112,7 +112,7 @@ def plotsinc(filename, guess=None):
 	ym = Sinc(np.linspace(max(data(filename)[2]),min(data(filename)[2]),num=200),*popt)
 	plt.plot(np.linspace(max(data(filename)[2]),min(data(filename)[2]),num=200),ym)
 	errors = np.sqrt(np.diag(pcov))
-	print(tabulate([['Values',popt[0],popt[1],popt[2],popt[3]], ['Errors',errors[0],errors[1],errors[2],errors[3]]], headers=['Amplitude', 'Frequency', 'Width', 'Background']))
+	print(tabulate([['Values',popt[0],popt[1],popt[2],popt[3]], ['Errors',errors[0],errors[1],errors[2],errors[3]]], headers=['Amplitude', 'phase', 'Width', 'Background']))
 
 
 #plotting raw data with Sinc**2 function 
@@ -128,7 +128,7 @@ def plotsinc2(filename, guess=None):
 	ym = Sinc2(np.linspace(max(data(filename)[2]),min(data(filename)[2]),num=200),*popt)
 	plt.plot(np.linspace(max(data(filename)[2]),min(data(filename)[2]),num=200),ym)
 	errors = np.sqrt(np.diag(pcov))
-	print(tabulate([['Values',popt[0],popt[1],popt[2],popt[3]], ['Errors',errors[0],errors[1],errors[2],errors[3]]], headers=['Amplitude', 'Frequency', 'Width', 'Background']))
+	print(tabulate([['Values',popt[0],popt[1],popt[2],popt[3]], ['Errors',errors[0],errors[1],errors[2],errors[3]]], headers=['Amplitude', 'phase', 'Width', 'Background']))
 
 
 
