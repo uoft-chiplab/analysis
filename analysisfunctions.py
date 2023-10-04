@@ -15,6 +15,12 @@ def Gaussian(x, A, x0, sigma, C):
 def Lorentzian(x, A, b, x0, sigma, C):
 	return (A*b**2) /((x-x0)**2 + (sigma)**2) + C
 
+def Sin(x, A, omega, p, C):
+	return A*np.sin(omega*x - p) + C
+
+def Cos(x, A, omega, p, C):
+	return A*np.cos(omega*x - p) + C
+
 def Sinc(x, A, x0, sigma, C):
 	return A*(np.sinc((x-x0) / sigma)) + C # normalized sinc (has pi included)
 
