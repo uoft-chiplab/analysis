@@ -16,7 +16,7 @@ def Lorentzian(x, A, b, x0, sigma, C):
 	return (A*b**2) /((x-x0)**2 + (sigma)**2) + C
 
 def Sinc(x, A, x0, sigma, C):
-	return A*(np.sinc((x-x0) / sigma)) + C
+	return A*(np.sinc((x-x0) / sigma)) + C # normalized sinc (has pi included)
 
 def Sinc2(x, A, x0, sigma, C):
 	return A*(np.sinc((x-x0) / sigma))**2 + C
