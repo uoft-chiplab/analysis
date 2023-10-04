@@ -72,6 +72,7 @@ def plotgaussian(filename, guess=None, residuals=False):
 	errors = np.sqrt(np.diag(pcov))
 	print(tabulate([['Values', *popt], ['Errors', *errors]], 
 				headers=['Amplitude','Frequency','Width','Background']))
+	figures = [fig1]
 	if residuals is True:
 		residuals = fitdata[3] - Parabola(fitdata[2],*popt)
 		fig2 = plt.figure(1)
@@ -101,6 +102,7 @@ def plotlinear(filename, guess=None, residuals=False):
 	errors = np.sqrt(np.diag(pcov))
 	print(tabulate([['Values',*popt], ['Errors',*errors]], 
 				headers=['Slope', 'Offset']))
+	figures = [fig1]
 	if residuals is True:
 		residuals = fitdata[3] - Parabola(fitdata[2],*popt)
 		fig2 = plt.figure(1)
@@ -130,6 +132,7 @@ def plotlorentzian(filename, guess=None, residuals=False):
 	errors = np.sqrt(np.diag(pcov))
 	print(tabulate([['Values',*popt], ['Errors',*errors]], 
 				headers=['Amplitude', 'b**2' ,'Frequency', 'Width', 'Background']))
+	figures = [fig1]
 	if residuals is True:
 		residuals = fitdata[3] - Parabola(fitdata[2],*popt)
 		fig2 = plt.figure(1)
@@ -161,6 +164,7 @@ def plotsinc(filename, guess=None, residuals=False):
 	errors = np.sqrt(np.diag(pcov))
 	print(tabulate([['Values',*popt], ['Errors',*errors]], 
 				headers=['Amplitude', 'center', 'Width', 'offset']))
+	figures = [fig1]
 	if residuals is True:
 		residuals = fitdata[3] - Parabola(fitdata[2],*popt)
 		fig2 = plt.figure(1)
@@ -191,6 +195,7 @@ def plotsinc2(filename, guess=None, residuals=False):
 	errors = np.sqrt(np.diag(pcov))
 	print(tabulate([['Values',*popt], ['Errors',*errors]], 
 				headers=['Amplitude', 'phase', 'Width', 'Background']))
+	figures = [fig1]
 	if residuals is True:
 		residuals = fitdata[3] - Parabola(fitdata[2],*popt)
 		fig2 = plt.figure(1)
@@ -229,6 +234,7 @@ def plottrapfreq(filename, guess=None, residuals=False):
 	errors = np.sqrt(np.diag(pcov))
 	print(tabulate([['Values',*popt], ['Errors',*errors]], 
 				headers=['Amplitude', 'tau', 'omega', 'phase', 'Offset', 'Slope']))
+	figures = [fig1]
 	# plot residuals
 	if residuals is True:
 		residuals = fitdata[3] - Parabola(fitdata[2],*popt)
@@ -269,6 +275,7 @@ def plottrapfreq2(filename, guess=None, residuals=False):
 	errors = np.sqrt(np.diag(pcov))
 	print(tabulate([['Values',*popt], ['Errors',*errors]], 
 				headers=['Amplitude', 'tau', 'omega', 'phase', 'Offset']))
+	figures = [fig1]
 	if residuals is True:
 		residuals = fitdata[3] - Parabola(fitdata[2],*popt)
 		fig2 = plt.figure(1)
@@ -301,6 +308,7 @@ def plotrabifreq(filename, guess=None, residuals=False):
 	errors = np.sqrt(np.diag(pcov))
 	print(tabulate([['Values',*popt], ['Errors',*errors]], 
 				headers=['Amplitude', 'b', 'x0', 'C']))
+	figures = [fig1]
 	if residuals is True:
 		residuals = fitdata[3] - Parabola(fitdata[2],*popt)
 		fig2 = plt.figure(1)
@@ -362,6 +370,7 @@ def plotexp(filename, guess=None, residuals=False):
 	errors = np.sqrt(np.diag(pcov))
 	print(tabulate([['Values',*popt], ['Errors',*errors]], 
 				headers=['Amplitude', 'sigma']))
+	figures = [fig1]
 	if residuals is True:
 		residuals = fitdata[3] - Parabola(fitdata[2],*popt)
 		fig2 = plt.figure(1)
@@ -390,6 +399,7 @@ def plotrabiline(filename, guess=None, residuals=False):
 	errors = np.sqrt(np.diag(pcov))
 	print(tabulate([['Values',*popt], ['Errors',*errors]], 
 				headers=['b', 'l', 'm','A','s','j','k','p']))
+	figures = [fig1]
 	if residuals is True:
 		residuals = fitdata[3] - Parabola(fitdata[2],*popt)
 		fig2 = plt.figure(1)
@@ -418,6 +428,7 @@ def ploterfc(filename, guess=None, residuals=False):
 	errors = np.sqrt(np.diag(pcov))
 	print(tabulate([['Values',*popt], ['Errors',*errors]], 
 				headers=['Amplitude', 'x0', 'sigma', 'Offset']))
+	figures = [fig1]
 	if residuals is True:
 		residuals = fitdata[3] - Parabola(fitdata[2],*popt)
 		fig2 = plt.figure(1)
