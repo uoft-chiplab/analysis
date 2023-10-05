@@ -24,12 +24,11 @@ def data(filename):
 	parent = os.path.dirname(path) #getting the directory name 
 	parentparent = os.path.dirname(parent)
 	file = os.path.join(parentparent, "Data", "2023", "10 October2023", 
-					 "04October2023", "O_15kHzwigglecal_56usdelay", filename) #making path for the filename
+					 "04October2023", "Summary", filename) #making path for the filename
 	data = data_from_dat(file, names) #making array of chosen data
 	x = data[:,0] 
 	y = data[:,1]
-	
-	return names[0], names[1], x, y 
+	return *names, x, y
 
 #exclude below certain threshold 
 
@@ -61,10 +60,9 @@ def plotcos(filename, guess=None, residuals=False):
 	ylabel = f"{fitdata[1]}"
 	plt.xlabel(xlabel)
 	plt.ylabel(ylabel)
-	plt.plot(fitdata[2],fitdata[3],'go')
+	plt.plot(fitdata[2], fitdata[3], 'go')
 	if guess is None:	
-		guess = [-0.2, 
-		   0,10,202]
+		guess = [-0.2, 0, 10, 202]
 	popt, pcov = curve_fit.curve_fit(Cos, fitdata[2], fitdata[3],p0=guess)
 	ym = Cos(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),*popt)
 	plt.plot(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),ym)
@@ -72,14 +70,15 @@ def plotcos(filename, guess=None, residuals=False):
 	freq = popt[1]/2/3.14
 	period = 1/freq
 	delay = popt[2] % (3.141592654) /popt[1]
-	print(tabulate([['Values', *popt, freq, period, delay], ['Errors', *errors, errors[1]/2/3.14, period * errors[1]/popt[1]]], 
-				headers=['Amplitude','omega','phase','offset', 'freq', 'period', 'delay']))
+	values = list([*popt, freq, period, delay])
+	errors = np.concatenate((errors, [errors[1]/2/3.14, period * errors[1]/popt[1], delay * errors[2]/popt[2]]))
+	print(tabulate([['Values', *values], ['Errors', *errors]], headers=['Amplitude','omega','phase','offset', 'freq', 'period', 'delay']))
 	figures = [fig1]
 	if residuals is True:
 		residuals = fitdata[3] - Cos(fitdata[2],*popt)
 		fig2 = plt.figure(1)
 		plt.plot(fitdata[2],fitdata[3]*0,'-')
-		plt.plot(fitdata[2], residuals,'g+')
+		plt.plot(fitdata[2], residuals, 'g+')
 		plt.xlabel(xlabel)
 		plt.ylabel(ylabel +" Residuals")
 		figures.append(fig2)
@@ -88,7 +87,7 @@ def plotcos(filename, guess=None, residuals=False):
 
 #plotting raw data with sin 
 #guess=['Amplitude', 'Frequency','Width','Background']
-def plotsin(filename, guess=None, residuals=False):
+def plotsin(filename, guess=None, errors=False, residuals=False):
 	fig1 = plt.figure(0)
 	fitdata = data(filename)
 	plt.title(f"Sin fit for {filename}")
@@ -107,8 +106,9 @@ def plotsin(filename, guess=None, residuals=False):
 	freq = popt[1]/2/3.14
 	period = 1/freq
 	delay = popt[2] % (3.141592654) /popt[1]
-	print(tabulate([['Values', *popt, freq, period, delay], ['Errors', *errors, errors[1]/2/3.14, period * errors[1]/popt[1]]], 
-				headers=['Amplitude','omega','phase','offset', 'freq', 'period', 'delay']))
+	values = list([*popt, freq, period, delay])
+	errors = np.concatenate((errors, [errors[1]/2/3.14, period * errors[1]/popt[1], delay * errors[2]/popt[2]]))
+	print(tabulate([['Values', *values], ['Errors', *errors]], headers=['Amplitude','omega','phase','offset', 'freq', 'period', 'delay']))
 	figures = [fig1]
 	if residuals is True:
 		residuals = fitdata[3] - Sin(fitdata[2],*popt)
