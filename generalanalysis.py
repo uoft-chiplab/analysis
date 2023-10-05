@@ -52,9 +52,12 @@ def data_exclude(filename):
 
 #plotting raw data with cos 
 #guess=['Amplitude', 'Frequency','Width','Background']
-def plotcos(filename, guess=None, residuals=False):
+def plotcos(filename, guess=None, residuals=False, data=True):
 	fig1 = plt.figure(0)
-	fitdata = data(filename)
+	if data is True:
+		fitdata = data(filename)
+	else:
+		fitdata = data_exclude(filename)
 	plt.title(f"Cos fit for {filename}")
 	xlabel = f"{fitdata[0]}"
 	ylabel = f"{fitdata[1]}"
