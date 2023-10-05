@@ -6,6 +6,7 @@
 Fitting functions for general analysis scripts 
 """
 
+
 import numpy as np
 import math
 
