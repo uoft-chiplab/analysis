@@ -32,17 +32,18 @@ def residuals(filename):
 
 
 #plotting raw data with cos 
-def plotcos(filename, guess=None, residualss=True, datatype='raw'):
+def plotcos(filename, names=['freq','fraction95'],guess=None, residualss=True, datatype='raw'):
 	fig1 = plt.figure(0)
-	fitdata = data(filename)
+	fitdata = data(filename, names)
+	print(fitdata)
 	if datatype == 'raw':
-		fitdata = data(filename)
+		fitdata = data(filename, names)
 	else:
 		if datatype == 'exclude':
-			fitdata = data_exclude(filename)
+			fitdata = data_exclude(filename, names)
 		else:
 			if datatype == 'exclude multiple points':
-				fitdata = data_exclude_points(filename)
+				fitdata = data_exclude_points(filename, names)
 	plt.title(f"Cos fit for {filename}")
 	xlabel = f"{fitdata[0]}"
 	ylabel = f"{fitdata[1]}"
@@ -69,9 +70,9 @@ def plotcos(filename, guess=None, residualss=True, datatype='raw'):
 
 #plotting raw data with sin 
 #guess=['Amplitude', 'Frequency','Width','Background']
-def plotsin(filename, guess=None, errors=False, residuals=False):
+def plotsin(filename, names=['freq','fraction95'],guess=None, errors=False, residuals=False):
 	fig1 = plt.figure(0)
-	fitdata = data(filename)
+	fitdata = data(filename,names)
 	plt.title(f"Sin fit for {filename}")
 	xlabel = f"{fitdata[0]}"
 	ylabel = f"{fitdata[1]}"
@@ -199,9 +200,9 @@ def plotlorentzian(filename, guess=None, residuals=False):
 
 #plotting raw data with Sinc function 
 #guess=['Amplitude', 'Frequency', 'Width', 'Background']
-def plotsinc(filename, guess=None, residuals=False):
+def plotsinc(filename, names=['freq','fraction95'], guess=None, residuals=False):
 	fig1 = plt.figure(0)
-	fitdata = data(filename)
+	fitdata = data(filename, names)
 	plt.title(f"Sinc fit for {filename}")
 	xlabel = f"{fitdata[0]}"
 	ylabel = f"{fitdata[1]}"

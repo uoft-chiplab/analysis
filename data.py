@@ -7,20 +7,21 @@ Data functions
 """
 
 import os 
+from glob import glob
 from get_data import *
 
 # importing data 
 
-def data(filename):
-	names = ["freq", "fraction95"] #choosing x , y columns from .dat 
-	path = os.getcwd() #getting the path 
-	parent = os.path.dirname(path) #getting the directory name 
-	parentparent = os.path.dirname(parent) # i had to go back another folder since putting this code on github
-	file = os.path.join(parentparent, "Data", "2023", "10 October2023", 
-					 "05October2023", "E_17p8kHzwigglecal_8usdelay", filename) #making path for the filename
+def data(filename, names=['freq','fraction95'], autofind=True):
+	drive = os.getcwd()[0:3] #'E:\\'
+	if autofind:
+		file = glob(drive + '\\Data\\2023\\*\\*\\*\\' + filename)[0] # EXTREMELY greedy
+	else :
+		file = os.path.join(drive, "Data", "2023", "10 October2023", 
+					 "05October2023", "Summary", filename) #making manual path for the filename
 	data = data_from_dat(file, names) #making array of chosen data
-	x = data[:,0] 
-# 	x = [x+5 for x in x]
+	x = data[:,0]
+	#x = [x+5 for x in x]
 	y = data[:,1]
 	return *names, x, y
 
