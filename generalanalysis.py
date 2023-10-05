@@ -15,11 +15,26 @@ from tabulate import tabulate # pip install tabulate
 from collections import defaultdict
 from data import *
 
+# residuals 
+
+def residuals(filename):
+		fitdata = data(filename)
+		guess = [-0.2, 0, 10, 202]
+		popt, pcov = curve_fit.curve_fit(Cos, fitdata[2], fitdata[3],p0=guess)
+		residuals = fitdata[3] - Cos(fitdata[2],*popt)
+		fig2 = plt.figure(1)
+		plt.plot(fitdata[2],fitdata[3]*0,'-')
+		plt.plot(fitdata[2], residuals, 'g+')
+		plt.xlabel(xlabel)
+		plt.ylabel(ylabel +" Residuals")
+		return fig2
+
+
 
 #plotting raw data with cos 
-#guess=['Amplitude', 'Frequency','Width','Background']
-def plotcos(filename, guess=None, residuals=False, datatype='raw'):
+def plotcos(filename, guess=None, residualss=True, datatype='raw'):
 	fig1 = plt.figure(0)
+	fitdata = data(filename)
 	if datatype == 'raw':
 		fitdata = data(filename)
 	else:
@@ -47,14 +62,8 @@ def plotcos(filename, guess=None, residuals=False, datatype='raw'):
 	errors = np.concatenate((errors, [errors[1]/2/3.14, period * errors[1]/popt[1], delay * errors[2]/popt[2]]))
 	print(tabulate([['Values', *values], ['Errors', *errors]], headers=['Amplitude','omega','phase','offset', 'freq', 'period', 'delay']))
 	figures = [fig1]
-	if residuals is True:
-		residuals = fitdata[3] - Cos(fitdata[2],*popt)
-		fig2 = plt.figure(1)
-		plt.plot(fitdata[2],fitdata[3]*0,'-')
-		plt.plot(fitdata[2], residuals, 'g+')
-		plt.xlabel(xlabel)
-		plt.ylabel(ylabel +" Residuals")
-		figures.append(fig2)
+	if residualss is True:
+		figures.append(residuals(filename))
 	plt.show(figures)
 
 

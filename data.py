@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Oct  5 11:41:56 2023
+2023-10-05
+@author: Chip Lab
 
-@author: coldatoms
+Data functions
 """
 
 import os 
@@ -11,15 +12,15 @@ from get_data import *
 # importing data 
 
 def data(filename):
-	names = ["delaytime", "field"] #choosing x , y columns from .dat 
+	names = ["freq", "fraction95"] #choosing x , y columns from .dat 
 	path = os.getcwd() #getting the path 
 	parent = os.path.dirname(path) #getting the directory name 
 	parentparent = os.path.dirname(parent) # i had to go back another folder since putting this code on github
 	file = os.path.join(parentparent, "Data", "2023", "10 October2023", 
-					 "04October2023", "Summary", filename) #making path for the filename
+					 "05October2023", "E_17p8kHzwigglecal_8usdelay", filename) #making path for the filename
 	data = data_from_dat(file, names) #making array of chosen data
 	x = data[:,0] 
-	x = [x+5 for x in x]
+# 	x = [x+5 for x in x]
 	y = data[:,1]
 	return *names, x, y
 
@@ -35,6 +36,7 @@ def data_exclude(filename):
 	
 	return names[0], names[1], x2, y2
 
+#exclude the repeated point at the end
 
 def list_duplicates(filename):
 	List = data(filename)[2].tolist()	
@@ -60,8 +62,6 @@ def data_exclude_points(filename):
 # 						       print(x[j])
 	xduplicate = list_duplicates(filename)[0]
 	xduplicate_but1 = xduplicate.pop(0) # getting rid of the first element of the duplicated list so that one of the points stays in the data set
-	
-	
 	x2 = np.delete(x, xduplicate)
 	y2 = np.delete(y, xduplicate)
 	
