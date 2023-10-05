@@ -106,9 +106,9 @@ def plotsin(filename, names=['freq','fraction95'],guess=None, errors=False, resi
 
 #plotting raw data with gaussian 
 #guess=['Amplitude', 'Frequency','Width','Background']
-def plotgaussian(filename, guess=None, residuals=False):
+def plotgaussian(filename, names=['freq','fraction95'], guess=None, residuals=False):
 	fig1 = plt.figure(0)
-	fitdata = data(filename)
+	fitdata = data(filename, names)
 	plt.title(f"Gaussian fit for {filename}")
 	xlabel = f"{fitdata[0]}"
 	ylabel = f"{fitdata[1]}"
@@ -137,9 +137,9 @@ def plotgaussian(filename, guess=None, residuals=False):
 
 #plotting raw data with linear function 
 #guess=['Slope', 'Offset']
-def plotlinear(filename, guess=None, residuals=False):
+def plotlinear(filename, names=['freq','fraction95'], guess=None, residuals=False):
 	fig1 = plt.figure(0)
-	fitdata = data(filename)
+	fitdata = data(filename, names)
 	plt.title(f"Linear fit for {filename}")
 	xlabel = f"{fitdata[0]}"
 	ylabel = f"{fitdata[1]}"
@@ -168,9 +168,9 @@ def plotlinear(filename, guess=None, residuals=False):
 
 #plotting raw data with Lorentzian function 
 #guess=['Amplitude', 'b**2' ,'Frequency', 'Width', 'Background']
-def plotlorentzian(filename, guess=None, residuals=False):
+def plotlorentzian(filename, names=['freq','fraction95'], guess=None, residuals=False):
 	fig1 = plt.figure(0)
-	fitdata = data(filename)
+	fitdata = data(filename, names)
 	plt.title(f"Lorentzian fit for {filename}")
 	xlabel = f"{fitdata[0]}"
 	ylabel = f"{fitdata[1]}"
@@ -233,9 +233,9 @@ def plotsinc(filename, names=['freq','fraction95'], guess=None, residuals=False)
 
 #plotting raw data with Sinc**2 function 
 #guess=['Amplitude', 'Frequency', 'Width', 'Background']
-def plotsinc2(filename, guess=None, residuals=False):
+def plotsinc2(filename, names=['freq','fraction95'], guess=None, residuals=False):
 	fig1 = plt.figure(0)
-	fitdata = data(filename)
+	fitdata = data(filename, names)
 	plt.title(f"Sinc**2 fit for {filename}")
 	xlabel = f"{fitdata[0]}"
 	ylabel = f"{fitdata[1]}"
@@ -265,9 +265,9 @@ def plotsinc2(filename, guess=None, residuals=False):
 
 # plotting raw data with Trap Freq function 
 # guess=['Amplitude', 'tau', 'f', 'fc', 's', 'C']
-def plottrapfreq(filename, guess=None, residuals=False):
+def plottrapfreq(filename, names=['freq','fraction95'], guess=None, residuals=False):
 	fig1 = plt.figure(0)
-	fitdata = data(filename)
+	fitdata = data(filename, names)
 	# plot data
 	fig1 = plt.figure(0)
 	plt.title(f"Trap Freq fit for {filename}")
@@ -307,9 +307,9 @@ def plottrapfreq(filename, guess=None, residuals=False):
 
 # plotting raw data with Trap Freq function 
 # guess=['Amplitude', 'tau', 'f', 'fc', 's', 'C']
-def plottrapfreq2(filename, guess=None, residuals=False):
+def plottrapfreq2(filename, names=['freq','fraction95'], guess=None, residuals=False):
 	fig1 = plt.figure(0)
-	fitdata = data(filename)
+	fitdata = data(filename, names)
 	xlabel = f"{fitdata[0]}"
 	ylabel = f"{fitdata[1]}"
 	# plot data
@@ -349,9 +349,9 @@ def plottrapfreq2(filename, guess=None, residuals=False):
 #guess=['Amplitude', 'b', 'x0', 'C']
 #being weird?? 
 
-def plotrabifreq(filename, guess=None, residuals=False):
+def plotrabifreq(filename, names=['freq','fraction95'], guess=None, residuals=False):
 	fig1 = plt.figure(0)
-	fitdata = data(filename)
+	fitdata = data(filename, names)
 	plt.title(f"Rabi Freq fit for {filename}")
 	xlabel = f"{fitdata[0]}"
 	ylabel = f"{fitdata[1]}"
@@ -381,9 +381,9 @@ def plotrabifreq(filename, guess=None, residuals=False):
 
 #plotting raw data with Parabola function 
 #guess=['A', 'x0', 'Offset']
-def plotparabola(filename, guess=None, residuals=False):
+def plotparabola(filename, names=['freq','fraction95'], guess=None, residuals=False):
 	fig1 = plt.figure(0)
-	fitdata = data(filename)
+	fitdata = data(filename, names)
 	xlabel = f"{fitdata[0]}"
 	ylabel = f"{fitdata[1]}"
 	plt.title(f"Parabolic fit for {filename}")
@@ -413,9 +413,9 @@ def plotparabola(filename, guess=None, residuals=False):
 
 #plotting raw data with exponential function 
 #guess=['Amplitude', 'sigma']
-def plotexp(filename, guess=None, residuals=False):
+def plotexp(filename, names=['freq','fraction95'], guess=None, residuals=False):
 	fig1 = plt.figure(0)
-	fitdata = data(filename)
+	fitdata = data(filename, names)
 	plt.title(f"Exponential fit for {filename}")
 	xlabel = f"{fitdata[0]}"
 	ylabel = f"{fitdata[1]}"
@@ -443,9 +443,9 @@ def plotexp(filename, guess=None, residuals=False):
 
 #plotting raw data with Rabiline function 
 #['b', 'l', 'm','A','s','j','k','p'] ????
-def plotrabiline(filename, guess=None, residuals=False):
+def plotrabiline(filename, names=['freq','fraction95'], guess=None, residuals=False):
 	fig1 = plt.figure(0)
-	fitdata = data(filename)
+	fitdata = data(filename, names)
 	plt.title(f"Rabi Line fit for {filename}")
 	xlabel = f"{fitdata[0]}"
 	ylabel = f"{fitdata[1]}"
@@ -473,9 +473,9 @@ def plotrabiline(filename, guess=None, residuals=False):
 
 #plotting raw data with Erfc function 
 #guess=['Amplitude', 'x0', 'sigma', 'Offset']
-def ploterfc(filename, guess=None, residuals=False):
+def ploterfc(filename, names=['freq','fraction95'], guess=None, residuals=False):
 	fig1 = plt.figure(0)
-	fitdata = data(filename)
+	fitdata = data(filename, names)
 	plt.title(f"Erfc fit for {filename}")
 	xlabel = f"{fitdata[0]}"
 	ylabel = f"{fitdata[1]}"
