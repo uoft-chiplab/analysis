@@ -88,11 +88,6 @@ def data_exclude_points(filename):
 	names = [data(filename)[0], data(filename)[1]] #choosing x , y columns from .dat 
 	x = data(filename)[2]
 	y = data(filename)[3]	
-# 	print("Duplicate elements in given array are: "); 
-# 	for i in range(0, len(x)):    
-# 		   for j in range(i+1, len(x)):    
-# 			         if(x[i] == x[j]):    
-# 						       print(x[j])
 	xduplicate = list_duplicates(filename)[0]
 	xduplicate_but1 = xduplicate.pop(0) # getting rid of the first element of the duplicated list so that one of the points stays in the data set
 	x2 = np.delete(x, xduplicate)
