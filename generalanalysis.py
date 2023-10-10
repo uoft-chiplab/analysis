@@ -257,7 +257,7 @@ def ploterfc(filename, names=['freq','fraction95'], guess=None, residualss=False
 		figures.append(residuals(filename, names, guess, residualss,  fittype='ErfcFit'))
 	plt.show(figures)
 
-def ploterfc(filename, names=['freq','fraction95'], guess=None, residualss=False, fit=True, fittype='SinplusCos'):
+def plotsinpluscos(filename, names=['freq','fraction95'], guess=None, residualss=False, fit=True, fittype='SinplusCos'):
 	"""
 	Inputs: filename, header names - names=['',''], guess for fit (None is automated guess) [A, x0, b, C], residualss (true is have them appear) 
 	
