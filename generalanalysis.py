@@ -42,7 +42,7 @@ def plotcos(filename, names=['freq','fraction95'], guess=None, residualss=False,
 
 #plotting raw data with sin 
 
-def plotsin(filename, names=['freq','fraction95'],guess=None, errors=False, residuals=False, datatype='raw', fit=True, fittype='Sin'):
+def plotsin(filename, names=['freq','fraction95'],guess=None, errors=False, residualss=False, datatype='raw', fit=True, fittype='Sin'):
 	"""
 	Inputs: filename, header names  - names=['',''], guess for fit (None is automated guess) [A, omega, p, C], residualss (true is have them appear)
 	
