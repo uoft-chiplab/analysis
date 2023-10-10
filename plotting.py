@@ -95,6 +95,11 @@ def plots(filename, names=['delay time','sum95'], guess=None, fittype='Sin'):
 			guess = [1, 1, 1, 0]
 		popt, pcov = curve_fit.curve_fit(ErfcFit, fitdata[2], fitdata[3],p0=guess)
 		ym = ErfcFit(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),*popt)
+	if fittype == 'SinplusCos':
+		if guess is None:
+			guess = [1, 1, 1, 0]
+		popt, pcov = curve_fit.curve_fit(SinplusCos, fitdata[2], fitdata[3],p0=guess)
+		ym = SinplusCos(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),*popt)
 	errors = np.sqrt(np.diag(pcov))
 	freq = popt[1]/2/3.14
 	period = 1/freq
