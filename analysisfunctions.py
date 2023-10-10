@@ -50,3 +50,6 @@ def RabiLine(x, b, l, m, A, s, j, k, p):
 
 def ErfcFit(x, A, x0, b, C):
 	return A * math.erfc((x - x0) / b ) + C
+
+def SinplusCos(t, omega, A, B, C):
+	 return A*np.sin(omega*t) + B*np.cos(omega*t) + C
