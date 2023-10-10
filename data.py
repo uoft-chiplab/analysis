@@ -26,8 +26,8 @@ def data(filename, names=['freq','fraction95'], autofind=True):
 					 "05October2023", "Summary", filename) #making manual path for the filename
 	data = data_from_dat(file, names) #making array of chosen data
 	x = data[:,0]
-	#x = [x+5 for x in x] #added 5 to every x value
-	y = data[:,1]
+# 	x = [x+5 for x in x] #added 5 to every x value
+	y = data[:,1]/10000
 	return *names, x, y
 
 
