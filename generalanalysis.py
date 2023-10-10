@@ -7,12 +7,7 @@ Fits script
 
 """
 from analysisfunctions import * # includes numpy and constants
-import matplotlib.pyplot as plt
-from matplotlib.axes import Axes
 import os 
-import scipy.optimize as curve_fit
-from tabulate import tabulate # pip install tabulate
-from collections import defaultdict
 from data import *
 from plotting import *
 
