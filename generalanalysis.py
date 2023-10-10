@@ -256,12 +256,14 @@ def ploterfc(filename, names=['freq','fraction95'], guess=None, residualss=False
 	if residualss is True:
 		figures.append(residuals(filename, names, guess, residualss,  fittype='ErfcFit'))
 	plt.show(figures)
+	
+#plotting raw data with sin plus cos function
 
 def plotsinpluscos(filename, names=['freq','fraction95'], guess=None, residualss=False, fit=True, fittype='SinplusCos'):
 	"""
-	Inputs: filename, header names - names=['',''], guess for fit (None is automated guess) [A, x0, b, C], residualss (true is have them appear) 
+	Inputs: filename, header names - names=['',''], guess for fit (None is automated guess) [omega, A, B, C], residualss (true is have them appear) 
 	
-	Returns: erfc fit, A * math.erfc((x - x0) / b ) + C
+	Returns: sin + cos fit, A*np.sin(omega*t) + B*np.cos(omega*t) + C
 	"""
 	fitdata = data(filename, names)
 	if fit is True :
