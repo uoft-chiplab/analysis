@@ -66,7 +66,7 @@ def plotsin(filename, names=['freq','fraction95'],guess=None, residualss=False, 
 
 #plotting raw data with gaussian 
 #guess=['Amplitude', 'Frequency','Width','Background']
-def plotgaussian(filename, names=['freq','fraction95'], guess=None, residualss=False, fit=True, residuals=False):
+def plotgaussian(filename, names=['freq','fraction95'], guess=None, residualss=False, fit=True, fittype='Gaussian'):
 	"""
 	Inputs: filename, header names - names=['',''], guess for fit (None is automated guess) [A, x0, sigma, C], residualss (true is have them appear) 
 	
@@ -81,7 +81,7 @@ def plotgaussian(filename, names=['freq','fraction95'], guess=None, residualss=F
 
 #plotting raw data with linear function 
 
-def plotlinear(filename, names=['freq','fraction95'], guess=None, residualss=False, fit=True, residuals=False):
+def plotlinear(filename, names=['freq','fraction95'], guess=None, residualss=False, fit=True, fittype='Linear'):
 	"""
 	Inputs: filename, header names - names=['',''], guess for fit (None is automated guess) [m, b], residualss (true is have them appear) 
 	
@@ -96,7 +96,7 @@ def plotlinear(filename, names=['freq','fraction95'], guess=None, residualss=Fal
 
 #plotting raw data with Lorentzian function 
 #guess=['Amplitude', 'b**2' ,'Frequency', 'Width', 'Background']
-def plotlorentzian(filename, names=['freq','fraction95'], guess=None, residualss=False, fit=True, residuals=False):
+def plotlorentzian(filename, names=['freq','fraction95'], guess=None, residualss=False, fit=True, fittype='Lorentzian'):
 	"""
 	Inputs: filename, header names - names=['',''], guess for fit (None is automated guess) [A, b, x0, sigma, C], residualss (true is have them appear) 
 	
@@ -112,7 +112,7 @@ def plotlorentzian(filename, names=['freq','fraction95'], guess=None, residualss
 
 #plotting raw data with Sinc function 
 
-def plotsinc(filename, names=['freq','fraction95'], guess=None, residualss=False, fit=True, residuals=False):
+def plotsinc(filename, names=['freq','fraction95'], guess=None, residualss=False, fit=True, fittype='Sinc'):
 	"""
 	Inputs: filename, header names - names=['',''], guess for fit (None is automated guess) [A, x0, sigma, C], residualss (true is have them appear) 
 	
@@ -128,7 +128,7 @@ def plotsinc(filename, names=['freq','fraction95'], guess=None, residualss=False
 
 #plotting raw data with Sinc**2 function 
 
-def plotsinc2(filename, names=['freq','fraction95'], guess=None, residualss=False, fit=True, residuals=False):
+def plotsinc2(filename, names=['freq','fraction95'], guess=None, residualss=False, fit=True, fittype='Sinc2'):
 	"""
 	Inputs: filename, header names - names=['',''], guess for fit (None is automated guess) [A, x0, sigma, C], residualss (true is have them appear) 
 	
@@ -144,7 +144,7 @@ def plotsinc2(filename, names=['freq','fraction95'], guess=None, residualss=Fals
 
 # plotting raw data with Trap Freq function 
 
-def plottrapfreq(filename, names=['freq','fraction95'], guess=None, residualss=False, fit=True, residuals=False):
+def plottrapfreq(filename, names=['freq','fraction95'], guess=None, residualss=False, fit=True, fittype='TrapFreq'):
 	"""
 	Inputs: filename, header names - names=['',''], guess for fit (None is automated guess) [A, b, l, x0, C, D], residualss (true is have them appear) 
 	
@@ -164,7 +164,7 @@ def plottrapfreq(filename, names=['freq','fraction95'], guess=None, residualss=F
 
 # plotting raw data with Trap Freq function 
 
-def plottrapfreq2(filename, names=['freq','fraction95'], guess=None, residualss=False, fit=True, residuals=False):
+def plottrapfreq2(filename, names=['freq','fraction95'], guess=None, residualss=False, fit=True, fittype='TrapFreq2'):
 	"""
 	Inputs: filename, header names - names=['',''], guess for fit (None is automated guess) [A, b, l, x0, C], residualss (true is have them appear) 
 	
@@ -181,7 +181,7 @@ def plottrapfreq2(filename, names=['freq','fraction95'], guess=None, residualss=
 #plotting raw data with Rabi Freq function  
 
 
-def plotrabifreq(filename, names=['freq','fraction95'], guess=None, residualss=False, fit=True, residuals=False):
+def plotrabifreq(filename, names=['freq','fraction95'], guess=None, residualss=False, fit=True, fittype='RabiFreq'):
 	"""
 	Inputs: filename, header names - names=['',''], guess for fit (None is automated guess) [A, b, x0, C], residualss (true is have them appear) 
 	
@@ -197,7 +197,7 @@ def plotrabifreq(filename, names=['freq','fraction95'], guess=None, residualss=F
 
 #plotting raw data with Parabola function 
 
-def plotparabola(filename, names=['freq','fraction95'], guess=None, residualss=False, fit=True, residuals=False):
+def plotparabola(filename, names=['freq','fraction95'], guess=None, residualss=False, fit=True, fittype='Parabola'):
 	"""
 	Inputs: filename, header names - names=['',''], guess for fit (None is automated guess) [A, x0, C], residualss (true is have them appear) 
 	
@@ -214,7 +214,7 @@ def plotparabola(filename, names=['freq','fraction95'], guess=None, residualss=F
 
 #plotting raw data with exponential function 
 
-def plotexp(filename, names=['freq','fraction95'], guess=None, residualss=False, fit=True, residuals=False):
+def plotexp(filename, names=['freq','fraction95'], guess=None, residualss=False, fit=True, fittype='Exponential'):
 	"""
 	Inputs: filename, header names - names=['',''], guess for fit (None is automated guess) [A, sigma], residualss (true is have them appear) 
 	
@@ -229,7 +229,7 @@ def plotexp(filename, names=['freq','fraction95'], guess=None, residualss=False,
 
 #plotting raw data with Rabiline function 
 
-def plotrabiline(filename, names=['freq','fraction95'], guess=None, residualss=False, fit=True, residuals=False):
+def plotrabiline(filename, names=['freq','fraction95'], guess=None, residualss=False, fit=True, fittype='RabiLine'):
 	"""
 	Inputs: filename, header names - names=['',''], guess for fit (None is automated guess) [b, l, m, A, s, j, k, p], residualss (true is have them appear) 
 	
@@ -244,7 +244,20 @@ def plotrabiline(filename, names=['freq','fraction95'], guess=None, residualss=F
 
 #plotting raw data with Erfc function 
 
-def ploterfc(filename, names=['freq','fraction95'], guess=None, residualss=False, fit=True, residuals=False):
+def ploterfc(filename, names=['freq','fraction95'], guess=None, residualss=False, fit=True, fittype='ErfcFit'):
+	"""
+	Inputs: filename, header names - names=['',''], guess for fit (None is automated guess) [A, x0, b, C], residualss (true is have them appear) 
+	
+	Returns: erfc fit, A * math.erfc((x - x0) / b ) + C
+	"""
+	fitdata = data(filename, names)
+	if fit is True :
+		figures = [plots(filename, names, guess, residualss,  fittype='ErfcFit')]
+	if residualss is True:
+		figures.append(residuals(filename, names, guess, residualss,  fittype='ErfcFit'))
+	plt.show(figures)
+
+def ploterfc(filename, names=['freq','fraction95'], guess=None, residualss=False, fit=True, fittype='SinplusCos'):
 	"""
 	Inputs: filename, header names - names=['',''], guess for fit (None is automated guess) [A, x0, b, C], residualss (true is have them appear) 
 	
