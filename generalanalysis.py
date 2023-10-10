@@ -36,7 +36,7 @@ def plotcos(filename, names=['freq','fraction95'], guess=None, residualss=False,
 	if fit is True :
 		figures = [plots(filename, names, guess, fittype='Cos')]
 	if residualss is True:
-		figures.append(residuals(filename, names))
+		figures.append(residuals(filename, names, guess, fittype='Cos'))
 	plt.show(figures)
 
 
@@ -60,7 +60,7 @@ def plotsin(filename, names=['freq','fraction95'],guess=None, residualss=False, 
 	if fit is True :
 		figures = [plots(filename, names, guess, fittype='Sin')]
 	if residualss is True:
-		figures.append(residuals(filename, names))
+		figures.append(residuals(filename, names, guess, fittype='Sin'))
 	plt.show(figures)
 
 
@@ -76,7 +76,7 @@ def plotgaussian(filename, names=['freq','fraction95'], guess=None, residualss=F
 	if fit is True :
 		figures = [plots(filename, names, guess, fittype='Gaussian')]
 	if residualss is True:
-		figures.append(residuals(filename, names))
+		figures.append(residuals(filename, names, guess, fittype='Gaussian'))
 	plt.show(figures)
 
 #plotting raw data with linear function 
@@ -91,7 +91,7 @@ def plotlinear(filename, names=['freq','fraction95'], guess=None, residualss=Fal
 	if fit is True :
 		figures = [plots(filename, names, guess, fittype='Linear')]
 	if residualss is True:
-		figures.append(residuals(filename, names))
+		figures.append(residuals(filename, names, guess, fittype='Linear'))
 	plt.show(figures)
 
 #plotting raw data with Lorentzian function 
@@ -106,7 +106,7 @@ def plotlorentzian(filename, names=['freq','fraction95'], guess=None, residualss
 	if fit is True :
 		figures = [plots(filename, names, guess, fittype='Lorentzian')]
 	if residualss is True:
-		figures.append(residuals(filename, names))
+		figures.append(residuals(filename, names, fittype='Lorentzian'))
 	plt.show(figures)
 
 
@@ -122,7 +122,7 @@ def plotsinc(filename, names=['freq','fraction95'], guess=None, residualss=False
 	if fit is True :
 		figures = [plots(filename, names, guess, fittype='Sinc')]
 	if residualss is True:
-		figures.append(residuals(filename, names))
+		figures.append(residuals(filename, names, guess, fittype='Sinc'))
 	plt.show(figures)
 	
 
@@ -138,7 +138,7 @@ def plotsinc2(filename, names=['freq','fraction95'], guess=None, residualss=Fals
 	if fit is True :
 		figures = [plots(filename, names, guess, fittype='Sinc2')]
 	if residualss is True:
-		figures.append(residuals(filename, names))
+		figures.append(residuals(filename, names, guess, fittype='Sinc2'))
 	plt.show(figures)
 
 
@@ -157,7 +157,7 @@ def plottrapfreq(filename, names=['freq','fraction95'], guess=None, residualss=F
 		figures = [plots(filename, names, guess, fittype='TrapFreq')]
 	# plot residuals
 	if residualss is True:
-		figures.append(residuals(filename, names))
+		figures.append(residuals(filename, names, guess, fittype='TrapFreq'))
 	plt.show(figures)
 	
 	
@@ -174,7 +174,7 @@ def plottrapfreq2(filename, names=['freq','fraction95'], guess=None, residualss=
 	if fit is True :
 		figures = [plots(filename, names, guess, fittype='TrapFreq2')]
 	if residualss is True:
-		figures.append(residuals(filename, names))
+		figures.append(residuals(filename, names, guess, fittype='TrapFreq2'))
 	plt.show(figures)
 	
 
@@ -191,7 +191,7 @@ def plotrabifreq(filename, names=['freq','fraction95'], guess=None, residualss=F
 	if fit is True :
 		figures = [plots(filename, names, guess, fittype='RabiFreq')]
 	if residualss is True:
-		figures.append(residuals(filename, names))
+		figures.append(residuals(filename, names, guess, fittype='RabiFreq'))
 	plt.show(figures)
 
 
@@ -207,7 +207,7 @@ def plotparabola(filename, names=['freq','fraction95'], guess=None, residualss=F
 	if fit is True :
 		figures = [plots(filename, names, guess, fittype='Parabola')]
 	if residualss is True:
-		figures.append(residuals(filename, names))
+		figures.append(residuals(filename, names, guess, fittype='Parabola'))
 	plt.show(figures)
 
 	
@@ -224,7 +224,7 @@ def plotexp(filename, names=['freq','fraction95'], guess=None, residualss=False,
 	if fit is True :
 		figures = [plots(filename, names, guess, fittype='Exponential')]
 	if residualss is True:
-		figures.append(residuals(filename, names))
+		figures.append(residuals(filename, names, guess, fittype='Exponential'))
 	plt.show(figures)
 
 #plotting raw data with Rabiline function 
@@ -239,7 +239,7 @@ def plotrabiline(filename, names=['freq','fraction95'], guess=None, residualss=F
 	if fit is True :
 		figures = [plots(filename, names, guess, fittype='RabiLine')]
 	if residualss is True:
-		figures.append(residuals(filename, names))
+		figures.append(residuals(filename, names, guess, fittype='RabiLine'))
 	plt.show(figures)
 
 #plotting raw data with Erfc function 
@@ -252,7 +252,7 @@ def ploterfc(filename, names=['freq','fraction95'], guess=None, residualss=False
 	"""
 	fitdata = data(filename, names)
 	if fit is True :
-		figures = [plots(filename, names, guess, residualss=False,  fittype='SinplusCos')]
+		figures = [plots(filename, names, guess, residualss,  fittype='SinplusCos')]
 	if residualss is True:
-		figures.append(residuals(filename, names))
+		figures.append(residuals(filename, names, guess, residualss,  fittype='SinplusCos'))
 	plt.show(figures)
