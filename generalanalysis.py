@@ -16,27 +16,6 @@ from collections import defaultdict
 from data import *
 from plotting import *
 
-# residuals 
-
-def residuals(filename, names=['freq','fraction95']):
-	"""
-	Inputs: filename
-	
-	Returns: residuals plot 
-	"""
-	fitdata = data(filename, names)
-	guess = [-0.2, 0, 10, 202]
-	popt, pcov = curve_fit.curve_fit(Cos, fitdata[2], fitdata[3],p0=guess)
-	residuals = fitdata[3] - Cos(fitdata[2],*popt)
-	fig2 = plt.figure(1)
-	plt.plot(fitdata[2],fitdata[3]*0,'-')
-	plt.plot(fitdata[2], residuals, 'g+')
-	plt.xlabel(xlabel)
-	plt.ylabel(ylabel +" Residuals")
-	return fig2
-
-
-
 #plotting raw data with cos 
 
 def plotcos(filename, names=['freq','fraction95'], guess=None, residualss=False, datatype='raw', fit=True, fittype='Cos'):
@@ -55,9 +34,9 @@ def plotcos(filename, names=['freq','fraction95'], guess=None, residualss=False,
 			if datatype == 'exclude multiple points':
 				fitdata = data_exclude_points(filename, names)
 	if fit is True :
-		figures = [plots(filename, names=['delaytime','field'], guess=None, fittype='Cos')]
+		figures = [plots(filename, names, guess=None, fittype='Cos')]
 	if residualss is True:
-		figures.append(residuals(filename))
+		figures.append(residuals(filename, names))
 	plt.show(figures)
 
 
@@ -80,14 +59,8 @@ def plotsin(filename, names=['freq','fraction95'],guess=None, errors=False, resi
 				fitdata = data_exclude_points(filename, names)
 	if fit is True :
 		figures = [plots(filename, names, guess=None, fittype='Sin')]
-	if residuals is True:
-		residuals = fitdata[3] - Sin(fitdata[2],*popt)
-		fig2 = plt.figure(1)
-		plt.plot(fitdata[2],fitdata[3]*0,'-')
-		plt.plot(fitdata[2], residuals,'g+')
-		plt.xlabel(xlabel)
-		plt.ylabel(ylabel +" Residuals")
-		figures.append(fig2)
+	if residualss is True:
+		figures.append(residuals(filename, names))
 	plt.show(figures)
 
 
@@ -102,14 +75,8 @@ def plotgaussian(filename, names=['freq','fraction95'], guess=None, fit=True, re
 	fitdata = data(filename, names)
 	if fit is True :
 		figures = [plots(filename, names, guess=None, fittype='Gaussian')]
-	if residuals is True:
-		residuals = fitdata[3] - Parabola(fitdata[2],*popt)
-		fig2 = plt.figure(1)
-		plt.plot(fitdata[2],fitdata[3]*0,'-')
-		plt.plot(fitdata[2], residuals,'g+')
-		plt.xlabel(xlabel)
-		plt.ylabel(ylabel +" Residuals")
-		figures.append(fig2)
+	if residualss is True:
+		figures.append(residuals(filename, names))
 	plt.show(figures)
 
 #plotting raw data with linear function 
@@ -123,14 +90,8 @@ def plotlinear(filename, names=['freq','fraction95'], guess=None, fit=True, resi
 	fitdata = data(filename, names)
 	if fit is True :
 		figures = [plots(filename, names, guess=None, fittype='Linear')]
-	if residuals is True:
-		residuals = fitdata[3] - Parabola(fitdata[2],*popt)
-		fig2 = plt.figure(1)
-		plt.plot(fitdata[2],fitdata[3]*0,'-')
-		plt.plot(fitdata[2], residuals,'g+')
-		plt.xlabel(xlabel)
-		plt.ylabel(ylabel +" Residuals")
-		figures.append(fig2)
+	if residualss is True:
+		figures.append(residuals(filename, names))
 	plt.show(figures)
 
 #plotting raw data with Lorentzian function 
@@ -144,14 +105,8 @@ def plotlorentzian(filename, names=['freq','fraction95'], guess=None, fit=True, 
 	fitdata = data(filename, names)
 	if fit is True :
 		figures = [plots(filename, names, guess=None, fittype='Lorentzian')]
-	if residuals is True:
-		residuals = fitdata[3] - Parabola(fitdata[2],*popt)
-		fig2 = plt.figure(1)
-		plt.plot(fitdata[2],fitdata[3]*0,'-')
-		plt.plot(fitdata[2], residuals,'g+')
-		plt.xlabel(xlabel)
-		plt.ylabel(ylabel +" Residuals")
-		figures.append(fig2)
+	if residualss is True:
+		figures.append(residuals(filename, names))
 	plt.show(figures)
 
 
@@ -166,14 +121,8 @@ def plotsinc(filename, names=['freq','fraction95'], guess=None, fit=True, residu
 	fitdata = data(filename, names)
 	if fit is True :
 		figures = [plots(filename, names, guess=None, fittype='Sinc')]
-	if residuals is True:
-		residuals = fitdata[3] - Parabola(fitdata[2],*popt)
-		fig2 = plt.figure(1)
-		plt.plot(fitdata[2],fitdata[3]*0,'-')
-		plt.plot(fitdata[2], residuals,'g+')
-		plt.xlabel(xlabel)
-		plt.ylabel(ylabel +" Residuals")
-		figures.append(fig2)
+	if residualss is True:
+		figures.append(residuals(filename, names))
 	plt.show(figures)
 	
 
@@ -188,14 +137,8 @@ def plotsinc2(filename, names=['freq','fraction95'], guess=None, fit=True, resid
 	fitdata = data(filename, names)
 	if fit is True :
 		figures = [plots(filename, names, guess=None, fittype='Sinc2')]
-	if residuals is True:
-		residuals = fitdata[3] - Parabola(fitdata[2],*popt)
-		fig2 = plt.figure(1)
-		plt.plot(fitdata[2],fitdata[3]*0,'-')
-		plt.plot(fitdata[2], residuals,'g+')
-		plt.xlabel(xlabel)
-		plt.ylabel(ylabel +" Residuals")
-		figures.append(fig2)
+	if residualss is True:
+		figures.append(residuals(filename, names))
 	plt.show(figures)
 
 
@@ -213,14 +156,8 @@ def plottrapfreq(filename, names=['freq','fraction95'], guess=None, fit=True, re
 	if fit is True :
 		figures = [plots(filename, names, guess=None, fittype='TrapFreq')]
 	# plot residuals
-	if residuals is True:
-		residuals = fitdata[3] - Parabola(fitdata[2],*popt)
-		fig2 = plt.figure(1)
-		plt.plot(fitdata[2],fitdata[3]*0,'-')
-		plt.plot(fitdata[2], residuals,'g+')
-		plt.xlabel(xlabel)
-		plt.ylabel(ylabel +" Residuals")
-		figures.append(fig2)
+	if residualss is True:
+		figures.append(residuals(filename, names))
 	plt.show(figures)
 	
 	
@@ -236,14 +173,8 @@ def plottrapfreq2(filename, names=['freq','fraction95'], guess=None, fit=True, r
 	fitdata = data(filename, names)
 	if fit is True :
 		figures = [plots(filename, names, guess=None, fittype='TrapFreq2')]
-	if residuals is True:
-		residuals = fitdata[3] - Parabola(fitdata[2],*popt)
-		fig2 = plt.figure(1)
-		plt.plot(fitdata[2],fitdata[3]*0,'-')
-		plt.plot(fitdata[2], residuals,'g+')
-		plt.xlabel(xlabel)
-		plt.ylabel(ylabel +" Residuals")
-		figures.append(fig2)
+	if residualss is True:
+		figures.append(residuals(filename, names))
 	plt.show(figures)
 	
 
@@ -259,14 +190,8 @@ def plotrabifreq(filename, names=['freq','fraction95'], guess=None, fit=True, re
 	fitdata = data(filename, names)
 	if fit is True :
 		figures = [plots(filename, names, guess=None, fittype='RabiFreq')]
-	if residuals is True:
-		residuals = fitdata[3] - Parabola(fitdata[2],*popt)
-		fig2 = plt.figure(1)
-		plt.plot(fitdata[2],fitdata[3]*0,'-')
-		plt.plot(fitdata[2], residuals,'g+')
-		plt.xlabel(xlabel)
-		plt.ylabel(ylabel +" Residuals")
-		figures.append(fig2)
+	if residualss is True:
+		figures.append(residuals(filename, names))
 	plt.show(figures)
 
 
@@ -281,14 +206,8 @@ def plotparabola(filename, names=['freq','fraction95'], guess=None, fit=True, re
 	fitdata = data(filename, names)
 	if fit is True :
 		figures = [plots(filename, names, guess=None, fittype='Parabola')]
-	if residuals is True:
-		residuals = fitdata[3] - Parabola(fitdata[2],*popt)
-		fig2 = plt.figure(1)
-		plt.plot(fitdata[2],fitdata[3]*0,'-')
-		plt.plot(fitdata[2], residuals,'g+')
-		plt.xlabel(xlabel)
-		plt.ylabel(ylabel +" Residuals")
-		figures.append(fig2)
+	if residualss is True:
+		figures.append(residuals(filename, names))
 	plt.show(figures)
 
 	
@@ -304,14 +223,8 @@ def plotexp(filename, names=['freq','fraction95'], guess=None, fit=True, residua
 	fitdata = data(filename, names)
 	if fit is True :
 		figures = [plots(filename, names, guess=None, fittype='Exponential')]
-	if residuals is True:
-		residuals = fitdata[3] - Parabola(fitdata[2],*popt)
-		fig2 = plt.figure(1)
-		plt.plot(fitdata[2],fitdata[3]*0,'-')
-		plt.plot(fitdata[2], residuals,'g+')
-		plt.xlabel(xlabel)
-		plt.ylabel(ylabel +" Residuals")
-		figures.append(fig2)
+	if residualss is True:
+		figures.append(residuals(filename, names))
 	plt.show(figures)
 
 #plotting raw data with Rabiline function 
@@ -325,14 +238,8 @@ def plotrabiline(filename, names=['freq','fraction95'], guess=None, fit=True, re
 	fitdata = data(filename, names)
 	if fit is True :
 		figures = [plots(filename, names, guess=None, fittype='RabiLine')]
-	if residuals is True:
-		residuals = fitdata[3] - Parabola(fitdata[2],*popt)
-		fig2 = plt.figure(1)
-		plt.plot(fitdata[2],fitdata[3]*0,'-')
-		plt.plot(fitdata[2], residuals,'g+')
-		plt.xlabel(xlabel)
-		plt.ylabel(ylabel +" Residuals")
-		figures.append(fig2)
+	if residualss is True:
+		figures.append(residuals(filename, names))
 	plt.show(figures)
 
 #plotting raw data with Erfc function 
@@ -346,12 +253,6 @@ def ploterfc(filename, names=['freq','fraction95'], guess=None, fit=True, residu
 	fitdata = data(filename, names)
 	if fit is True :
 		figures = [plots(filename, names, guess=None, fittype='ErfcFit')]
-	if residuals is True:
-		residuals = fitdata[3] - Parabola(fitdata[2],*popt)
-		fig2 = plt.figure(1)
-		plt.plot(fitdata[2],fitdata[3]*0,'-')
-		plt.plot(fitdata[2], residuals,'g+')
-		plt.xlabel(xlabel)
-		plt.ylabel(ylabel +" Residuals")
-		figures.append(fig2)
+	if residualss is True:
+		figures.append(residuals(filename, names))
 	plt.show(figures)

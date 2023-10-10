@@ -129,6 +129,11 @@ def residuals(filename, names=['delay time', 'sum95']):
 	Returns: residuals plot 
 	"""
 	fitdata = data(filename, names)
+	xlabel = f"{fitdata[0]}"
+	ylabel = f"{fitdata[1]}"
+	plt.xlabel(xlabel)
+	plt.ylabel(ylabel)
+	plt.plot(fitdata[2], fitdata[3], 'go')
 	guess = [-0.2, 0, 10, 202]
 	popt, pcov = curve_fit.curve_fit(Cos, fitdata[2], fitdata[3],p0=guess)
 	residuals = fitdata[3] - Cos(fitdata[2],*popt)
