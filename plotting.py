@@ -32,7 +32,7 @@ def plots(filename, names=['delay time','sum95'], guess=None, fittype='Sin'):
 			ym = Cos(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),*popt)
 	if fittype == 'Sin':
 			if guess is None:	
-				guess = [2,0.001,100,22000]
+				guess = [2,0.01,100,22000]
 			popt, pcov = curve_fit.curve_fit(Sin, fitdata[2], fitdata[3],p0=guess)
 			ym = Sin(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),*popt)
 	if fittype == 'Gaussian':
