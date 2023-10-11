@@ -11,6 +11,8 @@ import os
 from data import *
 from plotting import *
 
+#blah test 
+
 #plotting raw data with cos 
 
 def plotcos(filename, names=['freq','fraction95'], guess=None, residualss=False, datatype='raw', fit=True, fittype='Cos'):
