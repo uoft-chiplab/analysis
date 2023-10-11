@@ -280,3 +280,5 @@ def ploterfc(filename, names=['freq','fraction95'], guess=None, fit=True, residu
 	if residualss is True:
 		figures.append(residuals(filename, names))
 	plt.show(figures)
+	
+#test test 
