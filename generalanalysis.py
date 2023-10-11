@@ -38,10 +38,10 @@ def plotcos(filename, names=['freq','fraction95'], guess=None, residualss=False,
 	if residualss is True:
 		figures.append(residuals(filename, names))
 	plt.show(figures)
+	
 
 
 #plotting raw data with sin 
-
 def plotsin(filename, names=['freq','fraction95'],guess=None, errors=False, residualss=False, datatype='raw', fit=True, fittype='Sin'):
 	"""
 	Inputs: filename, header names  - names=['',''], guess for fit (None is automated guess) [A, omega, p, C], residualss (true is have them appear)
@@ -59,6 +59,30 @@ def plotsin(filename, names=['freq','fraction95'],guess=None, errors=False, resi
 				fitdata = data_exclude_points(filename, names)
 	if fit is True :
 		figures = [plots(filename, names, guess=None, fittype='Sin')]
+	if residualss is True:
+		figures.append(residuals(filename, names))
+	plt.show(figures)
+	
+	
+
+#plotting raw data with sin 
+def plotfixedsin(filename, names=['freq','fraction95'],guess=None, errors=False, residualss=False, datatype='raw', fit=True, fittype='FixedSin'):
+	"""
+	Inputs: filename, header names  - names=['',''], guess for fit (None is automated guess) [A, omega, p, C], residualss (true is have them appear)
+	
+	Returns: sin fit, A*np.sin(omega*x - p) + C
+	"""
+	fitdata = data(filename,names)
+	if datatype == 'raw':
+		fitdata = data(filename, names)
+	else:
+		if datatype == 'exclude':
+			fitdata = data_exclude(filename, names)
+		else:
+			if datatype == 'exclude multiple points':
+				fitdata = data_exclude_points(filename, names)
+	if fit is True :
+		figures = [plots(filename, names, guess=None, fittype='FixedSin')]
 	if residualss is True:
 		figures.append(residuals(filename, names))
 	plt.show(figures)

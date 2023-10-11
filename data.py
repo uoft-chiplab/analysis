@@ -18,7 +18,7 @@ def data(filename, names=['freq','fraction95'], autofind=True):
 	
 	Returns: header names used for axes labels, x values, y values 
 	"""
-	drive = os.getcwd()[0:3] #'E:\\'
+	drive = '\\\\UNOBTAINIUM\\E_Carmen_Santiago' # when using Fermium
 	if autofind:
 		file = glob(drive + '\\Data\\2023\\*\\*\\*\\' + filename)[0] # EXTREMELY greedy
 	else :
@@ -27,7 +27,7 @@ def data(filename, names=['freq','fraction95'], autofind=True):
 	data = data_from_dat(file, names) #making array of chosen data
 	x = data[:,0]
 # 	x = [x+5 for x in x] #added 5 to every x value
-	y = data[:,1]/10000
+	y = data[:,1]
 	return *names, x, y
 
 

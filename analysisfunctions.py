@@ -98,3 +98,11 @@ def SinplusCos(t, omega, A, B, C):
 	Returns:  A*np.sin(omega*t) + B*np.cos(omega*t) + C
 	"""
 	return A*np.sin(omega*t) + B*np.cos(omega*t) + C
+
+def FixedSin(t, A, p, C):
+	"""
+	hard coded 10 kHz
+	Returns: A*np.sin(0.0628*x - p) + C
+	"""
+	omega = 0.010 * 2 * np.pi # 10 kHz
+	return A*np.sin(omega*t - p) + C

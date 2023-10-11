@@ -40,6 +40,11 @@ def plots(filename, names=['delay time','sum95'], guess=None, fittype='Sin'):
 				guess = [(max(fitdata[3])-min(fitdata[3])),0.05,-2,21]
 			popt, pcov = curve_fit.curve_fit(Sin, fitdata[2], fitdata[3],p0=guess)
 			ym = Sin(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),*popt)
+	if fittype == 'FixedSin':
+			if guess is None:	
+				guess = [(max(fitdata[3])-min(fitdata[3])),-2,21]
+			popt, pcov = curve_fit.curve_fit(FixedSin, fitdata[2], fitdata[3],p0=guess)
+			ym = FixedSin(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),*popt)
 	if fittype == 'Gaussian':
 		if guess is None:	
 			guess = [-(max(fitdata[3])-min(fitdata[3])),fitdata[2][fitdata[3].argmin()],0.04,np.mean(fitdata[3])]
@@ -105,13 +110,14 @@ def plots(filename, names=['delay time','sum95'], guess=None, fittype='Sin'):
 			guess = [1, 1, 1, 0]
 		popt, pcov = curve_fit.curve_fit(SinplusCos, fitdata[2], fitdata[3],p0=guess)
 		ym = SinplusCos(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),*popt)
+	print(popt)
 	errors = np.sqrt(np.diag(pcov))
-	freq = popt[1]/2/3.14
+	freq = 0.01
 	period = 1/freq
-	delay = popt[2] % (3.141592654) /popt[1]
+	delay = popt[1] % (3.141592654) /freq
 	values = list([*popt, freq, period, delay])
-	errors = np.concatenate((errors, [errors[1]/2/3.14, period * errors[1]/popt[1], delay * errors[2]/popt[2]]))
-	print(tabulate([['Values', *values], ['Errors', *errors]], headers=['Amplitude','omega','phase','offset', 'freq', 'period', 'delay']))
+	#errors = np.concatenate((errors, [errors[1]/2/3.14, period * errors[1]/popt[1], delay * errors[2]/popt[2]]))
+	print(tabulate([['Values', *values], ['Errors', *errors]], headers=['Amplitude','phase','offset', 'freq', 'period', 'delay']))
 	
 	plt.plot(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),ym)
 	
