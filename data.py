@@ -23,7 +23,7 @@ def data(filename, names=['freq','fraction95'], autofind=True):
 		file = glob(drive + '\\Data\\2023\\*\\*\\*\\' + filename)[0] # EXTREMELY greedy
 	else :
 		file = os.path.join(drive, "Data", "2023", "10 October2023", 
-					 "05October2023", "Summary", filename) #making manual path for the filename
+					 "03October2023", "E_202p1G_bcspinmix_to_ac_dimer_8VVA5ms", filename) #making manual path for the filename
 	data = data_from_dat(file, names) #making array of chosen data
 	x = data[:,0]
 # 	x = [x+5 for x in x] #added 5 to every x value
