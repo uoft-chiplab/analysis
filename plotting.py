@@ -29,7 +29,6 @@ def plots(filename, names=['delay time','sum95'], guess=None, fittype='Sin'):
 	plt.xlabel(xlabel)
 	plt.ylabel(ylabel)
 	plt.plot(fitdata[2], fitdata[3], 'go')
-# guess for the fit 
 	if fittype == 'Cos':
 			if guess is None:	
 				guess = [-0.2, 0, 10, 202]
@@ -128,7 +127,7 @@ def plots(filename, names=['delay time','sum95'], guess=None, fittype='Sin'):
 	
 # residuals 
 
-def residuals(filename, names=['delay time', 'sum95']):
+def residuals(filename, names=['delay time', 'sum95'], guess=None, fittype='Sin'):
 	"""
 	Inputs: filename, header names - names=['','']
 	
@@ -140,9 +139,81 @@ def residuals(filename, names=['delay time', 'sum95']):
 	plt.xlabel(xlabel)
 	plt.ylabel(ylabel)
 	plt.plot(fitdata[2], fitdata[3], 'go')
-	guess = [-0.2, 0, 10, 202]
-	popt, pcov = curve_fit.curve_fit(Cos, fitdata[2], fitdata[3],p0=guess)
-	residuals = fitdata[3] - Cos(fitdata[2],*popt)
+	if fittype == 'Cos':
+			if guess is None:	
+				guess = [-0.2, 0, 10, 202]
+			popt, pcov = curve_fit.curve_fit(Cos, fitdata[2], fitdata[3],p0=guess)
+			residuals = fitdata[3] - Cos(fitdata[2],*popt)
+	if fittype == 'Sin':
+			if guess is None:	
+				guess = [(max(fitdata[3])-min(fitdata[3])),0.05,-2,21]
+			popt, pcov = curve_fit.curve_fit(Sin, fitdata[2], fitdata[3],p0=guess)
+			residuals = fitdata[3] - Sin(fitdata[2],*popt)
+	if fittype == 'Gaussian':
+		if guess is None:	
+			guess = [-(max(fitdata[3])-min(fitdata[3])),fitdata[2][fitdata[3].argmin()],0.04,np.mean(fitdata[3])]
+		popt, pcov = curve_fit.curve_fit(Gaussian, fitdata[2], fitdata[3],p0=guess)
+		residuals = fitdata[3] - Gaussian(fitdata[2],*popt)
+	if fittype == 'Lorentzian':
+		if guess is None:
+			guess = [(max(fitdata[3])-(sorted(set(fitdata[3]))[2])), 1, fitdata[2][fitdata[3].argmin()], 0.04, np.mean(fitdata[3])]
+		popt, pcov = curve_fit.curve_fit(Lorentzian, fitdata[2], fitdata[3],p0=guess)
+		residuals = fitdata[3] - Lorentzian(fitdata[2],*popt)
+	if fittype == 'Sinc':
+		if guess is None:
+			guess = [(max(fitdata[3])-(sorted(set(fitdata[3]))[2])),(sorted(set(fitdata[2]))[1]+sorted(set(fitdata[2]))[-1])/2, (sorted(set(fitdata[2]))[1]-sorted(set(fitdata[2]))[-1])/2, np.mean(fitdata[3])]
+		popt, pcov = curve_fit.curve_fit(Sinc, fitdata[2], fitdata[3],p0=guess)
+		residuals = fitdata[3] - Sinc(fitdata[2],*popt)	
+	if fittype == 'Sinc2':
+		if guess is None:
+			guess = [(max(fitdata[3])-(sorted(set(fitdata[3]))[0])),(sorted(set(fitdata[3]))[1]+sorted(set(fitdata[3]))[0]), 4, np.mean(fitdata[3])]
+		popt, pcov = curve_fit.curve_fit(Sinc2, fitdata[2], fitdata[3],p0=guess)
+		residuals = fitdata[3] - Sinc2(fitdata[2],*popt)
+	if fittype == 'TrapFreq':
+		if guess is None:
+			guess = [10000, 0.05, 20  ,-2 , 100, -0.1]
+		popt, pcov = curve_fit.curve_fit(TrapFreq, fitdata[2], fitdata[3],p0=guess)
+		residuals = fitdata[3] - TrapFreq(fitdata[2],*popt)
+	if fittype == 'TrapFreq2':
+		if guess is None:
+			guess = [10000, 0.05, 20  ,-2 , 100]
+		popt, pcov = curve_fit.curve_fit(TrapFreq2, fitdata[2], fitdata[3],p0=guess)
+		residuals = fitdata[3] - TrapFreq2(fitdata[2],*popt)
+	if fittype == 'RabiFreq':
+			if guess is None:
+				guess = [1,1,1,0]
+			popt, pcov = curve_fit.curve_fit(RabiFreq, fitdata[2], fitdata[3],p0=guess)
+			residuals = fitdata[3] - RabiFreq(fitdata[2],*popt)
+	if fittype == 'Parabola':
+				if guess is None:
+					guess = [-3000, 44.82, 3000]
+				popt, pcov = curve_fit.curve_fit(Parabola, fitdata[2], fitdata[3],p0=guess)
+				residuals = fitdata[3] - Parabola(fitdata[2],*popt)
+	if fittype == 'Linear':
+		if guess is None:
+			guess = [(max(fitdata[3])-min(fitdata[3]))/(max(fitdata[2])-min(fitdata[2])),fitdata[2][fitdata[3].argmin()]]
+		popt, pcov = curve_fit.curve_fit(Linear, fitdata[2], fitdata[3],p0=guess)
+		residuals = fitdata[3] - Linear(fitdata[2],*popt)
+	if fittype == 'Exponential':
+		if guess is None:
+			guess = [max(fitdata[3])-min(fitdata[3]), 1]
+		popt, pcov = curve_fit.curve_fit(Exponential, fitdata[2], fitdata[3],p0=guess)
+		residuals = fitdata[3] - Exponential(fitdata[2],*popt)
+	if fittype == 'RabiLine':
+		if guess is None:
+			guess = [1, 1, 1, 1, 1, 1, 1, 0]
+		popt, pcov = curve_fit.curve_fit(RabiLine, fitdata[2], fitdata[3],p0=guess)
+		residuals = fitdata[3] - RabiLine(fitdata[2],*popt)
+	if fittype == 'ErfcFit':
+		if guess is None:
+			guess = [1, 1, 1, 0]
+		popt, pcov = curve_fit.curve_fit(ErfcFit, fitdata[2], fitdata[3],p0=guess)
+		residuals = fitdata[3] - ErfcFit(fitdata[2],*popt)
+	if fittype == 'SinplusCos':
+		if guess is None:
+			guess = [1, 1, 1, 0]
+		popt, pcov = curve_fit.curve_fit(SinplusCos, fitdata[2], fitdata[3],p0=guess)
+		residuals = fitdata[3] - SinplusCos(fitdata[2],*popt)
 	fig2 = plt.figure(1)
 	plt.plot(fitdata[2],fitdata[3]*0,'-')
 	plt.plot(fitdata[2], residuals, 'g+')
