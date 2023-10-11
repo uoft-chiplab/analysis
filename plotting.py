@@ -42,7 +42,7 @@ def plots(filename, names=['delay time','sum95'], guess=None, fittype='Sin'):
 	if fittype == 'Gaussian':
 		if guess is None:	
 			guess = [-(max(fitdata[3])-min(fitdata[3])),fitdata[2][fitdata[3].argmin()],0.04,np.mean(fitdata[3])]
-		popt, pcov = curve_fit.curve_fit(Gaussian, fitdata[2], fitdata[3],p0=guess)
+		popt, pcov = curve_fit.curve_fit(Gaussian, fitdata[2], fitdata[3],p0=guess, maxfev=5000)
 		ym = Gaussian(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),*popt)
 	if fittype == 'Lorentzian':
 		if guess is None:
