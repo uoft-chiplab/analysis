@@ -109,6 +109,11 @@ def plots(filename, names=['delay time','sum95'], guess=None, fittype='Sin'):
 			guess = [1, 1, 1, 0]
 		popt, pcov = curve_fit.curve_fit(SinplusCos, fitdata[2], fitdata[3],p0=guess)
 		ym = SinplusCos(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),*popt)
+	if fittype == 'FixedSin':
+			if guess is None:	
+				guess = [(max(fitdata[3])-min(fitdata[3])),-2,21]
+			popt, pcov = curve_fit.curve_fit(FixedSin, fitdata[2], fitdata[3],p0=guess)
+			ym = FixedSin(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),*popt)
 	print(popt)
 	errors = np.sqrt(np.diag(pcov))
 	freq = 0.01
