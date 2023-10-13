@@ -9,10 +9,13 @@ Data functions
 import os 
 from glob import glob
 from get_data import *
+from library import *
 
 # importing data 
+Bfield = 201.4 #G 
+res = FreqMHz(Bfield, 9/2, -5/2, 9/2, -7/2)
 
-def data(filename, names=['freq','fraction95'], autofind=True):
+def data(filename, names=['freq','sum95'], autofind=True):
 	"""
 	Inputs: filename, header names, autofind file or manually input it
 	
@@ -81,7 +84,7 @@ def list_duplicates(filename):
 	return dups_list
 
 
-def data_exclude_points(filename):
+def data_exclude_points(filename,names):
 	"""
 	Returns: header names from data, x and y values excluding the duplicated points  
 	"""

@@ -63,13 +63,12 @@ def plotsin(filename, names=['freq','fraction95'], autofind=True,  guess=None, r
 
 #plotting raw data with gaussian 
 #guess=['Amplitude', 'Frequency','Width','Background']
-def plotgaussian(filename, names=['freq','fraction95'], autofind=True, guess=None, residualss=False, fit=True, fittype='Gaussian'):
+def plotgaussian(filename, names=['freq','fraction95'], autofind=True, guess=None, residualss=False, datatype='raw', fit=True, fittype='Gaussian'):
 	"""
 	Inputs: filename, header names - names=['',''], autofind (False is manually inputted path), guess for fit (None is automated guess) [A, x0, sigma, C], residualss (true is have them appear) 
 	
 	Returns: gaussian fit, A * np.exp(-(x-x0)**2/(2*sigma**2)) + C
 	"""
-	fitdata = data(filename, names, autofind)
 	if fit is True :
 		figures = [plots(filename, names, guess, fittype='Gaussian')]
 	if residualss is True:
