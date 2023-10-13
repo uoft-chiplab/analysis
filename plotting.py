@@ -15,7 +15,7 @@ from data import *
 
 # plots 
 
-def plots(filename, names=['delay time','sum95'], guess=None, fittype='Sin', datatype='exclude multiple points'):
+def plots(filename, names=['delay time','sum95'], guess=None, fittype='Sin', datatype='raw'):
 	"""
 	Inputs: filename, header names - names=['',''], guess for fit (None is automated guess) [A, omega, p, C], fittype (Sin, Cos, Gaussian, Lorentzian, Sinc, Sinc2, TrapFreq, TrapFreq2, RabiFreq, Parabola, Linear, Exponential, RabiLine, ErfcFit, SinplusCos) 
 	
