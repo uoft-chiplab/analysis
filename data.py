@@ -51,15 +51,15 @@ def data(filename, names=['freq','sum95'], autofind=True):
 
 #exclude below certain threshold 
 
-def data_exclude(filename):
+def data_exclude(filename, names=['freq','sum95']):
 	"""
 	Inputs: filename
 	
 	Returns: header names used for axes labels, x values, y values 
 	"""
-	names = [data(filename)[0], data(filename)[1]]#choosing x , y columns from .dat 
-	x = data(filename)[2]
-	y = data(filename)[3]
+	names = [data(filename, names)[0], data(filename, names)[1]]#choosing x , y columns from .dat 
+	x = data(filename, names)[2]
+	y = data(filename, names)[3]
 	mymin = np.where(y < 202.00)[0] # indecies for where y < 80in this case
 	x2 = np.delete(x, mymin)
 	y2 = np.delete(y, mymin)
@@ -68,11 +68,11 @@ def data_exclude(filename):
 
 #exclude the repeated point at the end
 
-def list_duplicates(filename):
+def list_duplicates(filename, names=['freq','sum95']):
 	"""
 	Returns: list of indicies of points duplicated more than 3 times 
 	"""
-	List = data(filename)[2].tolist()	
+	List = data(filename, names)[2].tolist()	
 	d1 = {item:List.count(item) for item in List}  # item and their counts
 	elems = list(filter(lambda x: d1[x] > 3, d1))  # get duplicate elements
 	d2 = dict(zip(range(0, len(List)), List))  # each item and their indices
@@ -84,14 +84,14 @@ def list_duplicates(filename):
 	return dups_list
 
 
-def data_exclude_points(filename,names):
+def data_exclude_points(filename, names=['freq','sum95']):
 	"""
 	Returns: header names from data, x and y values excluding the duplicated points  
 	"""
-	names = [data(filename)[0], data(filename)[1]] #choosing x , y columns from .dat 
-	x = data(filename)[2]
-	y = data(filename)[3]	
-	xduplicate = list_duplicates(filename)[0]
+	names = [data(filename, names)[0], data(filename, names)[1]] #choosing x , y columns from .dat 
+	x = data(filename, names)[2]
+	y = data(filename, names)[3]	
+	xduplicate = list_duplicates(filename, names)[0]
 	xduplicate_but1 = xduplicate.pop(0) # getting rid of the first element of the duplicated list so that one of the points stays in the data set
 	x2 = np.delete(x, xduplicate)
 	y2 = np.delete(y, xduplicate)
@@ -99,7 +99,7 @@ def data_exclude_points(filename,names):
 	return *names, x2, y2
 	
 
-def data_choice(datatype, filename):
+def data_choice(datatype, filename, names=['freq','sum95']):
 	"""
 	Choose the data type you want  
 	"""

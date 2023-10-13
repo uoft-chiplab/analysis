@@ -238,7 +238,7 @@ def plotsinpluscos(filename, names=['freq','fraction95'], autofind=True, guess=N
 	plt.show(figures)
 
 #plotting raw data with sin 
-def plotfixedsin(filename, names=['freq','fraction95'], autofind=True, guess=None, errors=False, residualss=False, datatype='raw', datatype='raw', fit=True, fittype='FixedSin'):
+def plotfixedsin(filename, names=['freq','fraction95'], autofind=True, guess=None, errors=False, residualss=False, datatype='raw', fit=True, fittype='FixedSin'):
 	"""
 	Inputs: filename, header names  - names=['',''], autofind (False is manually inputted path), guess for fit (None is automated guess) [A, omega, p, C], residualss (true is have them appear)
 	
