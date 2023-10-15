@@ -15,14 +15,19 @@ from data import *
 
 # plots 
 
-def plots(filename, names=['delay time','sum95'], guess=None, fittype='Sin'):
+def plots(filename, names=['delay time','sum95'], guess=None, fittype='Sin', datatype='raw'):
 	"""
 	Inputs: filename, header names - names=['',''], guess for fit (None is automated guess) [A, omega, p, C], fittype (Sin, Cos, Gaussian, Lorentzian, Sinc, Sinc2, TrapFreq, TrapFreq2, RabiFreq, Parabola, Linear, Exponential, RabiLine, ErfcFit, SinplusCos) 
 	
 	Returns: data plotted with chosen fit
 	"""
 	fig1 = plt.figure(0)
-	fitdata = data(filename, names)
+	if datatype == 'raw':
+		fitdata = data(filename, names)
+	if datatype == 'exclude':
+		fitdata = data_exclude(filename, names)
+	if datatype == 'exclude multiple points':
+		fitdata = data_exclude_points(filename, names)
 	plt.title(f"{fittype} fit for {filename}")
 	xlabel = f"{fitdata[0]}"
 	ylabel = f"{fitdata[1]}"
