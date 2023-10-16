@@ -171,7 +171,7 @@ def residuals(filename, datatype, names=['delay time', 'sum95'], guess=None, fit
 	plt.xlabel(xlabel)
 	plt.ylabel(ylabel)
 
-#really residuals not ym but it is throwing a fit if i call it residuals for some reason lmao 
+#really residuals from fitting_type not ym but it is throwing a fit if i call it residuals for some reason lmao 
 
 	ym = fitting_type(filename, names, fittype, guess)[3]
 	
@@ -185,6 +185,7 @@ def residuals(filename, datatype, names=['delay time', 'sum95'], guess=None, fit
 
 
 def avgdata(filename, names, guess=None, fittype='Gaussian'):
+	fig1 = plt.figure(0)
 	fitdata = data(filename, names, fittype)
 	plt.title(f"{fittype} fit for Averaged Data in {filename}")
 	xlabel = f"{fitdata[0]}"
@@ -192,7 +193,6 @@ def avgdata(filename, names, guess=None, fittype='Gaussian'):
 	plt.xlabel(xlabel)
 	plt.ylabel(ylabel)
     
-	fig = plt.figure(1)
 	namex = data(filename, names)[0] 
 	namey = data(filename, names)[1] #choosing x , y columns from .dat 
 	x = data(filename, names)[2]
@@ -218,5 +218,5 @@ def avgdata(filename, names, guess=None, fittype='Gaussian'):
 	
 	plt.plot(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),ym)
 	
-	return fig
+	return fig1
             
