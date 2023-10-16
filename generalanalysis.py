@@ -15,14 +15,17 @@ from plotting import *
 
 #plotting raw data with cos 
 
-def plotcos(filename, datatype, names=['freq','fraction95'], autofind=True, guess=None, residualss=False, fit=True, fittype='Cos'):
+def plotcos(filename, datatype='raw', names=['freq','fraction95'], avg=False, autofind=True, guess=None, residualss=False, fit=True, fittype='Cos'):
 	"""
 	Inputs: filename, header names - names=['',''], autofind (False is manually inputted path), guess for fit (None is automated guess) [A, omega, p, C], residualss (true is have them appear), datatype 
 	
 	Returns: cos fit, A*np.cos(omega*x - p) + C
 	"""
 	if fit is True :
-		figures = [plots(filename, datatype, names, guess, fittype='Cos')]
+		if avg is True :
+			figures = [avgdata(filename, names, fittype='Cos')]
+		else :
+			figures = [plots(filename, datatype, names, guess, fittype='Cos')]
 	if residualss is True:
 		figures.append(residuals(filename, datatype, names, guess, fittype='Cos'))
 	plt.show(figures)
@@ -30,7 +33,7 @@ def plotcos(filename, datatype, names=['freq','fraction95'], autofind=True, gues
 
 #plotting raw data with sin 
 
-def plotsin(filename,datatype, names=['freq','fraction95'], autofind=True, avg=False, guess=None, residualss=False, fit=True, fittype='Sin'):
+def plotsin(filename, datatype='raw', names=['freq','fraction95'], autofind=True, avg=False, guess=None, residualss=False, fit=True, fittype='Sin'):
 	"""
 	Inputs: filename, header names  - names=['',''], autofind (False is manually inputted path), guess for fit (None is automated guess) [A, omega, p, C], residualss (true is have them appear)
 	
@@ -48,7 +51,7 @@ def plotsin(filename,datatype, names=['freq','fraction95'], autofind=True, avg=F
 
 #plotting raw data with gaussian 
 
-def plotgaussian(filename, datatype, names=['freq','fraction95'], avg=False, autofind=True, guess=None, residualss=False, fit=True, fittype='Gaussian'):
+def plotgaussian(filename, datatype='raw', names=['freq','fraction95'], avg=False, autofind=True, guess=None, residualss=False, fit=True, fittype='Gaussian'):
 	"""
 	Inputs: filename, header names - names=['',''], autofind (False is manually inputted path), guess for fit (None is automated guess) [A, x0, sigma, C], residualss (true is have them appear) 
 	
@@ -65,28 +68,34 @@ def plotgaussian(filename, datatype, names=['freq','fraction95'], avg=False, aut
 
 #plotting raw data with linear function 
 
-def plotlinear(filename, datatype, names=['freq','fraction95'], autofind=True, guess=None, residualss=False, fit=True, fittype='Linear'):
+def plotlinear(filename, datatype='raw', names=['freq','fraction95'], avg=False, autofind=True, guess=None, residualss=False, fit=True, fittype='Linear'):
 	"""
 	Inputs: filename, header names - names=['',''], autofind (False is manually inputted path), guess for fit (None is automated guess) [m, b], residualss (true is have them appear) 
 	
 	Returns: linear fit, m*x + b 
 	"""
 	if fit is True :
-		figures = [plots(filename, datatype, names, guess, fittype='Linear')]
+		if avg is True :
+			figures = [avgdata(filename, names, fittype='Linear')]
+		else :
+			figures = [plots(filename, datatype, names, guess, fittype='Linear')]
 	if residualss is True:
 		figures.append(residuals(filename, datatype, names, guess, fittype='Linear'))
 	plt.show(figures)
 
 #plotting raw data with Lorentzian function 
-#guess=['Amplitude', 'b**2' ,'Frequency', 'Width', 'Background']
-def plotlorentzian(filename, datatype, names=['freq','fraction95'], autofind=True, guess=None, residualss=False, fit=True, fittype='Lorentzian'):
+
+def plotlorentzian(filename, datatype='raw', names=['freq','fraction95'], avg=False, autofind=True, guess=None, residualss=False, fit=True, fittype='Lorentzian'):
 	"""
 	Inputs: filename, header names - names=['',''], autofind (False is manually inputted path), guess for fit (None is automated guess) [A, b, x0, sigma, C], residualss (true is have them appear) 
 	
 	Returns: lorentzian fit, (A*b**2) /((x-x0)**2 + (sigma)**2) + C
 	"""
 	if fit is True :
-		figures = [plots(filename, datatype, names, guess, fittype='Lorentzian')]
+		if avg is True :
+			figures = [avgdata(filename, names, fittype='Lorentzian')]
+		else :
+			figures = [plots(filename, datatype, names, guess, fittype='Lorentzian')]
 	if residualss is True:
 		figures.append(residuals(filename, datatype, names, fittype='Lorentzian'))
 	plt.show(figures)
@@ -94,14 +103,17 @@ def plotlorentzian(filename, datatype, names=['freq','fraction95'], autofind=Tru
 
 #plotting raw data with Sinc function 
 
-def plotsinc(filename, datatype, names=['freq','fraction95'], autofind=True, guess=None, residualss=False, fit=True, fittype='Sinc'):
+def plotsinc(filename, datatype='raw', names=['freq','fraction95'], avg=False, autofind=True, guess=None, residualss=False, fit=True, fittype='Sinc'):
 	"""
 	Inputs: filename, header names - names=['',''], autofind (False is manually inputted path), guess for fit (None is automated guess) [A, x0, sigma, C], residualss (true is have them appear) 
 	
 	Returns: sinc fit,  A*(np.sinc((x-x0) / sigma)) + C 
 	"""
 	if fit is True :
-		figures = [plots(filename, datatype, names, guess, fittype='Sinc')]
+		if avg is True :
+			figures = [avgdata(filename, names, fittype='Sinc')]
+		else :
+			figures = [plots(filename, datatype, names, guess, fittype='Sinc')]
 	if residualss is True:
 		figures.append(residuals(filename, datatype, names, guess, fittype='Sinc'))
 	plt.show(figures)
@@ -109,14 +121,17 @@ def plotsinc(filename, datatype, names=['freq','fraction95'], autofind=True, gue
 
 #plotting raw data with Sinc**2 function 
 
-def plotsinc2(filename, datatype, names=['freq','fraction95'], autofind=True, guess=None, residualss=False, fit=True, fittype='Sinc2'):
+def plotsinc2(filename, datatype='raw', names=['freq','fraction95'], avg=False, autofind=True, guess=None, residualss=False, fit=True, fittype='Sinc2'):
 	"""
 	Inputs: filename, header names - names=['',''], autofind (False is manually inputted path), guess for fit (None is automated guess) [A, x0, sigma, C], residualss (true is have them appear) 
 	
 	Returns: sinc**2 fit, A*(np.sinc((x-x0) / sigma))**2 + C
 	"""
 	if fit is True :
-		figures = [plots(filename, datatype, names, guess, fittype='Sinc2')]
+		if avg is True :
+			figures = [avgdata(filename, names, fittype='Sinc2')]
+		else :
+			figures = [plots(filename, datatype, names, guess, fittype='Sinc2')]
 	if residualss is True:
 		figures.append(residuals(filename, datatype, names, guess, fittype='Sinc2'))
 	plt.show(figures)
@@ -124,7 +139,7 @@ def plotsinc2(filename, datatype, names=['freq','fraction95'], autofind=True, gu
 
 # plotting raw data with Trap Freq function 
 
-def plottrapfreq(filename, datatype, names=['freq','fraction95'], autofind=True, guess=None, residualss=False, fit=True, fittype='TrapFreq'):
+def plottrapfreq(filename, datatyp='raw', names=['freq','fraction95'], avg=False, autofind=True, guess=None, residualss=False, fit=True, fittype='TrapFreq'):
 	"""
 	Inputs: filename, header names - names=['',''], autofind (False is manually inputted path), guess for fit (None is automated guess) [A, b, l, x0, C, D], residualss (true is have them appear) 
 	
@@ -132,7 +147,10 @@ def plottrapfreq(filename, datatype, names=['freq','fraction95'], autofind=True,
 	"""
 	# plot data
 	if fit is True :
-		figures = [plots(filename, datatype, names, guess, fittype='TrapFreq')]
+		if avg is True :
+			figures = [avgdata(filename, names, fittype='TrapFreq')]
+		else :
+			figures = [plots(filename, datatype, names, guess, fittype='TrapFreq')]
 	# plot residuals
 	if residualss is True:
 		figures.append(residuals(filename, datatype, names, guess, fittype='TrapFreq'))
@@ -142,14 +160,17 @@ def plottrapfreq(filename, datatype, names=['freq','fraction95'], autofind=True,
 
 # plotting raw data with Trap Freq function 
 
-def plottrapfreq2(filename, datatype, names=['freq','fraction95'], autofind=True, guess=None, residualss=False, fit=True, fittype='TrapFreq2'):
+def plottrapfreq2(filename, datatype='raw', names=['freq','fraction95'], avg=False, autofind=True, guess=None, residualss=False, fit=True, fittype='TrapFreq2'):
 	"""
 	Inputs: filename, header names - names=['',''], autofind (False is manually inputted path), guess for fit (None is automated guess) [A, b, l, x0, C], residualss (true is have them appear) 
 	
 	Returns: trap freq fit without linear term, A*np.exp(-x/b)*(np.sin(l * x - x0)) +  C 
 	"""
 	if fit is True :
-		figures = [plots(filename, datatype, names, guess, fittype='TrapFreq2')]
+		if avg is True :
+			figures = [avgdata(filename, names, fittype='TrapFreq2')]
+		else :
+			figures = [plots(filename, datatype, names, guess, fittype='TrapFreq2')]
 	if residualss is True:
 		figures.append(residuals(filename, datatype, names, guess, fittype='TrapFreq2'))
 	plt.show(figures)
@@ -158,14 +179,17 @@ def plottrapfreq2(filename, datatype, names=['freq','fraction95'], autofind=True
 #plotting raw data with Rabi Freq function  
 
 
-def plotrabifreq(filename, datatype, names=['freq','fraction95'], autofind=True, guess=None, residualss=False, fit=True, fittype='RabiFreq'):
+def plotrabifreq(filename, datatype='raw', names=['freq','fraction95'], avg=False, autofind=True, guess=None, residualss=False, fit=True, fittype='RabiFreq'):
 	"""
 	Inputs: filename, header names - names=['',''], autofind (False is manually inputted path), guess for fit (None is automated guess) [A, b, x0, C], residualss (true is have them appear) 
 	
 	Returns: rabi freq fit, A*(np.sin(b/2 * x - x0))**2 + C
 	"""
 	if fit is True :
-		figures = [plots(filename, datatype, names, guess, fittype='RabiFreq')]
+		if avg is True :
+			figures = [avgdata(filename, names, fittype='RabiFreq')]
+		else :
+			figures = [plots(filename, datatype, names, guess, fittype='RabiFreq')]
 	if residualss is True:
 		figures.append(residuals(filename, datatype, names, guess, fittype='RabiFreq'))
 	plt.show(figures)
@@ -173,14 +197,17 @@ def plotrabifreq(filename, datatype, names=['freq','fraction95'], autofind=True,
 
 #plotting raw data with Parabola function 
 
-def plotparabola(filename, datatype, names=['freq','fraction95'], autofind=True, guess=None, residualss=False, fit=True, fittype='Parabola'):
+def plotparabola(filename, datatype='raw', names=['freq','fraction95'], avg=False, autofind=True, guess=None, residualss=False, fit=True, fittype='Parabola'):
 	"""
 	Inputs: filename, header names - names=['',''], autofind (False is manually inputted path), guess for fit (None is automated guess) [A, x0, C], residualss (true is have them appear) 
 	
 	Returns: parabolic fit, A*(x - x0)**2 + C
 	"""
 	if fit is True :
-		figures = [plots(filename, datatype, names, guess, fittype='Parabola')]
+		if avg is True :
+			figures = [avgdata(filename, names, fittype='Parabola')]
+		else :
+			figures = [plots(filename, datatype, names, guess, fittype='Parabola')]
 	if residualss is True:
 		figures.append(residuals(filename, datatype, names, guess, fittype='Parabola'))
 	plt.show(figures)
@@ -189,69 +216,84 @@ def plotparabola(filename, datatype, names=['freq','fraction95'], autofind=True,
 
 #plotting raw data with exponential function 
 
-def plotexp(filename, datatype, names=['freq','fraction95'], autofind=True, guess=None, residualss=False, fit=True, fittype='Exponential'):
+def plotexp(filename, datatype='raw', names=['freq','fraction95'], autofind=True, avg=False, guess=None, residualss=False, fit=True, fittype='Exponential'):
 	"""
 	Inputs: filename, header names - names=['',''], autofind (False is manually inputted path), guess for fit (None is automated guess) [A, sigma], residualss (true is have them appear) 
 	
 	Returns: exponential fit  , A*np.exp(-x/sigma)
 	"""
 	if fit is True :
-		figures = [plots(filename, datatype, names, guess, fittype='Exponential')]
+		if avg is True :
+			figures = [avgdata(filename, names, fittype='Exponential')]
+		else :
+			figures = [plots(filename, datatype, names, guess, fittype='Exponential')]
 	if residualss is True:
 		figures.append(residuals(filename, datatype, names, guess, fittype='Exponential'))
 	plt.show(figures)
 
 #plotting raw data with Rabiline function 
 
-def plotrabiline(filename, datatype, names=['freq','fraction95'], autofind=True, guess=None, residualss=False, fit=True, fittype='RabiLine'):
+def plotrabiline(filename, datatype='raw', names=['freq','fraction95'], avg=False, autofind=True, guess=None, residualss=False, fit=True, fittype='RabiLine'):
 	"""
 	Inputs: filename, header names - names=['',''], autofind (False is manually inputted path), guess for fit (None is automated guess) [b, l, m, A, s, j, k, p], residualss (true is have them appear) 
 	
 	Returns: rabiline fit, (b**2 / (l**2 + (x - m)**2 ) ) * (A * np.sin(np.sqrt(s**2 + (x - j)**2 ) * k)**2 + p )
 	"""
 	if fit is True :
-		figures = [plots(filename, datatype, names, guess, fittype='RabiLine')]
+		if avg is True :
+			figures = [avgdata(filename, names, fittype='RabiLine')]
+		else :
+			figures = [plots(filename, datatype, names, guess, fittype='RabiLine')]
 	if residualss is True:
 		figures.append(residuals(filename, datatype, names, guess, fittype='RabiLine'))
 	plt.show(figures)
 
 #plotting raw data with Erfc function 
 
-def ploterfc(filename, datatype, names=['freq','fraction95'], autofind=True, guess=None, residualss=False, fit=True, fittype='ErfcFit'):
+def ploterfc(filename, datatype='raw', names=['freq','fraction95'], avg=False, autofind=True, guess=None, residualss=False, fit=True, fittype='ErfcFit'):
 	"""
 	Inputs: filename, header names - names=['',''], autofind (False is manually inputted path), guess for fit (None is automated guess) [A, x0, b, C], residualss (true is have them appear) 
 	
 	Returns: erfc fit, A * math.erfc((x - x0) / b ) + C
 	"""
 	if fit is True :
-		figures = [plots(filename, datatype, names, guess, residualss,  fittype='ErfcFit')]
+		if avg is True :
+			figures = [avgdata(filename, names, fittype='ErfcFit')]
+		else :
+			figures = [plots(filename, datatype, names, guess, residualss,  fittype='ErfcFit')]
 	if residualss is True:
 		figures.append(residuals(filename, datatype, names, guess, residualss,  fittype='ErfcFit'))
 	plt.show(figures)
 	
 #plotting raw data with sin plus cos function
 
-def plotsinpluscos(filename, datatype, names=['freq','fraction95'], autofind=True, guess=None, residualss=False, fit=True, fittype='SinplusCos'):
+def plotsinpluscos(filename, datatype='raw', names=['freq','fraction95'], avg=False, autofind=True, guess=None, residualss=False, fit=True, fittype='SinplusCos'):
 	"""
 	Inputs: filename, header names - names=['',''], autofind (False is manually inputted path), guess for fit (None is automated guess) [omega, A, B, C], residualss (true is have them appear) 
 	
 	Returns: sin + cos fit, A*np.sin(omega*t) + B*np.cos(omega*t) + C
 	"""
 	if fit is True :
-		figures = [plots(filename, datatype, names, guess, residualss,  fittype='SinplusCos')]
+		if avg is True :
+			figures = [avgdata(filename, names, fittype='SinplusCos')]
+		else :
+			figures = [plots(filename, datatype, names, guess, residualss,  fittype='SinplusCos')]
 	if residualss is True:
 		figures.append(residuals(filename, datatype, names, guess, residualss,  fittype='SinplusCos'))
 	plt.show(figures)
 
 #plotting raw data with sin 
-def plotfixedsin(filename, datatype, names=['freq','fraction95'], autofind=True, guess=None, errors=False, residualss=False, fit=True, fittype='FixedSin'):
+def plotfixedsin(filename, datatype='raw', names=['freq','fraction95'], avg=False, autofind=True, guess=None, errors=False, residualss=False, fit=True, fittype='FixedSin'):
 	"""
 	Inputs: filename, header names  - names=['',''], autofind (False is manually inputted path), guess for fit (None is automated guess) [A, omega, p, C], residualss (true is have them appear)
 	
 	Returns: sin fit, A*np.sin(omega*x - p) + C
 	"""
 	if fit is True :
-		figures = [plots(filename, datatype, names, guess=None, fittype='FixedSin')]
+		if avg is True :
+			figures = [avgdata(filename, names, fittype='FixedSin')]
+		else :
+			figures = [plots(filename, datatype, names, guess=None, fittype='FixedSin')]
 	if residualss is True:
 		figures.append(residuals(filename, datatype, names))
 	plt.show(figures)
