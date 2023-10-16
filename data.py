@@ -17,7 +17,7 @@ import scipy.optimize as curve_fit
 Bfield = 201.4 #G 
 res = FreqMHz(Bfield, 9/2, -5/2, 9/2, -7/2)
 
-def data(filename, names=['freq','sum95'], autofind=True):
+def data(filename, names=['freq','sum95'], datatype='raw',  autofind=True, guess=None):
 	"""
 	Inputs: filename, header names, autofind file or manually input it
 	

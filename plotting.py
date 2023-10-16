@@ -14,22 +14,36 @@ from tabulate import tabulate # pip install tabulate
 from data import *
 import pandas as pd
 
-# All of the functions you can fit to  
+# All of the functions you can fit to 
 
-def fitting_type(filename, names=['freq','sum95'], fittype='Sin', guess=None):
-	fitdata = data(filename, names, fittype)
+ 
+
+def fitting_type(filename,names=['freq','sum95'], avg=False, datatype='raw', fittype='Sin', guess=None):
+	if avg is True:
+		fitdata = avgdata_data(filename, names)
+	else:
+		if datatype == 'raw':
+			fitdata = data(filename,  names)
+		elif datatype == 'exclude':
+			fitdata = data_exclude(filename, names)
+		elif datatype == 'exclude multiple points':
+			fitdata = data_exclude_points(filename, names)
+		else:
+			fitdata = 'nothing'
+# 	print(fitdata)
+# 	print(fitdata)
 	if fittype == 'Cos':
-			if guess is None:	
-				guess = [-0.2, 0, 10, 202]
-			popt, pcov = curve_fit.curve_fit(Cos, fitdata[2], fitdata[3],p0=guess)
-			ym = Cos(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),*popt)
-			residuals = fitdata[3] - Cos(fitdata[2],*popt)
+		if guess is None:	
+			guess = [-0.2, 0, 10, 202]
+		popt, pcov = curve_fit.curve_fit(Cos, fitdata[2], fitdata[3],p0=guess)
+		ym = Cos(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),*popt)
+		residuals = fitdata[3] - Cos(fitdata[2],*popt)
 	if fittype == 'Sin':
-			if guess is None:	
-				guess = [(max(fitdata[3])-min(fitdata[3])),0.05,-2,21]
-			popt, pcov = curve_fit.curve_fit(Sin, fitdata[2], fitdata[3],p0=guess)
-			ym = Sin(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),*popt)
-			residuals = fitdata[3] - Sin(fitdata[2],*popt)
+		if guess is None:	
+			guess = [(max(fitdata[3])-min(fitdata[3])),0.05,-2,21]
+		popt, pcov = curve_fit.curve_fit(Sin, fitdata[2], fitdata[3],p0=guess)
+		ym = Sin(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),*popt)
+		residuals = fitdata[3] - Sin(fitdata[2],*popt)
 	if fittype == 'Gaussian':
 		if guess is None:	
 			guess = [-(max(fitdata[3])-min(fitdata[3])),fitdata[2][fitdata[3].argmin()],0.04,np.mean(fitdata[3])]
@@ -67,17 +81,17 @@ def fitting_type(filename, names=['freq','sum95'], fittype='Sin', guess=None):
 		ym = TrapFreq2(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),*popt)
 		residuals = fitdata[3] - TrapFreq2(fitdata[2],*popt)
 	if fittype == 'RabiFreq':
-			if guess is None:
-				guess = [1,1,1,0]
-			popt, pcov = curve_fit.curve_fit(RabiFreq, fitdata[2], fitdata[3],p0=guess)
-			ym = RabiFreq(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),*popt)
-			residuals = fitdata[3] - RabiFreq(fitdata[2],*popt)
+		if guess is None:
+			guess = [1,1,1,0]
+		popt, pcov = curve_fit.curve_fit(RabiFreq, fitdata[2], fitdata[3],p0=guess)
+		ym = RabiFreq(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),*popt)
+		residuals = fitdata[3] - RabiFreq(fitdata[2],*popt)
 	if fittype == 'Parabola':
-				if guess is None:
-					guess = [-3000, 44.82, 3000]
-				popt, pcov = curve_fit.curve_fit(Parabola, fitdata[2], fitdata[3],p0=guess)
-				ym = Parabola(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),*popt)
-				residuals = fitdata[3] - Parabola(fitdata[2],*popt)
+		if guess is None:
+			guess = [-3000, 44.82, 3000]
+		popt, pcov = curve_fit.curve_fit(Parabola, fitdata[2], fitdata[3],p0=guess)
+		ym = Parabola(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),*popt)
+		residuals = fitdata[3] - Parabola(fitdata[2],*popt)
 	if fittype == 'Linear':
 		if guess is None:
 			guess = [(max(fitdata[3])-min(fitdata[3]))/(max(fitdata[2])-min(fitdata[2])),fitdata[2][fitdata[3].argmin()]]
@@ -108,26 +122,30 @@ def fitting_type(filename, names=['freq','sum95'], fittype='Sin', guess=None):
 		popt, pcov = curve_fit.curve_fit(SinplusCos, fitdata[2], fitdata[3],p0=guess)
 		ym = SinplusCos(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),*popt)
 		residuals = fitdata[3] - SinplusCos(fitdata[2],*popt)
+# 	else:
+# 		popt, pcov, ym, residuals = [0,0,0,0]
 	
 	return popt, pcov, ym, residuals
 
 #plotting the data and fitting to chosen function 
 
-def plots(filename, datatype, names=['freq','sum95'], guess=None, fittype='Sin'):
+def plots(filename, datatype='raw', names=['freq','sum95'], avg=False, guess=None, fittype='Sin'):
 	"""
 	Inputs: filename, header names - names=['',''], guess for fit (None is automated guess) [A, omega, p, C], fittype (Sin, Cos, Gaussian, Lorentzian, Sinc, Sinc2, TrapFreq, TrapFreq2, RabiFreq, Parabola, Linear, Exponential, RabiLine, ErfcFit, SinplusCos) 
 	
 	Returns: data plotted with chosen fit
 	"""
 	fig1 = plt.figure(0)
-	if datatype == 'raw':
-		fitdata = data(filename, names)
-	if datatype == 'exclude':
-		fitdata = data_exclude(filename, names)
-	if datatype == 'exclude multiple points':
-		fitdata = data_exclude_points(filename, names)
-	if datatype == 'avergae data':
-		return 
+	if avg is True:
+		fitdata = avgdata_data(filename, names)
+	else:
+		if datatype == 'raw':
+			fitdata = data(filename, names, datatype=datatype)
+		if datatype == 'exclude':
+			fitdata = data_exclude(filename, names)
+		if datatype == 'exclude multiple points':
+			fitdata = data_exclude_points(filename, names)
+# 	print(fitdata)
 	plt.title(f"{fittype} fit for {filename}")
 	xlabel = f"{fitdata[0]}"
 	ylabel = f"{fitdata[1]}"
@@ -135,9 +153,7 @@ def plots(filename, datatype, names=['freq','sum95'], guess=None, fittype='Sin')
 	plt.ylabel(ylabel)
 	plt.plot(fitdata[2], fitdata[3], 'go')
 	
-	popt = fitting_type(filename, names, fittype, guess)[0]
-	pcov = fitting_type(filename, names, fittype, guess)[1]
-	ym = fitting_type(filename, names, fittype, guess)[2]
+	popt, pcov, ym, residuals = fitting_type(filename, names, avg, fittype=fittype, guess=guess)
 	
 	errors = np.sqrt(np.diag(pcov))
 	freq = 0.01
@@ -184,6 +200,20 @@ def residuals(filename, datatype, names=['delay time', 'sum95'], guess=None, fit
 	return fig2
 
 
+def avgdata_data(filename, names, fittype='Gaussian', guess=None):
+	fitdata = data(filename, names, fittype)
+
+	namex = data(filename, names)[0] 
+	namey = data(filename, names)[1] #choosing x , y columns from .dat 
+	x = data(filename, names)[2]
+	y = data(filename, names)[3]
+	data2 = pd.DataFrame({namex: x, namey: y}) 
+    
+	avgdata = data2.groupby([namex])[namey].mean()
+	
+	return avgdata
+
+
 def avgdata(filename, names, guess=None, fittype='Gaussian'):
 	fig1 = plt.figure(0)
 	fitdata = data(filename, names, fittype)
@@ -204,9 +234,7 @@ def avgdata(filename, names, guess=None, fittype='Gaussian'):
 
 	avgdata.plot( marker = '.', linestyle = 'none')
     
-	popt = fitting_type(filename, names, fittype, guess)[0]
-	pcov = fitting_type(filename, names, fittype, guess)[1]
-	ym = fitting_type(filename, names, fittype, guess)[2]
+	popt, pcov, ym, residuals = fitting_type(filename, names, fittype=fittype, guess=guess)
 	
 	errors = np.sqrt(np.diag(pcov))
     # freq = 0.01

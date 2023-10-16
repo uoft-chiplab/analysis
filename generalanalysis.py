@@ -59,7 +59,7 @@ def plotgaussian(filename, datatype='raw', names=['freq','fraction95'], avg=Fals
 	"""
 	if fit is True :
 		if avg is True :
-			figures = [avgdata(filename, names, fittype='Gaussian')]
+			figures = [avgdata(filename, names, guess=None, fittype='Gaussian')]
 		else :
 			figures = [plots(filename, datatype, names, guess, fittype='Gaussian')]
 	if residualss is True:
