@@ -10,10 +10,7 @@ import os
 from glob import glob
 from get_data import *
 from library import *
-import pandas as pd
-import matplotlib.pyplot as plt
 import scipy.optimize as curve_fit
-from tabulate import tabulate # pip install tabulate
 
 
 # importing data 
@@ -103,73 +100,7 @@ def data_exclude_points(filename, names=['freq','sum95']):
 	
 	return *names, x2, y2
 
-def justdata(filename, names=['freq','sum95'], autofind=True):
-	"""
-	Inputs: filename, header names, autofind file or manually input it
-	
-	Returns: header names used for axes labels, x values, y values 
-	"""
-	drive = '\\\\UNOBTAINIUM\\E_Carmen_Santiago' # when using Fermium
-	if autofind:
-		file = glob(drive + '\\Data\\2023\\*\\*\\*\\' + filename)[0] # EXTREMELY greedy
-	else :
-		file = os.path.join(drive, "Data", "2023", "10 October2023", 
-					 "12October2023", "B_ac_dimer_201p2G_scanfreq", filename) #making manual path for the filename
-	data = data_from_dat(file, names) #making array of chosen data
-	x = data[:,0]
-# 	x = [x+5 for x in x] #added 5 to every x value
-	y = data[:,1]
-	return  x, y
+#grouping data by x value then taking the mean 
 
-def avgdata(filename, names, fittype='Gaussian'):
-    fitdata = data(filename, names, fittype)
-    plt.title(f"{fittype} fit for Averaged Data in {filename}")
-    xlabel = f"{fitdata[0]}"
-    ylabel = f"{fitdata[1]}"
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-    
-    fig = plt.figure(1)
-    namex = data(filename, names)[0] 
-    namey = data(filename, names)[1] #choosing x , y columns from .dat 
-    x = data(filename, names)[2]
-    y = data(filename, names)[3]
-    data2 = pd.DataFrame({namex: x, namey: y}) 
-    
-    avgdata = data2.groupby([namex])[namey].mean()
-
-
-    avgdata.plot( marker = '.', linestyle = 'none')
-    
-    guess = [-2800,-4.1,0.05,27221]
-    popt, pcov = curve_fit.curve_fit(Gaussian, avgdata, avgdata ,p0=guess, maxfev=5000)
-    ym = Gaussian(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),*popt)
-    errors = np.sqrt(np.diag(pcov))
-    # freq = 0.01
-# 	period = 1/freq
-# 	delay = popt[1] % (3.141592654) /freq
-    values = list([*popt])
-	#errors = np.concatenate((errors, [errors[1]/2/3.14, period * errors[1]/popt[1], delay * errors[2]/popt[2]]))
-    print(tabulate([['Values', *values], ['Errors', *errors]], headers=['Amplitude','phase','offset', 'freq', 'period', 'delay']))
-	
-    plt.plot(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),ym)
-	
-    return fig
-            
-	
-
-def data_choice(datatype, filename, names=['freq','sum95']):
-	"""
-	Choose the data type you want  
-	"""
-	if datatype == 'raw':
-		fitdata = data(filename, names)
-	else:
-		if datatype == 'exclude':
-			fitdata = data_exclude(filename, names)
-		else:
-			if datatype == 'exclude multiple points':
-				fitdata = data_exclude_points(filename, names)
-				
 				
 				

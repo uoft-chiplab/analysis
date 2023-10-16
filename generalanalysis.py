@@ -30,14 +30,17 @@ def plotcos(filename, datatype, names=['freq','fraction95'], autofind=True, gues
 
 #plotting raw data with sin 
 
-def plotsin(filename,datatype, names=['freq','fraction95'], autofind=True,  guess=None, residualss=False, fit=True, fittype='Sin'):
+def plotsin(filename,datatype, names=['freq','fraction95'], autofind=True, avg=False, guess=None, residualss=False, fit=True, fittype='Sin'):
 	"""
 	Inputs: filename, header names  - names=['',''], autofind (False is manually inputted path), guess for fit (None is automated guess) [A, omega, p, C], residualss (true is have them appear)
 	
 	Returns: sin fit, A*np.sin(omega*x - p) + C
 	"""
 	if fit is True :
-		figures = [plots(filename, datatype, names, guess, fittype='Sin')]
+		if avg is True :
+			figures = [avgdata(filename, names, fittype='Sin')]
+		else :
+			figures = [plots(filename, datatype, names, guess, fittype='Sin')]
 	if residualss is True:
 		figures.append(residuals(filename, datatype, names, guess, fittype='Sin'))
 	plt.show(figures)
