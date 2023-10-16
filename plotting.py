@@ -16,8 +16,6 @@ import pandas as pd
 
 # All of the functions you can fit to 
 
- 
-
 def fitting_type(filename,names=['freq','sum95'], avg=False, datatype='raw', fittype='Sin', guess=None):
 	if avg is True:
 		fitdata = avgdata_data(filename, names)
@@ -30,8 +28,6 @@ def fitting_type(filename,names=['freq','sum95'], avg=False, datatype='raw', fit
 			fitdata = data_exclude_points(filename, names)
 		else:
 			fitdata = 'nothing'
-# 	print(fitdata)
-# 	print(fitdata)
 	if fittype == 'Cos':
 		if guess is None:	
 			guess = [-0.2, 0, 10, 202]
@@ -140,12 +136,14 @@ def plots(filename, datatype='raw', names=['freq','sum95'], avg=False, guess=Non
 		fitdata = avgdata_data(filename, names)
 	else:
 		if datatype == 'raw':
-			fitdata = data(filename, names, datatype=datatype)
-		if datatype == 'exclude':
+			fitdata = data(filename,  names)
+		elif datatype == 'exclude':
 			fitdata = data_exclude(filename, names)
-		if datatype == 'exclude multiple points':
+		elif datatype == 'exclude multiple points':
 			fitdata = data_exclude_points(filename, names)
-# 	print(fitdata)
+		else:
+			fitdata = 'nothing'
+
 	plt.title(f"{fittype} fit for {filename}")
 	xlabel = f"{fitdata[0]}"
 	ylabel = f"{fitdata[1]}"
@@ -153,7 +151,7 @@ def plots(filename, datatype='raw', names=['freq','sum95'], avg=False, guess=Non
 	plt.ylabel(ylabel)
 	plt.plot(fitdata[2], fitdata[3], 'go')
 	
-	popt, pcov, ym, residuals = fitting_type(filename, names, avg, fittype=fittype, guess=guess)
+	popt, pcov, ym, residuals = fitting_type(filename, names, fittype=fittype, guess=guess)
 	
 	errors = np.sqrt(np.diag(pcov))
 	freq = 0.01
@@ -170,18 +168,24 @@ def plots(filename, datatype='raw', names=['freq','sum95'], avg=False, guess=Non
 
 # residuals 
 
-def residuals(filename, datatype, names=['delay time', 'sum95'], guess=None, fittype='Sin'):
+def residuals(filename,  datatype='raw', names=['delay time', 'sum95'], avg=False,  guess=None, fittype='Sin'):
 	"""
 	Inputs: filename, header names - names=['','']
 	
 	Returns: residuals plot 
 	"""
-	if datatype == 'raw':
-		fitdata = data(filename, names)
-	if datatype == 'exclude':
-		fitdata = data_exclude(filename, names)
-	if datatype == 'exclude multiple points':
-		fitdata = data_exclude_points(filename, names)
+	if avg is True:
+		fitdata = avgdata_data(filename, names)
+	else:
+		if datatype == 'raw':
+			fitdata = data(filename,  names)
+		elif datatype == 'exclude':
+			fitdata = data_exclude(filename, names)
+		elif datatype == 'exclude multiple points':
+			fitdata = data_exclude_points(filename, names)
+		else:
+			fitdata = 'nothing'
+
 	xlabel = f"{fitdata[0]}"
 	ylabel = f"{fitdata[1]}"
 	plt.xlabel(xlabel)
@@ -189,12 +193,12 @@ def residuals(filename, datatype, names=['delay time', 'sum95'], guess=None, fit
 
 #really residuals from fitting_type not ym but it is throwing a fit if i call it residuals for some reason lmao 
 
-	ym = fitting_type(filename, names, fittype, guess)[3]
+	popt, pcov, ym, ymm = fitting_type(filename, names, avg, fittype=fittype, guess=guess)
 	
 
 	fig2 = plt.figure(1)
 	plt.plot(fitdata[2],fitdata[3]*0,'-')
-	plt.plot(fitdata[2], ym, 'g+')
+	plt.plot(fitdata[2], ymm, 'g+')
 	plt.xlabel(xlabel)
 	plt.ylabel(ylabel +" Residuals")
 	return fig2
