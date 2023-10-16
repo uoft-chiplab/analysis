@@ -16,7 +16,7 @@ import pandas as pd
 
 # All of the functions you can fit to  
 
-def fitting_type(filename, names, fittype='Sin', guess=None):
+def fitting_type(filename, names=['freq','sum95'], fittype='Sin', guess=None):
 	fitdata = data(filename, names, fittype)
 	if fittype == 'Cos':
 			if guess is None:	
@@ -113,7 +113,7 @@ def fitting_type(filename, names, fittype='Sin', guess=None):
 
 #plotting the data and fitting to chosen function 
 
-def plots(filename, datatype, names, guess=None, fittype='Sin'):
+def plots(filename, datatype, names=['freq','sum95'], guess=None, fittype='Sin'):
 	"""
 	Inputs: filename, header names - names=['',''], guess for fit (None is automated guess) [A, omega, p, C], fittype (Sin, Cos, Gaussian, Lorentzian, Sinc, Sinc2, TrapFreq, TrapFreq2, RabiFreq, Parabola, Linear, Exponential, RabiLine, ErfcFit, SinplusCos) 
 	
@@ -154,24 +154,31 @@ def plots(filename, datatype, names, guess=None, fittype='Sin'):
 
 # residuals 
 
-def residuals(filename, names=['delay time', 'sum95'], guess=None, fittype='Sin'):
+def residuals(filename, datatype, names=['delay time', 'sum95'], guess=None, fittype='Sin'):
 	"""
 	Inputs: filename, header names - names=['','']
 	
 	Returns: residuals plot 
 	"""
-	fitdata = data(filename, names)
+	if datatype == 'raw':
+		fitdata = data(filename, names)
+	if datatype == 'exclude':
+		fitdata = data_exclude(filename, names)
+	if datatype == 'exclude multiple points':
+		fitdata = data_exclude_points(filename, names)
 	xlabel = f"{fitdata[0]}"
 	ylabel = f"{fitdata[1]}"
 	plt.xlabel(xlabel)
 	plt.ylabel(ylabel)
-	plt.plot(fitdata[2], fitdata[3], 'go')
 
-	residuals = fitting_type(filename, names, fittype, guess)[3]
+#really residuals not ym but it is throwing a fit if i call it residuals for some reason lmao 
+
+	ym = fitting_type(filename, names, fittype, guess)[3]
 	
+
 	fig2 = plt.figure(1)
 	plt.plot(fitdata[2],fitdata[3]*0,'-')
-	plt.plot(fitdata[2], residuals, 'g+')
+	plt.plot(fitdata[2], ym, 'g+')
 	plt.xlabel(xlabel)
 	plt.ylabel(ylabel +" Residuals")
 	return fig2

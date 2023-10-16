@@ -60,7 +60,7 @@ def plotgaussian(filename, datatype, names=['freq','fraction95'], avg=False, aut
 		else :
 			figures = [plots(filename, datatype, names, guess, fittype='Gaussian')]
 	if residualss is True:
-		figures.append(residuals(filename, datatype, datatype, names, guess, fittype='Gaussian'))
+		figures.append(residuals(filename, datatype, names, guess, fittype='Gaussian'))
 	plt.show(figures)
 
 #plotting raw data with linear function 
