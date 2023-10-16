@@ -190,15 +190,12 @@ def residuals(filename,  datatype='raw', names=['delay time', 'sum95'], avg=Fals
 	ylabel = f"{fitdata[1]}"
 	plt.xlabel(xlabel)
 	plt.ylabel(ylabel)
-
-#really residuals from fitting_type not ym but it is throwing a fit if i call it residuals for some reason lmao 
-
-	popt, pcov, ym, ymm = fitting_type(filename, names, avg, fittype=fittype, guess=guess)
 	
-
+	popt, pcov, ym, residuals = fitting_type(filename, names, avg, fittype=fittype, guess=guess)
+	
 	fig2 = plt.figure(1)
 	plt.plot(fitdata[2],fitdata[3]*0,'-')
-	plt.plot(fitdata[2], ymm, 'g+')
+	plt.plot(fitdata[2], residuals, 'g+')
 	plt.xlabel(xlabel)
 	plt.ylabel(ylabel +" Residuals")
 	return fig2

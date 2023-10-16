@@ -14,7 +14,7 @@ import scipy.optimize as curve_fit
 
 
 # importing data 
-Bfield = 201.9 #G 
+Bfield = 201 #G 
 res = FreqMHz(Bfield, 9/2, -5/2, 9/2, -7/2)
 
 def data(filename, names=['freq','sum95'], datatype='raw',  autofind=True, guess=None):
@@ -27,8 +27,8 @@ def data(filename, names=['freq','sum95'], datatype='raw',  autofind=True, guess
 	if autofind:
 		file = glob(drive + '\\Data\\2023\\*\\*\\*\\' + filename)[0] # EXTREMELY greedy
 	else :
-		file = os.path.join(drive, "Data", "2023", "10 October2023", 
-					 "12October2023", "B_ac_dimer_201p2G_scanfreq", filename) #making manual path for the filename
+		file = os.path.join(drive, "Data", "2023", "09 September2023", 
+					 "29September2023", "E_ac_dimer_201G_scanfreq", filename) #making manual path for the filename
 	data = data_from_dat(file, names) #making array of chosen data
 	x = data[:,0] - res
 # 	x = [x+5 for x in x] #added 5 to every x value
@@ -76,7 +76,7 @@ def list_duplicates(filename, names=['freq','sum95']):
 	"""
 	List = data(filename, names)[2].tolist()	
 	d1 = {item:List.count(item) for item in List}  # item and their counts
-	elems = list(filter(lambda x: d1[x] > 3, d1))  # get duplicate elements
+	elems = list(filter(lambda x: d1[x] > 5, d1))  # get duplicate elements
 	d2 = dict(zip(range(0, len(List)), List))  # each item and their indices
 	# item and their list of duplicate indices in a dictionary 
 	dictonary = {item: list(filter(lambda x: d2[x] == item, d2)) for item in elems}
