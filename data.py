@@ -17,7 +17,7 @@ import scipy.optimize as curve_fit
 Bfield = 201 #G 
 res = FreqMHz(Bfield, 9/2, -5/2, 9/2, -7/2)
 
-def data(filename, names=['freq','sum95'], datatype='raw',  autofind=True, guess=None):
+def data(filename, names=['freq','sum95'],  autofind=True):
 	"""
 	Inputs: filename, header names, autofind file or manually input it
 	
@@ -30,9 +30,10 @@ def data(filename, names=['freq','sum95'], datatype='raw',  autofind=True, guess
 		file = os.path.join(drive, "Data", "2023", "09 September2023", 
 					 "29September2023", "E_ac_dimer_201G_scanfreq", filename) #making manual path for the filename
 	data = data_from_dat(file, names) #making array of chosen data
-	x = data[:,0] - res
-# 	x = [x+5 for x in x] #added 5 to every x value
+	x = data[:,0]
+# 	x = [x-0.5 for x in x] #added 5 to every x value
 	y = data[:,1]
+# 	y = [y-0.5 for y in y] #subtracted 5 to every x value
 	return *names, x, y
 
 
@@ -62,7 +63,7 @@ def data_exclude(filename, names=['freq','sum95']):
 	names = [data(filename, names)[0], data(filename, names)[1]]#choosing x , y columns from .dat 
 	x = data(filename, names)[2]
 	y = data(filename, names)[3]
-	mymin = np.where(y < 24000)[0] # indecies for where y < 80in this case
+	mymin = np.where(x >50)[0] # indecies for where y < 80in this case
 	x2 = np.delete(x, mymin)
 	y2 = np.delete(y, mymin)
 	

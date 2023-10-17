@@ -60,7 +60,8 @@ def fitting_type(filename,names=['freq','sum95'], avg=False, datatype='raw', fit
 		residuals = fitdata[3] - Sinc(fitdata[2],*popt)	
 	if fittype == 'Sinc2':
 		if guess is None:
-			guess = [(max(fitdata[3])-(sorted(set(fitdata[3]))[0])),(sorted(set(fitdata[3]))[1]+sorted(set(fitdata[3]))[0]), 4, np.mean(fitdata[3])]
+			guess=[17500,7.15,.05*3.14,0]
+# 			guess = [(max(fitdata[3])-(sorted(set(fitdata[3]))[0])),(sorted(set(fitdata[3]))[1]+sorted(set(fitdata[3]))[0]), 4, np.mean(fitdata[3])]
 		popt, pcov = curve_fit.curve_fit(Sinc2, fitdata[2], fitdata[3],p0=guess)
 		ym = Sinc2(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),*popt)
 		residuals = fitdata[3] - Sinc2(fitdata[2],*popt)
@@ -118,6 +119,12 @@ def fitting_type(filename,names=['freq','sum95'], avg=False, datatype='raw', fit
 		popt, pcov = curve_fit.curve_fit(SinplusCos, fitdata[2], fitdata[3],p0=guess)
 		ym = SinplusCos(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),*popt)
 		residuals = fitdata[3] - SinplusCos(fitdata[2],*popt)
+	if fittype == 'Sqrt':
+		if guess is None:
+			guess = [0.01]
+		popt, pcov = curve_fit.curve_fit(Sqrt, fitdata[2], fitdata[3],p0=guess, maxfev=5000)
+		ym = Sqrt(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),*popt)
+		residuals = fitdata[3] - Sqrt(fitdata[2],*popt)
 # 	else:
 # 		popt, pcov, ym, residuals = [0,0,0,0]
 	
@@ -154,10 +161,11 @@ def plots(filename, datatype='raw', names=['freq','sum95'], avg=False, guess=Non
 	popt, pcov, ym, residuals = fitting_type(filename, names, fittype=fittype, guess=guess)
 	
 	errors = np.sqrt(np.diag(pcov))
-	freq = 0.01
-	period = 1/freq
-	delay = popt[1] % (3.141592654) /freq
-	values = list([*popt, freq, period, delay])
+# 	freq = 0.01
+# 	period = 1/freq
+# 	delay = popt[1] % (3.141592654) /freq
+# 	values = list([*popt, freq, period, delay])
+	values = list([*popt])
 	#errors = np.concatenate((errors, [errors[1]/2/3.14, period * errors[1]/popt[1], delay * errors[2]/popt[2]]))
 	print(tabulate([['Values', *values], ['Errors', *errors]], headers=['Amplitude','phase','offset', 'freq', 'period', 'delay']))
 	

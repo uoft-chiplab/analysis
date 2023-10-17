@@ -295,3 +295,20 @@ def plotfixedsin(filename, datatype='raw', names=['freq','fraction95'], avg=Fals
 	if residualss is True:
 		figures.append(residuals(filename, datatype, names))
 	plt.show(figures)
+	
+#plotting data with sqrt
+ 
+def plotsqrt(filename, datatype='raw', names=['freq','fraction95'], avg=False, autofind=True, guess=None, errors=False, residualss=False, fit=True, fittype='FixedSin'):
+	"""
+	Inputs: filename, header names  - names=['',''], autofind (False is manually inputted path), guess for fit (None is automated guess) [A, omega, p, C], residualss (true is have them appear)
+	
+	Returns: sin fit, A*np.sin(omega*x - p) + C
+	"""
+	if fit is True :
+		if avg is True :
+			figures = [avgdata(filename, names, fittype='Sqrt')]
+		else :
+			figures = [plots(filename, datatype, names, guess=None, fittype='Sqrt')]
+	if residualss is True:
+		figures.append(residuals(filename, datatype, names))
+	plt.show(figures)

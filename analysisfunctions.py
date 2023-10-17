@@ -106,3 +106,6 @@ def FixedSin(t, A, p, C):
 	"""
 	omega = 0.010 * 2 * np.pi # 10 kHz
 	return A*np.sin(omega*t - p) + C
+
+def Sqrt(x, A):
+	return A*np.sqrt(x)
