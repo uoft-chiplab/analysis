@@ -17,7 +17,7 @@ import scipy.optimize as curve_fit
 Bfield = 201 #G 
 res = FreqMHz(Bfield, 9/2, -5/2, 9/2, -7/2)
 
-def data(filename, names=['freq','sum95'],  autofind=True):
+def data(filename, datatype='raw',  names=['freq','sum95'],  autofind=True):
 	"""
 	Inputs: filename, header names, autofind file or manually input it
 	
@@ -33,11 +33,11 @@ def data(filename, names=['freq','sum95'],  autofind=True):
 	x = data[:,0]
 # 	x = [x-0.5 for x in x] #added 5 to every x value
 	y = data[:,1]
-	y = [y-0.5 for y in y] #subtracted 5 to every x value
+# y = [y-0.5 for y in y] #subtracted 5 to every x value
 	return *names, x, y
 
 
-#kiera playing around at home
+#KP playing around at home
 
 # def data(filename, names=['freq','fraction95'], autofind=False):
 # 	drive = os.getcwd()[0:3] #'E:\\'
@@ -54,15 +54,15 @@ def data(filename, names=['freq','sum95'],  autofind=True):
 
 #exclude below certain threshold 
 
-def data_exclude(filename, names=['freq','sum95']):
+def data_exclude(filename, datatype='raw',  names=['freq','sum95']):
 	"""
 	Inputs: filename
 	
 	Returns: header names used for axes labels, x values, y values 
 	"""
-	names = [data(filename, names)[0], data(filename, names)[1]]#choosing x , y columns from .dat 
-	x = data(filename, names)[2]
-	y = data(filename, names)[3]
+	names = [data(filename, datatype, names)[0], data(filename, datatype, names)[1]]#choosing x , y columns from .dat 
+	x = data(filename, datatype, names)[2]
+	y = data(filename, datatype, names)[3]
 	mymin = np.where(x >50)[0] # indecies for where y < 80in this case
 	x2 = np.delete(x, mymin)
 	y2 = np.delete(y, mymin)
@@ -71,7 +71,7 @@ def data_exclude(filename, names=['freq','sum95']):
 
 #exclude the repeated point at the end
 
-def list_duplicates(filename, names=['freq','sum95']):
+def list_duplicates(filename ,datatype='raw', names=['freq','sum95']):
 	"""
 	Returns: list of indicies of points duplicated more than 3 times 
 	"""
@@ -87,14 +87,14 @@ def list_duplicates(filename, names=['freq','sum95']):
 	return dups_list
 
 
-def data_exclude_points(filename, names=['freq','sum95']):
+def data_exclude_points(filename, datatype='raw', names=['freq','sum95']):
 	"""
 	Returns: header names from data, x and y values excluding the duplicated points  
 	"""
-	names = [data(filename, names)[0], data(filename, names)[1]] #choosing x , y columns from .dat 
-	x = data(filename, names)[2]
-	y = data(filename, names)[3]	
-	xduplicate = list_duplicates(filename, names)[0]
+	names = [data(filename, datatype, names)[0], data(filename, datatype, names)[1]] #choosing x , y columns from .dat 
+	x = data(filename, datatype, names)[2]
+	y = data(filename, datatype, names)[3]	
+	xduplicate = list_duplicates(filename, datatype, names)[0]
 	xduplicate_but1 = xduplicate.pop(0) # getting rid of the first element of the duplicated list so that one of the points stays in the data set
 	x2 = np.delete(x, xduplicate)
 	y2 = np.delete(y, xduplicate)
@@ -103,5 +103,23 @@ def data_exclude_points(filename, names=['freq','sum95']):
 
 #grouping data by x value then taking the mean 
 
-				
+def avgdata_data(filename, datatype, names, avg=False, fittype='Gaussian', guess=None):
+	fitdata = data(filename, datatype, names, fittype)
+
+	namex = data(filename, datatype, names)[0] 
+	namey = data(filename, datatype, names)[1] #choosing x , y columns from .dat 
+	x = data(filename, datatype, names)[2]
+	y = data(filename, datatype, names)[3]
+
+	data2 = pd.DataFrame({namex: x, namey: y}) 
+	
+	avgdatagroup = data2.groupby([namex])[namey].mean()
+	
+	avgdatagroup = avgdatagroup.reset_index()
+	
+	avgdatagroup = np.array(avgdatagroup)
+	
+# 	avgdata = avgdatagroup(namex)
+	
+	return namex, namey, avgdatagroup[:,0], avgdatagroup[:,1]			
 				

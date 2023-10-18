@@ -21,7 +21,7 @@ def plotcos(filename, datatype='raw', names=['freq','fraction95'], avg=False, au
 	"""
 	if fit is True :
 		if avg is True :
-			figures = [avgdata(filename, names, fittype='Cos')]
+			figures = [avgdata(filename, datatype, names, fittype='Cos')]
 		else :
 			figures = [plots(filename, datatype, names, guess, fittype='Cos')]
 	if residualss is True:
@@ -39,7 +39,7 @@ def plotsin(filename, datatype='raw', names=['freq','fraction95'], autofind=True
 	"""
 	if fit is True :
 		if avg is True :
-			figures = [avgdata(filename, names, fittype='Sin')]
+			figures = [avgdata(filename, datatype, names, fittype='Sin')]
 		else :
 			figures = [plots(filename, datatype, names, guess, fittype='Sin')]
 	if residualss is True:
@@ -57,7 +57,7 @@ def plotgaussian(filename, datatype='raw', names=['freq','fraction95'], avg=Fals
 	"""
 	if fit is True :
 		if avg is True :
-			figures = [avgdata(filename, names, guess, fittype='Gaussian')]
+			figures = [avgdata(filename, datatype, names, guess, fittype='Gaussian')]
 		else :
 			figures = [plots(filename, datatype, names, guess, fittype='Gaussian')]
 	if residualss is True:
@@ -74,7 +74,7 @@ def plotlinear(filename, datatype='raw', names=['freq','fraction95'], avg=False,
 	"""
 	if fit is True :
 		if avg is True :
-			figures = [avgdata(filename, names, fittype='Linear')]
+			figures = [avgdata(filename, datatype, names, fittype='Linear')]
 		else :
 			figures = [plots(filename, datatype, names, guess, fittype='Linear')]
 	if residualss is True:
@@ -91,7 +91,7 @@ def plotlorentzian(filename, datatype='raw', names=['freq','fraction95'], avg=Fa
 	"""
 	if fit is True :
 		if avg is True :
-			figures = [avgdata(filename, names, fittype='Lorentzian')]
+			figures = [avgdata(filename, datatype, names, fittype='Lorentzian')]
 		else :
 			figures = [plots(filename, datatype, names, guess, fittype='Lorentzian')]
 	if residualss is True:
@@ -109,7 +109,7 @@ def plotsinc(filename, datatype='raw', names=['freq','fraction95'], avg=False, a
 	"""
 	if fit is True :
 		if avg is True :
-			figures = [avgdata(filename, names, fittype='Sinc')]
+			figures = [avgdata(filename, datatype, names, fittype='Sinc')]
 		else :
 			figures = [plots(filename, datatype, names, guess, fittype='Sinc')]
 	if residualss is True:
@@ -127,7 +127,7 @@ def plotsinc2(filename, datatype='raw', names=['freq','fraction95'], avg=False, 
 	"""
 	if fit is True :
 		if avg is True :
-			figures = [avgdata(filename, names, fittype='Sinc2')]
+			figures = [avgdata(filename, datattype, names, fittype='Sinc2')]
 		else :
 			figures = [plots(filename, datatype, names, guess, fittype='Sinc2')]
 	if residualss is True:
@@ -146,7 +146,7 @@ def plottrapfreq(filename, datatyp='raw', names=['freq','fraction95'], avg=False
 	# plot data
 	if fit is True :
 		if avg is True :
-			figures = [avgdata(filename, names, fittype='TrapFreq')]
+			figures = [avgdata(filename, datatype, names, fittype='TrapFreq')]
 		else :
 			figures = [plots(filename, datatype, names, guess, fittype='TrapFreq')]
 	# plot residuals
@@ -166,7 +166,7 @@ def plottrapfreq2(filename, datatype='raw', names=['freq','fraction95'], avg=Fal
 	"""
 	if fit is True :
 		if avg is True :
-			figures = [avgdata(filename, names, fittype='TrapFreq2')]
+			figures = [avgdata(filename, datatype, names, fittype='TrapFreq2')]
 		else :
 			figures = [plots(filename, datatype, names, guess, fittype='TrapFreq2')]
 	if residualss is True:
@@ -185,7 +185,7 @@ def plotrabifreq(filename, datatype='raw', names=['freq','fraction95'], avg=Fals
 	"""
 	if fit is True :
 		if avg is True :
-			figures = [avgdata(filename, names, fittype='RabiFreq')]
+			figures = [avgdata(filename, datatype, names, fittype='RabiFreq')]
 		else :
 			figures = [plots(filename, datatype, names, guess, fittype='RabiFreq')]
 	if residualss is True:
@@ -203,7 +203,7 @@ def plotparabola(filename, datatype='raw', names=['freq','fraction95'], avg=Fals
 	"""
 	if fit is True :
 		if avg is True :
-			figures = [avgdata(filename, names, fittype='Parabola')]
+			figures = [avgdata(filename, datatype, names, fittype='Parabola')]
 		else :
 			figures = [plots(filename, datatype, names, guess, fittype='Parabola')]
 	if residualss is True:
@@ -222,7 +222,7 @@ def plotexp(filename, datatype='raw', names=['freq','fraction95'], autofind=True
 	"""
 	if fit is True :
 		if avg is True :
-			figures = [avgdata(filename, names, fittype='Exponential')]
+			figures = [avgdata(filename, datatype, names, fittype='Exponential')]
 		else :
 			figures = [plots(filename, datatype, names, guess, fittype='Exponential')]
 	if residualss is True:
@@ -239,7 +239,7 @@ def plotrabiline(filename, datatype='raw', names=['freq','fraction95'], avg=Fals
 	"""
 	if fit is True :
 		if avg is True :
-			figures = [avgdata(filename, names, fittype='RabiLine')]
+			figures = [avgdata(filename, datatype, names, fittype='RabiLine')]
 		else :
 			figures = [plots(filename, datatype, names, guess, fittype='RabiLine')]
 	if residualss is True:
@@ -256,7 +256,7 @@ def ploterfc(filename, datatype='raw', names=['freq','fraction95'], avg=False, a
 	"""
 	if fit is True :
 		if avg is True :
-			figures = [avgdata(filename, names, fittype='ErfcFit')]
+			figures = [avgdata(filename, datatype, names, fittype='ErfcFit')]
 		else :
 			figures = [plots(filename, datatype, names, guess, residualss,  fittype='ErfcFit')]
 	if residualss is True:
@@ -273,7 +273,7 @@ def plotsinpluscos(filename, datatype='raw', names=['freq','fraction95'], avg=Fa
 	"""
 	if fit is True :
 		if avg is True :
-			figures = [avgdata(filename, names, fittype='SinplusCos')]
+			figures = [avgdata(filename, datatype, names, fittype='SinplusCos')]
 		else :
 			figures = [plots(filename, datatype, names, guess, residualss,  fittype='SinplusCos')]
 	if residualss is True:
@@ -289,7 +289,7 @@ def plotfixedsin(filename, datatype='raw', names=['freq','fraction95'], avg=Fals
 	"""
 	if fit is True :
 		if avg is True :
-			figures = [avgdata(filename, names, fittype='FixedSin')]
+			figures = [avgdata(filename, datatype, names, fittype='FixedSin')]
 		else :
 			figures = [plots(filename, datatype, names, guess, fittype='FixedSin')]
 	if residualss is True:
@@ -298,7 +298,7 @@ def plotfixedsin(filename, datatype='raw', names=['freq','fraction95'], avg=Fals
 	
 #plotting data with sqrt
  
-def plotsqrt(filename, datatype='raw', names=['freq','fraction95'], avg=False, autofind=True, guess=None, errors=False, residualss=False, fit=True, fittype='FixedSin'):
+def plotsqrt(filename, datatype='raw', names=['freq','fraction95'], avg=False, autofind=True, guess=None, errors=False, residualss=False, fit=True, fittype='FixedSin', label=['False']):
 	"""
 	Inputs: filename, header names  - names=['',''], autofind (False is manually inputted path), guess for fit (None is automated guess) [A, omega, p, C], residualss (true is have them appear)
 	
@@ -306,7 +306,7 @@ def plotsqrt(filename, datatype='raw', names=['freq','fraction95'], avg=False, a
 	"""
 	if fit is True :
 		if avg is True :
-			figures = [avgdata(filename, names, fittype='Sqrt')]
+			figures = [avgdata(filename, datatype, names, fittype='Sqrt')]
 		else :
 			figures = [plots(filename, datatype, names, guess, fittype='Sqrt')]
 	if residualss is True:

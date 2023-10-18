@@ -8,27 +8,28 @@ Plotting functions for general analysis scripts
 
 from analysisfunctions import * # includes numpy and constants
 import matplotlib.pyplot as plt
-from matplotlib.axes import Axes
 import scipy.optimize as curve_fit
 from tabulate import tabulate # pip install tabulate
 from data import *
 import pandas as pd
+from scipy.stats import chisquare
 
 # All of the functions you can fit to 
 
-def fitting_type(filename,names=['freq','sum95'], avg=False, datatype='raw', fittype='Sin', guess=None):
-	if avg is True:
-		fitdata = avgdata_data(filename, names)
+def fitting_type(filename, datatype='raw', names=['amp (Vpp)','ToTFcalc'], avg=False,  fittype='Sin', guess=None):
+# 	if avg is True:
+# 		fitdata = avgdata_data(filename, datatype, names)
+# 	else:
+	if datatype == 'raw':
+		fitdata = data(filename, datatype,  names)
+	elif datatype == 'exclude':
+		fitdata = data_exclude(filename, datatype, names)
+	elif datatype == 'exclude multiple points':
+		fitdata = data_exclude_points(filename, datatype, names)
+	elif datatype == 'avg':
+		fitdata = avgdata_data(filename, datatype, names)	
 	else:
-		if datatype == 'raw':
-			fitdata = data(filename,  names)
-		elif datatype == 'exclude':
-			fitdata = data_exclude(filename, names)
-		elif datatype == 'exclude multiple points':
-			fitdata = data_exclude_points(filename, names)
-		else:
-			fitdata = 'nothing'
-	print(datatype)
+		fitdata = 'nothing'
 	if fittype == 'Cos':
 		if guess is None:	
 			guess = [-0.2, 0, 10, 202]
@@ -101,7 +102,7 @@ def fitting_type(filename,names=['freq','sum95'], avg=False, datatype='raw', fit
 		headers = ['Amplitude','Center','Offset']
 	if fittype == 'Linear':
 		if guess is None:
-			guess = [(max(fitdata[3])-min(fitdata[3]))/(max(fitdata[2])-min(fitdata[2])),fitdata[2][fitdata[3].argmin()]]
+			guess = [(max(fitdata[3])-min(fitdata[3]))/(max(fitdata[2])-min(fitdata[2])),0]
 		popt, pcov = curve_fit.curve_fit(Linear, fitdata[2], fitdata[3],p0=guess)
 		ym = Linear(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),*popt)
 		residuals = fitdata[3] - Linear(fitdata[2],*popt)
@@ -155,35 +156,64 @@ def fitting_type(filename,names=['freq','sum95'], avg=False, datatype='raw', fit
 
 #table with fitted values and errors 
 
-def table(filename, names=['freq','sum95'],fittype='Cos',guess=None):
-	popt, pcov, ym, residuals, headers = fitting_type(filename, names, fittype=fittype, guess=guess)
-	
+def table(filename, datatype='raw', names=['freq','sum95'], avg=False, fittype='Linear',guess=None):
+	popt, pcov, ym, residuals, headers = fitting_type(filename, datatype, names, avg, fittype, guess=guess)
+
 	if fittype == 'FixedSin':
 		freq = 0.01
 		period = 1/freq
 		delay = popt[1] % (3.141592654) /freq
 		values = list([*popt, freq, period, delay])
+		errors = np.sqrt(np.diag(pcov))
 		errors = np.concatenate((errors, [errors[1]/2/3.14, period * errors[1]/popt[1], delay * errors[2]/popt[2]]))
 	elif fittype == 'Sin':
 		freq = popt[1]
 		period = 1/freq
 		delay = popt[1] % (3.141592654) /freq
 		values = list([*popt, period, delay])
+		errors = np.sqrt(np.diag(pcov))
 		errors = np.concatenate((errors, [errors[1]/2/3.14, period * errors[1]/popt[1], delay * errors[2]/popt[2]]))
 	elif fittype == 'Cos':
 		freq = popt[1]
 		period = 1/freq
 		delay = popt[1] % (3.141592654) /freq
 		values = list([*popt, period, delay])
+		errors = np.sqrt(np.diag(pcov))
+		errors = np.concatenate((errors, [errors[1]/2/3.14, period * errors[1]/popt[1], delay * errors[2]/popt[2]]))
 	else:
 		values = list([*popt])
 		errors = np.sqrt(np.diag(pcov))
 		
+		
 	return tabulate([['Values', *values], ['Errors', *errors]], headers=headers)
+
+def chisq(filename, datatype='raw',names=['freq','sum95'], avg=False, fittype='Cos', guess=None):
+	popt, pcov, ym, residuals, headers = fitting_type(filename, datatype, names, avg, fittype, guess=guess)
+
+	fitdata = data(filename, datatype, names)
+# 	if avg is True:
+# 		fitdata = avgdata_data(filename, datatype, names, avg)
+# 	else:
+# 		if datatype == 'raw':
+# 			fitdata = data(filename, datatype, names)
+# 		elif datatype == 'exclude':
+# 			fitdata = data_exclude(filename, datatype, names)
+# 		elif datatype == 'exclude multiple points':
+# 			fitdata = data_exclude_points(filename, datatype, names)
+# 		elif datatype == 'avg':
+# 			fitdata = avgdata_data(filename, datatype, names)		
+# 		else:
+# 			fitdata = 'nothing'
+	
+
+	chisq = chisquare(f_obs=fitdata[2], f_exp=residuals)
+		
+	return chisq
+	
 
 #plotting the data and fitting to chosen function 
 
-def plots(filename, datatype='raw', names=['freq','sum95'], avg=False, guess=None, fittype='Sin'):
+def plots(filename, datatype='raw', names=['freq','sum95'], avg=False, guess=None, fittype='Sin', labels='False'):
 	"""
 	Inputs: filename, header names - names=['',''], guess for fit (None is automated guess) [A, omega, p, C], fittype (Sin, Cos, Gaussian, Lorentzian, Sinc, Sinc2, TrapFreq, TrapFreq2, RabiFreq, Parabola, Linear, Exponential, RabiLine, ErfcFit, SinplusCos) 
 	
@@ -191,27 +221,33 @@ def plots(filename, datatype='raw', names=['freq','sum95'], avg=False, guess=Non
 	"""
 	fig1 = plt.figure(0)
 	if avg is True:
-		fitdata = avgdata_data(filename, names)
+		fitdata = avgdata_data(filename, datatype, names, avg)
 	else:
 		if datatype == 'raw':
-			fitdata = data(filename,  names)
+			fitdata = data(filename, datatype, names)
 		elif datatype == 'exclude':
-			fitdata = data_exclude(filename, names)
+			fitdata = data_exclude(filename, datatype, names)
 		elif datatype == 'exclude multiple points':
-			fitdata = data_exclude_points(filename, names)
+			fitdata = data_exclude_points(filename, datatype, names)
+		elif datatype == 'avg':
+			fitdata = avgdata_data(filename, datatype, names)		
 		else:
 			fitdata = 'nothing'
-
 	plt.title(f"{fittype} fit for {datatype} data for {filename}")
-	xlabel = f"{fitdata[0]}"
-	ylabel = f"{fitdata[1]}"
+	if labels == 'False':
+		xlabel = f"{fitdata[0]}"
+		ylabel = f"{fitdata[1]}"
+	else:
+		xlabel, ylabel = labels
+# 	print(labels)
 	plt.xlabel(xlabel)
-	plt.ylabel(ylabel)
+	plt.ylabel(ylabel)		
 	plt.plot(fitdata[2], fitdata[3], 'go')
 	
-	popt, pcov, ym, residuals, headers = fitting_type(filename, names, fittype=fittype, guess=guess)
+	popt, pcov, ym, residuals, headers = fitting_type(filename, datatype, names, avg, fittype, guess=guess)
 
-	print(table(filename, names, fittype=fittype, guess=guess))
+	print(table(filename, datatype, names, avg, fittype, guess=guess))
+	print(f"chisquare is {chisq(filename, datatype, names, avg, fittype, guess)}")
 	
 	plt.plot(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),ym)
 	
@@ -227,14 +263,14 @@ def residuals(filename,  datatype='raw', names=['delay time', 'sum95'], avg=Fals
 	Returns: residuals plot 
 	"""
 	if avg is True:
-		fitdata = avgdata_data(filename, names)
+		fitdata = avgdata_data(filename, datatype, names)
 	else:
 		if datatype == 'raw':
-			fitdata = data(filename,  names)
+			fitdata = data(filename, datatype, names)
 		elif datatype == 'exclude':
-			fitdata = data_exclude(filename, names)
+			fitdata = data_exclude(filename, datatype, names)
 		elif datatype == 'exclude multiple points':
-			fitdata = data_exclude_points(filename, names)
+			fitdata = data_exclude_points(filename, datatype, names)
 		else:
 			fitdata = 'nothing'
 
@@ -243,43 +279,33 @@ def residuals(filename,  datatype='raw', names=['delay time', 'sum95'], avg=Fals
 	plt.xlabel(xlabel)
 	plt.ylabel(ylabel)
 	
-	popt, pcov, ym, residuals = fitting_type(filename, names, avg, fittype=fittype, guess=guess)
+	popt, pcov, ym, residuals, headers = fitting_type(filename, datatype, names, avg, fittype=fittype, guess=guess)
 	
 	fig2 = plt.figure(1)
-	plt.plot(fitdata[2],fitdata[3]*0,'-')
+# 	plt.plot(fitdata[2],fitdata[3]*0,'-')
 	plt.plot(fitdata[2], residuals, 'g+')
 	plt.xlabel(xlabel)
 	plt.ylabel(ylabel +" Residuals")
+	
+	print(np.sum(residuals**2))
 	return fig2
 
 
-def avgdata_data(filename, names, fittype='Gaussian', guess=None):
-	fitdata = data(filename, names, fittype)
-
-	namex = data(filename, names)[0] 
-	namey = data(filename, names)[1] #choosing x , y columns from .dat 
-	x = data(filename, names)[2]
-	y = data(filename, names)[3]
-	data2 = pd.DataFrame({namex: x, namey: y}) 
-    
-	avgdata = data2.groupby([namex])[namey].mean()
-	
-	return avgdata
 
 
-def avgdata(filename, names, guess=None, fittype='Gaussian'):
+def avgdata(filename, datatype, names, avg=False, guess=None, fittype='Gaussian'):
 	fig1 = plt.figure(0)
-	fitdata = data(filename, names, fittype)
+	fitdata = data(filename, datatype, names, fittype)
 	plt.title(f"{fittype} fit for Averaged Data in {filename}")
 	xlabel = f"{fitdata[0]}"
 	ylabel = f"{fitdata[1]}"
 	plt.xlabel(xlabel)
 	plt.ylabel(ylabel)
     
-	namex = data(filename, names)[0] 
-	namey = data(filename, names)[1] #choosing x , y columns from .dat 
-	x = data(filename, names)[2]
-	y = data(filename, names)[3]
+	namex = data(filename, datatype, names)[0] 
+	namey = data(filename, datatype, names)[1] #choosing x , y columns from .dat 
+	x = data(filename, datatype, names)[2]
+	y = data(filename, datatype, names)[3]
 	data2 = pd.DataFrame({namex: x, namey: y}) 
     
 	avgdata = data2.groupby([namex])[namey].mean()
@@ -287,9 +313,9 @@ def avgdata(filename, names, guess=None, fittype='Gaussian'):
 
 	avgdata.plot( marker = '.', linestyle = 'none')
     
-	popt, pcov, ym, residuals, headers = fitting_type(filename, names, fittype=fittype, guess=guess)
+	popt, pcov, ym, residuals, headers = fitting_type(filename, datatype, names, avg, fittype=fittype, guess=guess)
 
-	print(table(filename, names, fittype=fittype, guess=guess))
+	print(table(filename, datatype, names, fittype=fittype, guess=guess))
 
 	plt.plot(np.linspace(max(fitdata[2]),min(fitdata[2]),num=200),ym)
 	
