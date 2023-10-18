@@ -57,7 +57,7 @@ def plotgaussian(filename, datatype='raw', names=['freq','fraction95'], avg=Fals
 	"""
 	if fit is True :
 		if avg is True :
-			figures = [avgdata(filename, names, guess=None, fittype='Gaussian')]
+			figures = [avgdata(filename, names, guess, fittype='Gaussian')]
 		else :
 			figures = [plots(filename, datatype, names, guess, fittype='Gaussian')]
 	if residualss is True:
@@ -291,7 +291,7 @@ def plotfixedsin(filename, datatype='raw', names=['freq','fraction95'], avg=Fals
 		if avg is True :
 			figures = [avgdata(filename, names, fittype='FixedSin')]
 		else :
-			figures = [plots(filename, datatype, names, guess=None, fittype='FixedSin')]
+			figures = [plots(filename, datatype, names, guess, fittype='FixedSin')]
 	if residualss is True:
 		figures.append(residuals(filename, datatype, names))
 	plt.show(figures)
@@ -308,7 +308,7 @@ def plotsqrt(filename, datatype='raw', names=['freq','fraction95'], avg=False, a
 		if avg is True :
 			figures = [avgdata(filename, names, fittype='Sqrt')]
 		else :
-			figures = [plots(filename, datatype, names, guess=None, fittype='Sqrt')]
+			figures = [plots(filename, datatype, names, guess, fittype='Sqrt')]
 	if residualss is True:
 		figures.append(residuals(filename, datatype, names))
 	plt.show(figures)

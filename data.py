@@ -33,7 +33,7 @@ def data(filename, names=['freq','sum95'],  autofind=True):
 	x = data[:,0]
 # 	x = [x-0.5 for x in x] #added 5 to every x value
 	y = data[:,1]
-# 	y = [y-0.5 for y in y] #subtracted 5 to every x value
+	y = [y-0.5 for y in y] #subtracted 5 to every x value
 	return *names, x, y
 
 
