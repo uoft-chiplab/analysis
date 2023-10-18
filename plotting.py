@@ -190,20 +190,7 @@ def table(filename, datatype='raw', names=['freq','sum95'], avg=False, fittype='
 def chisq(filename, datatype='raw',names=['freq','sum95'], avg=False, fittype='Cos', guess=None):
 	popt, pcov, ym, residuals, headers = fitting_type(filename, datatype, names, avg, fittype, guess=guess)
 
-	fitdata = data(filename, datatype, names)
-# 	if avg is True:
-# 		fitdata = avgdata_data(filename, datatype, names, avg)
-# 	else:
-# 		if datatype == 'raw':
-# 			fitdata = data(filename, datatype, names)
-# 		elif datatype == 'exclude':
-# 			fitdata = data_exclude(filename, datatype, names)
-# 		elif datatype == 'exclude multiple points':
-# 			fitdata = data_exclude_points(filename, datatype, names)
-# 		elif datatype == 'avg':
-# 			fitdata = avgdata_data(filename, datatype, names)		
-# 		else:
-# 			fitdata = 'nothing'
+	fitdata = choose_data(filename, datatype, names, avg=False, fittype=fittype, guess=guess)
 	
 
 	chisq = chisquare(f_obs=fitdata[2], f_exp=residuals)
@@ -220,19 +207,8 @@ def plots(filename, datatype='raw', names=['freq','sum95'], avg=False, guess=Non
 	Returns: data plotted with chosen fit
 	"""
 	fig1 = plt.figure(0)
-	if avg is True:
-		fitdata = avgdata_data(filename, datatype, names, avg)
-	else:
-		if datatype == 'raw':
-			fitdata = data(filename, datatype, names)
-		elif datatype == 'exclude':
-			fitdata = data_exclude(filename, datatype, names)
-		elif datatype == 'exclude multiple points':
-			fitdata = data_exclude_points(filename, datatype, names)
-		elif datatype == 'avg':
-			fitdata = avgdata_data(filename, datatype, names)		
-		else:
-			fitdata = 'nothing'
+	fitdata = choose_data(filename, datatype, names, avg=False, fittype=fittype, guess=guess)
+
 	plt.title(f"{fittype} fit for {datatype} data for {filename}")
 	if labels == 'False':
 		xlabel = f"{fitdata[0]}"
@@ -262,17 +238,7 @@ def residuals(filename,  datatype='raw', names=['delay time', 'sum95'], avg=Fals
 	
 	Returns: residuals plot 
 	"""
-	if avg is True:
-		fitdata = avgdata_data(filename, datatype, names)
-	else:
-		if datatype == 'raw':
-			fitdata = data(filename, datatype, names)
-		elif datatype == 'exclude':
-			fitdata = data_exclude(filename, datatype, names)
-		elif datatype == 'exclude multiple points':
-			fitdata = data_exclude_points(filename, datatype, names)
-		else:
-			fitdata = 'nothing'
+	fitdata = choose_data(filename, datatype, names, avg=False, fittype=fittype, guess=guess)
 
 	xlabel = f"{fitdata[0]}"
 	ylabel = f"{fitdata[1]}"
@@ -291,7 +257,7 @@ def residuals(filename,  datatype='raw', names=['delay time', 'sum95'], avg=Fals
 	return fig2
 
 
-
+#plotting average data
 
 def avgdata(filename, datatype, names, avg=False, guess=None, fittype='Gaussian'):
 	fig1 = plt.figure(0)

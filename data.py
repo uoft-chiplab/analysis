@@ -11,6 +11,8 @@ from glob import glob
 from get_data import *
 from library import *
 import scipy.optimize as curve_fit
+import pandas as pd
+
 
 
 # importing data 
@@ -121,5 +123,22 @@ def avgdata_data(filename, datatype, names, avg=False, fittype='Gaussian', guess
 	
 # 	avgdata = avgdatagroup(namex)
 	
-	return namex, namey, avgdatagroup[:,0], avgdatagroup[:,1]			
-				
+	return namex, namey, avgdatagroup[:,0], avgdatagroup[:,1]		
+
+
+#choosing data 
+
+def choose_data(filename, datatype, names, avg=False, fittype='Null', guess=None):
+	if avg is True:
+		fitdata = avgdata_data(filename, datatype, names)
+	else:
+		if datatype == 'raw':
+			fitdata = data(filename, datatype, names)
+		elif datatype == 'exclude':
+			fitdata = data_exclude(filename, datatype, names)
+		elif datatype == 'exclude multiple points':
+			fitdata = data_exclude_points(filename, datatype, names)
+		else:
+			fitdata = 'nothing'
+			
+	return fitdata 
