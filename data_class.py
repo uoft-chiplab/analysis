@@ -104,7 +104,7 @@ class Data:
 
 		if label==None:
 			label = self.filename
-
+		self.ax.plot(self.data[f"{names[0]}"], self.data[f"{names[0]}"]*0, linestyle='-')
 		if hasattr(self, 'avg_data'): # check for averaging
 			self.ax.errorbar(self.avg_data[f"{names[0]}"], self.avg_data[f"{names[1]}"], 
 				yerr=self.avg_data[f"e_{names[1]}"], capsize=2, marker='o', ls='',
