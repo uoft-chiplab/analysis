@@ -19,17 +19,24 @@ import matplotlib
 import numpy as np
 from tabulate import tabulate
 
-file = "2023-10-19_E_e.dat"
+file = "2023-10-19_C_e.dat"
 drive = '\\\\UNOBTAINIUM\\E_Carmen_Santiago' # when using Fermium
 names = ["Field", "ToTFcalc"]
 
 # plt.style.use('plottingstyle')
 plt.style.use('C:/Users/coldatoms/anaconda3/pkgs/matplotlib-base-3.2.2-py38h64f37c6_0/Lib/site-packages/matplotlib/mpl-data/stylelib/plottingstype.mplstyle')
 
+def data1(filename):
+	return  Data("2023-10-19_C_e.dat",column_names=['ToTFcalc']).data
+
 def subtract(filename):
+	data1 = Data("2023-10-19_E_e.dat",column_names=['ToTFcalc','Field']).data.groupby(['Field']).mean()
+	data2 = Data("2023-10-19_C_e.dat",column_names=['ToTFcalc','Field']).data.groupby(['Field']).mean()
+	data3 = Data("2023-10-19_C_e.dat",column_names=['ToTFcalc']).data
+	data4 = Data("2023-10-19_E_e.dat",column_names=['ToTFcalc']).data
 	subtracted_data = Data("2023-10-19_E_e.dat",column_names=['ToTFcalc']).data - (Data("2023-10-19_C_e.dat",column_names=['ToTFcalc']).data)
 	field = Data("2023-10-19_E_e.dat",column_names=['Field']).data
-	return pd.concat([field,subtracted_data], axis=1).plot('Field',linestyle='dashed')
+	return pd.concat([field,subtracted_data, data3, data4], axis=1)
 	
 class Data:
 	def __init__(self, filename, path=None, column_names=None, 
