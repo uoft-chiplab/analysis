@@ -110,6 +110,8 @@ class Data:
 								 headers=param_names)
 		print(self.parameter_table)
 		
+		self.plot(names=names, label=None, axes_labels=None)
+		
 		if hasattr(self, 'ax'): # check for plot
 			num = 500
 			xlist = np.linspace(self.data[f"{names[0]}"].min(), 
