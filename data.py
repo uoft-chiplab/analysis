@@ -13,8 +13,6 @@ from library import *
 import scipy.optimize as curve_fit
 import pandas as pd
 
-
-
 # importing data 
 Bfield = 201 #G 
 res = FreqMHz(Bfield, 9/2, -5/2, 9/2, -7/2)
