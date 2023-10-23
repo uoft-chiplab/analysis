@@ -220,7 +220,7 @@ def ErfcFit(data):
 	return ErfcFit, guess, param_names
 
 
-def SinplusCos(t, omega, A, B, C):
+def SinplusCos(data):
 	"""
 	Returns:  A*np.sin(omega*t) + B*np.cos(omega*t) + C
 	"""
@@ -232,12 +232,12 @@ def SinplusCos(t, omega, A, B, C):
 
 	return SinplusCos, guess, param_names
 
-def FixedSin(t, A, p, C):
+def FixedSin(data):
 	"""
 	hard coded 10 kHz
 	Returns: A*np.sin(0.0628*x - p) + C
 	"""
-	param_names =  ['Amplitude','phase','offset', 'freq', 'period', 'delay']
+	param_names =  ['Amplitude','phase','offset']
 	guess = [1, 1, 0]
 	
 	def FixedSin(t, A, p, C):
