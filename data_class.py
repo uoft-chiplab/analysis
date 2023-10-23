@@ -27,7 +27,7 @@ names = ["Field", "ToTFcalc"]
 plt.style.use('C:/Users/coldatoms/anaconda3/pkgs/matplotlib-base-3.2.2-py38h64f37c6_0/Lib/site-packages/matplotlib/mpl-data/stylelib/plottingstype.mplstyle')
 
 def data1(filename):
-	return  Data("2023-10-19_C_e.dat",column_names=['ToTFcalc']).data
+	return  Data("2023-10-19_C_e.dat",column_names=['ToTFcalc']).data -  Data("2023-10-19_E_e.dat",column_names=['ToTFcalc']).data
 
 def subtract(filename):
 	data1 = Data("2023-10-19_E_e.dat",column_names=['ToTFcalc','Field']).data.groupby(['Field']).mean()

@@ -131,57 +131,117 @@ def Sinc2(data):
 	return sinc2, guess, param_names
 
 
-###############
-# the below need editing
-###############
-
-
-def TrapFreq(x, A, b, l, x0, C, D):
+def TrapFreq(data):
 	"""
 	Returns:  A*np.exp(-x/b)*(np.sin(l * x - x0)) +  C + D*x
 	"""
-	return A*np.exp(-x/b)*(np.sin(l * x - x0)) +  C + D*x
+	x_ofmax = data[np.abs(data[:,1]).argmax(),0]
+	max_x = data[:,0].max()
+	min_x = data[:,0].min()
+	mean_y = data[:,1].mean()
+	max_y = data[:,1].max()
+	
+	param_names = ['Amplitude','b','l','Center','Offset','Linear Slope']
+	guess = [10000, 0.05, 20  ,-2 , 100, -0.1]
+	
+	def TrapFreq(x, A, b, l, x0, C, D):
+		return A*np.exp(-x/b)*(np.sin(l * x - x0)) +  C + D*x
+	return TrapFreq, guess, param_names
 
-def TrapFreq2(x, A, b, l, x0, C):
+def TrapFreq2(data):
 	"""
 	Returns: A*np.exp(-x/b)*(np.sin(l * x - x0)) +  C 
 	"""
-	return A*np.exp(-x/b)*(np.sin(l * x - x0)) +  C 
+	x_ofmax = data[np.abs(data[:,1]).argmax(),0]
+	max_x = data[:,0].max()
+	min_x = data[:,0].min()
+	mean_y = data[:,1].mean()
+	max_y = data[:,1].max()
+	
+	param_names = ['Amplitude','b','l','Center','Offset']
+	guess = [10000, 0.05, 20  ,-2 , 100, -0.1]
+	
+	def TrapFreq2(x, A, b, l, x0, C, D):
+		return A*np.exp(-x/b)*(np.sin(l * x - x0)) +  C 
+	return TrapFreq2, guess, param_names
 
-def RabiFreq(x, A, b, x0, C):
+def RabiFreq(data):
 	"""
 	Returns:  A*(np.sin(b/2 * x - x0))**2 + C
 	"""
-	return A*(np.sin(b/2 * x - x0))**2 + C
+	param_names = ['Amplitdue','b','Center','Offset']
+	guess = [1,1,1,0]
+	
+	def RabiFreq(x, A, b, x0, C):
+		return A*(np.sin(b/2 * x - x0))**2 + C
+	return RabiFreq, guess, param_names
 
-def Expontial(x, A, sigma):
+def Expontial(data):
 	"""
 	Returns: A*np.exp(-x/sigma)
 	"""
-	return A*np.exp(-x/sigma)
+	x_ofmax = data[np.abs(data[:,1]).argmax(),0]
+	max_x = data[:,0].max()
+	min_x = data[:,0].min()
+	mean_y = data[:,1].mean()
+	max_y = data[:,1].max()
+	
+	param_names = ['Amplitude','sigma']
+	guess = [max_x - min_x, 1]
+	
+	def Exponential(x, A, sigma):
+		return A*np.exp(-x/sigma)
+	return Exponential, guess, param_names
 
-def RabiLine(x, b, l, m, A, s, j, k, p):
+def RabiLine(data):
 	"""
 	Returns:  (b**2 / (l**2 + (x - m)**2 ) ) * (A * np.sin(np.sqrt(s**2 + (x - j)**2 ) * k)**2 + p )
 	"""
-	return (b**2 / (l**2 + (x - m)**2 ) ) * (A * np.sin(np.sqrt(s**2 + (x - j)**2 ) * k)**2 + p )
+	param_names = ['b', 'l', 'm', 'A', 's', 'j','k','p']
+	guess = [1, 1, 1, 1, 1, 1, 1, 0]
+	
+	def RabiLine(x, b, l, m, A, s, j, k, p): 
+		return (b**2 / (l**2 + (x - m)**2 ) ) * (A * np.sin(np.sqrt(s**2 + (x - j)**2 ) * k)**2 + p )
 
-def ErfcFit(x, A, x0, b, C):
+	return RabiLine, guess, param_names
+
+
+
+def ErfcFit(data):
 	"""
 	Returns:  A * math.erfc((x - x0) / b ) + C
 	"""
-	return A * math.erfc((x - x0) / b ) + C
+	param_names =  ['Amp', 'Center', 'b', 'Offset']
+	guess = [1, 1, 1, 0]
+	
+	def ErfcFit(x, A, x0, b, C):
+		return A * math.erfc((x - x0) / b ) + C
+	
+	return ErfcFit, guess, param_names
+
 
 def SinplusCos(t, omega, A, B, C):
 	"""
 	Returns:  A*np.sin(omega*t) + B*np.cos(omega*t) + C
 	"""
-	return A*np.sin(omega*t) + B*np.cos(omega*t) + C
+	param_names = ['Sin Amp', 'Cos Amp', 'Offset']
+	guess = [1, 1, 1, 0]
+	
+	def SinplusCos(t, omega, A, B, C):
+		return A*np.sin(omega*t) + B*np.cos(omega*t) + C
+
+	return SinplusCos, guess, param_names
 
 def FixedSin(t, A, p, C):
 	"""
 	hard coded 10 kHz
 	Returns: A*np.sin(0.0628*x - p) + C
 	"""
-	omega = 0.010 * 2 * np.pi # 10 kHz
-	return A*np.sin(omega*t - p) + C
+	param_names =  ['Amplitude','phase','offset', 'freq', 'period', 'delay']
+	guess = [1, 1, 0]
+	
+	def FixedSin(t, A, p, C):
+		omega = 0.010 * 2 * np.pi # 10 kHz
+		return A*np.sin(omega*t - p) + C
+	
+	return SinplusCos, guess, param_names
