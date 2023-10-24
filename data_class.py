@@ -30,14 +30,14 @@ def data1(filename):
 	return  Data("2023-10-19_C_e.dat",column_names=['ToTFcalc']).data -  Data("2023-10-19_E_e.dat",column_names=['ToTFcalc']).data
 
 def subtract(filename):
-	data1 = Data("2023-10-19_E_e.dat",column_names=['ToTFcalc','Field']).data.groupby(['Field']).mean()
-	data2 = Data("2023-10-19_C_e.dat",column_names=['ToTFcalc','Field']).data.groupby(['Field']).mean()
+	data1 = pd.DataFrame({'Field': Data("2023-10-19_E_e.dat",column_names=['Field']).data, 'ToTFcalc' : Data("2023-10-19_E_e.dat",column_names=['ToTFcalc']).data }, index=([0])).groupby(['Field'])['ToTFcalc'].mean()
+	data2 = Data("2023-10-19_C_e.dat",column_names=['ToTFcalc','Field']).data.groupby(['Field'])['ToTFcalc'].mean()
 	data3 = Data("2023-10-19_C_e.dat",column_names=['ToTFcalc']).data
 	data4 = Data("2023-10-19_E_e.dat",column_names=['ToTFcalc']).data
-	subtracted_data = Data("2023-10-19_E_e.dat",column_names=['ToTFcalc']).data - (Data("2023-10-19_C_e.dat",column_names=['ToTFcalc']).data)
+	subtracted_data = data1 - data2
 	field = Data("2023-10-19_E_e.dat",column_names=['Field']).data
-	return pd.concat([field,subtracted_data, data3, data4], axis=1)
-	
+	#return pd.concat([field,data1, data3, data4], axis=1)
+	return data2
 class Data:
 	def __init__(self, filename, path=None, column_names=None, 
 			  exclude_list=None, average_by=None, residuals=None):
@@ -131,7 +131,7 @@ class Data:
 
 		
 # fit data to fit_func and plot if Data has a figure
-	def fit(self, fit_func, names, guess=None):
+	def fit(self, fit_func, names=names, guess=None):
 		fit_data = np.array(self.data[names])
 		func, default_guess, param_names = fit_func(fit_data)
 		print(default_guess)
@@ -152,6 +152,8 @@ class Data:
 		self.parameter_table = tabulate([['Values', *popt], ['Errors', *perr]], 
 								 headers=param_names)
 		print(self.parameter_table)
+		
+		self.title()
 		
 		self.plot(names, label=None, axes_labels=None)
 		
