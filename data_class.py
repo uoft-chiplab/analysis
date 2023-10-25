@@ -19,9 +19,10 @@ import matplotlib
 import numpy as np
 from tabulate import tabulate
 
-file = '/Users/kierapond/Documents/GitHub/analysis/data/2023-10-19_E_e.dat'
-file2 = '/Users/kierapond/Documents/GitHub/analysis/data/2023-10-19_C_e.dat'
-file3 = '/Users/kierapond/Documents/GitHub/analysis/data/subtract.txt'
+# file = '/Users/kierapond/Documents/GitHub/analysis/data/2023-10-19_E_e.dat'
+# file2 = '/Users/kierapond/Documents/GitHub/analysis/data/2023-10-19_C_e.dat'
+# file3 = '/Users/kierapond/Documents/GitHub/analysis/data/subtract.txt'
+file = "2023-10-19_C_e.dat"
 drive = '\\\\UNOBTAINIUM\\E_Carmen_Santiago' # when using Fermium
 drive = '/Users/kierapond/Documents/GitHub/analysis/data'
 # names = ["Field", "ToTFcalc"]
@@ -52,8 +53,8 @@ class Data:
 		if path:
 			file = os.path.join(path, filename) # making manual path for the filename
 		else:
-# 			file = glob(drive + '\\Data\\2023\\*\\*\\*\\' + filename)[0] # EXTREMELY greedy ; for Fermium
-			file = filename # kiera playing around on their computer 
+ 			file = glob(drive + '\\Data\\2023\\*\\*\\*\\' + filename)[0] # EXTREMELY greedy ; for Fermium
+# 			file = filename # kiera playing around on their computer 
 			
 		self.data = pd.read_table(file, delimiter=',') # making dataframe of chosen data
 		
@@ -158,9 +159,7 @@ class Data:
 		self.parameter_table = tabulate([['Values', *popt], ['Errors', *perr]], 
 								 headers=param_names)
 		print(self.parameter_table)
-		
-		self.title()
-		
+				
 		self.plot(names, label=None, axes_labels=None)
 		
 		if hasattr(self, 'ax'): # check for plot
