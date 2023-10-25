@@ -36,18 +36,21 @@ dimer_metadata = {'ff':0.73,'TShotsN':94853,
 				'OmegaR':99.30*2*pi*1e3*1.52/3.6,'trf':20E-6,
 				'trap_depth':4.7*20}
 
-# load data, and combine both sets of HFT
-HFT_filename = os.path.join(data_folder,'2023-09-18_E_e.dat')
-HFT_filename2 = os.path.join(data_folder,'2023-09-18_E2_e.dat')
-dimer_filename = os.path.join(data_folder,'2023-09-28_L_e.dat')
-heating_filename = os.path.join(data_folder,'2023-10-19_E_e.dat')
-heating_bg_filename = os.path.join(data_folder,'2023-10-19_C_e.dat')
+heating_metadata = {'omega':2*pi*100e3,'time':1e-3,'A':0.1,
+					'mean_trapfreq':2*pi*(151.6*429*442)**(1/3)}
 
-HFT = Data(HFT_filename, metadata=HFT_metadata)
-HFT.data = pd.concat([HFT.data, Data(HFT_filename2).data])
-dimer = Data(dimer_filename, metadata=dimer_metadata)
-heating = Data(heating_filename)
-heating_bg = Data(heating_bg_filename)
+# load data, and combine both sets of HFT
+HFT_filename = '2023-09-18_E_e.dat'
+HFT_filename2 = '2023-09-18_E2_e.dat'
+dimer_filename = '2023-09-28_L_e.dat'
+heating_filename = '2023-10-19_E_e.dat'
+heating_bg_filename = '2023-10-19_C_e.dat'
+
+HFT = Data(HFT_filename, path = data_folder, metadata=HFT_metadata)
+HFT.data = pd.concat([HFT.data, Data(HFT_filename2, path = data_folder).data])
+dimer = Data(dimer_filename, path = data_folder, metadata=dimer_metadata)
+heating = Data(heating_filename, path = data_folder, metadata = heating_metadata)
+heating_bg = Data(heating_bg_filename, path = data_folder)
 
 # plot raw data
 if plot_raw_data == True:
@@ -86,10 +89,21 @@ dimer.data['transfer'] = 1 - (dimer.data['c5'] + dimer.ff*dimer.data['c9'])/ \
 				(dimer.c5bg_mean + dimer.ff*dimer.c9bg_mean)
 				
 dimer.EF = FermiEnergy(dimer.TShotsN/2, dimer.mean_trapfreq)
+dimer.kF = FermiWavenumber(dimer.TShotsN/2, dimer.mean_trapfreq)
 
 dimer.data["scaled_transfer"] = dimer.EF/(hbar * pi * dimer.OmegaR**2 * dimer.trf) \
 									* dimer.data["transfer"]
-dimer.data["CokFN"] = DIMERFACTOR * dimer.data["scaled_transfer"]
+									
+# calculate heating parameters
+heating.EF = FermiEnergy(heating.data["LiNfit"].mean(), heating.mean_trapfreq)
+									
+def contact_dimer_transfer(scaled_transfer):
+	aac = np.sqrt(hbar**2/(2*mK*4e6*h)) # assuming 4MHz dimer energy
+	kFaac = aac * dimer.kF # 0.071, slightly larger than 0.066 for dimer spectra
+	omega_bar_per_scaled_transfer = 1810 # assuming -5.9 EF omega bar for 0.00325 scaled transfer
+	return pi*kFaac*omega_bar_per_scaled_transfer*scaled_transfer
+
+dimer.data["CokFN"] = dimer.data["scaled_transfer"].apply(contact_dimer_transfer)
 
 # group data by mean
 HFT.group_by_mean('field')
@@ -104,6 +118,15 @@ heating.avg_data['e_DToTFcalc'] = np.sqrt(heating.avg_data['e_ToTFcalc'].pow(2) 
 		heating_bg.avg_data['e_ToTFcalc'].pow(2))
 heating.avg_data['em_DToTFcalc'] = np.sqrt(heating.avg_data['em_ToTFcalc'].pow(2) + \
 		heating_bg.avg_data['em_ToTFcalc'].pow(2))
+	
+# calculate contact
+heating.delta = heating.omega * hbar/heating.EF
+heating.avg_data['CokFN'] = np.sqrt(2/heating.delta)/heating.A**2 * \
+		h/heating.time * heating.avg_data['DToTFcalc']/heating.EF
+heating.avg_data['e_CokFN'] = np.sqrt(2/heating.delta)/heating.A**2 * \
+		h/heating.time* heating.avg_data['e_DToTFcalc']/heating.EF
+heating.avg_data['em_CokFN'] = np.sqrt(2/heating.delta)/heating.A**2 * \
+		h/heating.time * heating.avg_data['em_DToTFcalc']/heating.EF
 	
 ######### PLOTTING ARBITRARY SCALE ############
 plt.figure(0)
@@ -131,17 +154,17 @@ plt.figure(1)
 plt.xlabel("Field (G)")
 plt.ylabel(" Contact per atom (kF)")
 
-heating_scale = 1.4
-dimer_scale = 0.7
+heating_scale = 1
+dimer_scale = 1
 
 plt.errorbar(np.array(HFT.avg_data['field']),np.array(HFT.avg_data['CokFN']), 
-			 yerr = np.array(HFT.avg_data['em_transfer']), fmt='go', label="high-freq transfer",
+			 yerr = np.array(HFT.avg_data['em_CokFN']), fmt='go', label="high-freq transfer",
 			 capsize=2)
 plt.errorbar(np.array(dimer.avg_data['field']),dimer_scale*np.array(dimer.avg_data['CokFN']), 
-			 yerr = dimer_scale*np.array(dimer.avg_data['em_transfer']), fmt='bo', 
+			 yerr = dimer_scale*np.array(dimer.avg_data['em_CokFN']), fmt='bo', 
 			 label="dimer transfer", capsize=2)
-plt.errorbar(np.array(heating.avg_data['Field']),heating_scale*np.array(heating.avg_data['DToTFcalc']), 
-			 yerr = heating_scale*np.array(heating.avg_data['em_DToTFcalc']), fmt ='ro', 
+plt.errorbar(np.array(heating.avg_data['Field']),heating_scale*np.array(heating.avg_data['CokFN']), 
+			 yerr = heating_scale*np.array(heating.avg_data['em_CokFN']), fmt ='ro', 
 			 label="heating rate", capsize=2)
 
 plt.legend()

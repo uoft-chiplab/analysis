@@ -54,7 +54,7 @@ class Data:
 			file = os.path.join(path, filename) # making manual path for the filename
 		else:
  			file = glob(drive + '\\Data\\2023\\*\\*\\*\\' + filename)[0] # EXTREMELY greedy ; for Fermium
-# 			file = filename # kiera playing around on their computer 
+ 			# file = filename # kiera playing around on their computer 
 			
 		self.data = pd.read_table(file, delimiter=',') # making dataframe of chosen data
 		
