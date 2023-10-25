@@ -18,38 +18,42 @@ from generalanalysis import *
 import pandas as pd
 
 rescale=True
-drop=True
+#drop=False #don't need to drop for this run
 residuals=True
-noi = ['cyc','delay time','sum95','c9','c5']
-file = glob('\\\\UNOBTAINIUM\\E_Carmen_Santiago\\Data\\2023\\*\\*\\*\\2023-10-06_B_e.dat')[0]
+noi = ['cyc','field','delay time','sum95','c9','c5']
+file = glob('\\\\UNOBTAINIUM\\E_Carmen_Santiago\\Data\\2023\\*\\*\\*\\2023-10-11_Q_e.dat')[0]
 d=data_from_dat(file, names_of_interest=noi)
 df=pd.DataFrame(d, columns=noi)
-if drop:
-	irmlist=[107, 108, 109, 110, 111, 184, 185, 186, 259] # drops repeated t=185.0 rows
-	df.drop(index=irmlist, inplace=True)
-name='c9'
+
+################ DATA MASSAGING #############################
+df['delay time'] = (df['delay time'] - 0.005) * 1000 # convert to us, also fix time to be midpoint of 10 us square pulse
+df['partition']=0
+#df_bg = df.loc[df['field']<190]
+name='c5'
+df['normalized ' + name] = 0
 ################# RESCALED FITTING ##########################
 if rescale:
-	init_val = df['delay time'][0]
-	rep_idx = df.loc[df['delay time'] == init_val].index
-	rep_idx=rep_idx.append(pd.Index([df.index[-1]]))
-	df['partition'] = 0
-	for i in range(len(rep_idx)-1):
-		df.loc[rep_idx[i]:rep_idx[i+1], 'partition']= i+1
-	
-	#df=df.assign(partition = lambda x: x['cyc'] // 52 +1)
+	plotname= 'normalized ' + name
+	#ibglist = [36, 40, 77, 81,118, 122,159, 163,200, 204]
+	iptlist = [0, 40, 81, 122, 163, 204]
+# 	init_val = df['delay time'][0]
+# 	rep_idx = df.loc[df['delay time'] == init_val].index
+# 	rep_idx=rep_idx.append(pd.Index([df.index[-1]]))
+	for i in range(len(iptlist) -1):
+		df.loc[iptlist[i]:iptlist[i+1], 'partition']= i+1
+		bgmean = df.loc[iptlist[i+1]-5:iptlist[i+1], name].mean()
+		print(bgmean)
+		df.loc[iptlist[i]:iptlist[i+1]-5, plotname] = df.loc[iptlist[i]:iptlist[i+1]-5, name]/ bgmean
+		#print(df.loc[iptlist[i]:iptlist[i+1]-5, name])
+		#print(df.loc[iptlist[i]:iptlist[i+1]-5, plotname])
 
-	df_partitionmean = df.groupby('partition', as_index=False)[name].mean()
-	df_partitionmean.rename(columns={name:name + ' mean'}, inplace=True)
+	df = df.loc[df['field']>190] # kill all the bg rows
 	
-	df_merge = pd.merge(df, df_partitionmean, on='partition')
-	plotname= 'rescaled ' + name
-	df_merge[plotname] = df_merge[name] / df_merge[name + ' mean']
-	
-	avgdf = df_merge.groupby('delay time', as_index=False).agg({plotname:['mean','sem']})
+	avgdf = df.groupby('delay time', as_index=False).agg({plotname:['mean','sem']})
 else :
 	########################## TYPICAL FITTING ##################################
 	plotname=name
+	df = df.loc[df['field']>190] # kill all the bg rows
 	avgdf = df.groupby('delay time', as_index=False).agg({name:['mean','sem']})
 	
 x = avgdf['delay time'].values
@@ -79,7 +83,7 @@ print(tabulate([['Values', *values], ['Errors', *errors]], headers=['Amplitude',
 #plt.plot(np.linspace(max(x),min(x),num=200),ym)
 
 ########################## FIXED FIT #########################################
-guess=[1000, 0, 21000]
+guess=[2000, 1, 23000]
 popt2, pcov2 = curve_fit.curve_fit(FixedSin, x, y, p0=guess, sigma=y_err,
 	bounds=((0, 0, 0), (np.inf, 2*np.pi, np.inf)))
 ym = FixedSin(np.linspace(min(x), max(x),num=200), *popt2)
@@ -108,21 +112,21 @@ plt.legend(loc='upper left')
 plt.show()
 
 ################### RESIDUALS #############################
-
-# y and ym arrays need to be the same length
-ym2 = FixedSin(np.linspace(min(x), max(x), num=len(x)), *popt2)
-yres = y - ym2
-fig3 = plt.figure()
-plt.title('Residuals')
-plt.xlabel('delay time')
-plt.ylabel(name + ' residuals')
-plt.errorbar(x, yres, yerr=y_err, fmt='ko', capsize=4)
-plt.show()
+if residuals:
+	# y and ym arrays need to be the same length
+	ym2 = FixedSin(np.linspace(min(x), max(x), num=len(x)), *popt2)
+	yres = y - ym2
+	fig3 = plt.figure()
+	plt.title('Residuals')
+	plt.xlabel('delay time')
+	plt.ylabel(name + ' residuals')
+	plt.errorbar(x, yres, yerr=y_err, fmt='ko', capsize=4)
+	plt.show()
+		
+	################### CHI SQUARED ###########################
 	
-################### CHI SQUARED ###########################
-
-ddof=7
-chi2 = np.sum(yres**2 / ym2) / ddof
-print('Chi2: ' + str(chi2))
+	ddof=7
+	chi2 = np.sum(yres**2 / ym2) / ddof
+	print('Chi2: ' + str(chi2))
 
 
