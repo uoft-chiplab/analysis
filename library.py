@@ -39,6 +39,9 @@ def Lorentzian(x, A, x0, sigma, C):
 def FermiEnergy(n, w):
 	return hbar * w * (6 * n)**(1/3)
 
+def FermiWavenumber(n, w):
+	return np.sqrt(2*mK*FermiEnergy(n, w))/hbar
+
 def GammaTilde(transfer, EF, OmegaR, trf):
 	return EF/(hbar * pi * OmegaR**2 * trf) * transfer
 
