@@ -23,8 +23,8 @@ from tabulate import tabulate
 # file2 = '/Users/kierapond/Documents/GitHub/analysis/data/2023-10-19_C_e.dat'
 # file3 = '/Users/kierapond/Documents/GitHub/analysis/data/subtract.txt'
 file = "2023-10-19_C_e.dat"
-drive = '\\\\UNOBTAINIUM\\E_Carmen_Santiago' # when using Fermium
-drive = '/Users/kierapond/Documents/GitHub/analysis/data'
+drive = '\\\\UNOBTAINIUM\\E_Carmen_Santiago' 
+#drive = '/Users/kierapond/Documents/GitHub/analysis/data'
 # names = ["Field", "ToTFcalc"]
 
 # plt.style.use('plottingstyle')

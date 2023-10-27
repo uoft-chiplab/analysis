@@ -244,4 +244,18 @@ def FixedSin(data):
 		omega = 0.010 * 2 * np.pi # 10 kHz
 		return A*np.sin(omega*t - p) + C
 	
-	return SinplusCos, guess, param_names
+	return FixedSin, guess, param_names
+
+def FixedSin5kHz(data):
+	"""
+	hard coded 5 kHz
+	Returns: A*np.sin(0.0314*x - p) + C
+	"""
+	param_names =  ['Amplitude','phase','offset']
+	guess = [1, 1, 0]
+	
+	def FixedSin5kHz(t, A, p, C):
+		omega = 0.005 * 2 * np.pi # 10 kHz
+		return A*np.sin(omega*t - p) + C
+	
+	return FixedSin5kHz, guess, param_names
