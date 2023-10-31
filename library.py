@@ -83,3 +83,6 @@ def tail3Dswave(w, C, gamma):
 def guessACdimer(field):
 	return -0.1145*field + 27.13 # MHz
 
+def a97(B, B0=202.14, B0zero=209.07, abg=167.6*a0): 
+	return abg * (1 - (B0zero - B0)/(B - B0));
+
