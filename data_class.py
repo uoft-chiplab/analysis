@@ -29,7 +29,7 @@ drive = '\\\\UNOBTAINIUM\\E_Carmen_Santiago'
 
 # plt.style.use('plottingstyle')
 # plt.style.use('C:/Users/coldatoms/anaconda3/pkgs/matplotlib-base-3.2.2-py38h64f37c6_0/Lib/site-packages/matplotlib/mpl-data/stylelib/plottingstype.mplstyle')
-# plt.style.use('./plottingstype.mplstyle')
+plt.style.use('./plottingstype.mplstyle')
 
 def data1(filename):
 	return  Data("2023-10-19_C_e.dat",column_names=['ToTFcalc']).data -  Data("2023-10-19_E_e.dat",column_names=['ToTFcalc']).data

@@ -255,7 +255,7 @@ def FixedSin5kHz(data):
 	guess = [1, 1, 0]
 	
 	def FixedSin5kHz(t, A, p, C):
-		omega = 0.005 * 2 * np.pi # 10 kHz
+		omega = 0.005 * 2 * np.pi # 5 kHz
 		return A*np.sin(omega*t - p) + C
 	
 	return FixedSin5kHz, guess, param_names
