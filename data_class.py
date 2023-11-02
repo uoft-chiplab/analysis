@@ -23,10 +23,12 @@ from tabulate import tabulate
 # file2 = '/Users/kierapond/Documents/GitHub/analysis/data/2023-10-19_C_e.dat'
 # file3 = '/Users/kierapond/Documents/GitHub/analysis/data/subtract.txt'
 file = "2023-10-19_C_e.dat"
-drive = '\\\\UNOBTAINIUM\\E_Carmen_Santiago' # when using Fermium
-# drive = '/Users/kierapond/Documents/GitHub/analysis/data'
-names = ["Field", "ToTFcalc"]
+drive = '\\\\UNOBTAINIUM\\E_Carmen_Santiago' 
+#drive = '/Users/kierapond/Documents/GitHub/analysis/data'
+# names = ["Field", "ToTFcalc"]
 
+# plt.style.use('plottingstyle')
+# plt.style.use('C:/Users/coldatoms/anaconda3/pkgs/matplotlib-base-3.2.2-py38h64f37c6_0/Lib/site-packages/matplotlib/mpl-data/stylelib/plottingstype.mplstyle')
 plt.style.use('./plottingstype.mplstyle')
 
 def data1(filename):
@@ -43,14 +45,16 @@ def subtract(filename):
 	return data2
 class Data:
 	def __init__(self, filename, path=None, column_names=None, 
-			  exclude_list=None, average_by=None, residuals=None):
+			  exclude_list=None, average_by=None, metadata=None):
 		self.filename = filename
+		if metadata is not None:
+			self.__dict__.update(metadata)  # Store all the extra variables
 		
 		if path:
 			file = os.path.join(path, filename) # making manual path for the filename
 		else:
  			file = glob(drive + '\\Data\\2023\\*\\*\\*\\' + filename)[0] # EXTREMELY greedy ; for Fermium
-# 			file = filename # kiera playing around on their computer 
+ 			# file = filename # kiera playing around on their computer 
 			
 		self.data = pd.read_table(file, delimiter=',') # making dataframe of chosen data
 		
@@ -68,14 +72,13 @@ class Data:
 	# group by scan name, compute mean 
 	def group_by_mean(self, scan_name):
 		mean = self.data.groupby([scan_name]).mean().reset_index()
+		sem = self.data.groupby([scan_name]).sem().reset_index().add_prefix("em_")
 		std = self.data.groupby([scan_name]).std().reset_index().add_prefix("e_")
-		self.avg_data = pd.concat([mean, std], axis=1)
-		
-# subtracting column from another 
+		self.avg_data = pd.concat([mean, std, sem], axis=1)
 
 				
 # plot raw data or average
-	def plot(self, names=names, label=None, axes_labels=None):
+	def plot(self, names, label=None, axes_labels=None):
 		self.fig = plt.figure()
 		self.ax = plt.subplot()
 		if label==None:
@@ -83,10 +86,10 @@ class Data:
 
 		if hasattr(self, 'avg_data'): # check for averaging
 			self.ax.errorbar(self.avg_data[f"{names[0]}"], self.avg_data[f"{names[1]}"], 
-				yerr=self.avg_data[f"e_{names[1]}"], capsize=2, marker='o', ls='',
+				yerr=self.avg_data[f"em_{names[1]}"], capsize=2, marker='o', ls='',
 				label=label)
 		else:
-			self.ax.plot(self.data[f"{names[0]}"], self.data[f"{names[1]}"],
+			self.ax.plot(self.data[f"{names[0]}"], self.data[f"{names[1]}"], 'o',
 				label = label)
 			
 		if axes_labels == None:
@@ -97,7 +100,7 @@ class Data:
 		self.ax.legend()
 		
 #residuals 
-	def plot_residuals(self, fit_func, names=names, guess=None, label=None, axes_labels=None):
+	def plot_residuals(self, fit_func, names, guess=None, label=None, axes_labels=None):
 		self.fig = plt.figure()
 		self.ax = plt.subplot()
 		fit_data = np.array(self.data[names])
@@ -107,7 +110,7 @@ class Data:
 		if hasattr(self, 'avg_data'): # check for averaging
 			popt, pcov = curve_fit(func, self.avg_data[f"{names[0]}"], 
 						  self.avg_data[f"{names[1]}"],p0=guess, 
-						  sigma=self.avg_data[f"e_{names[1]}"])
+						  sigma=self.avg_data[f"em_{names[1]}"])
 		else:
 			popt, pcov = curve_fit(func, self.data[f"{names[0]}"], 
 						  self.data[f"{names[1]}"],p0=guess)
@@ -118,7 +121,7 @@ class Data:
 		self.ax.plot(self.data[f"{names[0]}"], self.data[f"{names[0]}"]*0, linestyle='-')
 		if hasattr(self, 'avg_data'): # check for averaging
 			self.ax.errorbar(self.avg_data[f"{names[0]}"], self.avg_data[f"{names[1]}"], 
-				yerr=self.avg_data[f"e_{names[1]}"], capsize=2, marker='o', ls='',
+				yerr=self.avg_data[f"em_{names[1]}"], capsize=2, marker='o', ls='',
 				label=label)
 		else:
 			self.ax.plot(self.data[f"{names[0]}"], residuals,
@@ -135,7 +138,7 @@ class Data:
 
 		
 # fit data to fit_func and plot if Data has a figure
-	def fit(self, fit_func, names=names, guess=None):
+	def fit(self, fit_func, names, guess=None):
 		fit_data = np.array(self.data[names])
 		func, default_guess, param_names = fit_func(fit_data)
 		print(default_guess)
@@ -147,7 +150,7 @@ class Data:
 		if hasattr(self, 'avg_data'): # check for averaging
 			popt, pcov = curve_fit(func, self.avg_data[f"{names[0]}"], 
 						  self.avg_data[f"{names[1]}"],p0=guess, 
-						  sigma=self.avg_data[f"e_{names[1]}"])
+						  sigma=self.avg_data[f"em_{names[1]}"])
 		else:
 			popt, pcov = curve_fit(func, self.data[f"{names[0]}"], 
 						  self.data[f"{names[1]}"],p0=guess)

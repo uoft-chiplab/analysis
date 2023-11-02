@@ -39,6 +39,9 @@ def Lorentzian(x, A, x0, sigma, C):
 def FermiEnergy(n, w):
 	return hbar * w * (6 * n)**(1/3)
 
+def FermiWavenumber(n, w):
+	return np.sqrt(2*mK*FermiEnergy(n, w))/hbar
+
 def GammaTilde(transfer, EF, OmegaR, trf):
 	return EF/(hbar * pi * OmegaR**2 * trf) * transfer
 
@@ -79,4 +82,7 @@ def tail3Dswave(w, C, gamma):
 
 def guessACdimer(field):
 	return -0.1145*field + 27.13 # MHz
+
+def a97(B, B0=202.14, B0zero=209.07, abg=167.6*a0): 
+	return abg * (1 - (B0zero - B0)/(B - B0));
 
