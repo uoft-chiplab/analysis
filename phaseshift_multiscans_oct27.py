@@ -9,13 +9,16 @@ Analyse wiggle phase shift measurements from Oct 27 2023, where binding energies
 
 from data_class import Data
 from library import FreqMHz
-from analysisfunctions import FixedSin5kHz, Gaussian
+from analysisfunctions import FixedSin5kHz
 
 import numpy as np
 import pandas as pd
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 
+### switches ###
+FIX_EB=False
+verbose=False
 
 data_folder = 'data/oct27phaseshift'
 df = pd.read_csv(data_folder + '/Oct27summary.csv')
@@ -36,6 +39,12 @@ def Eb_from_field(B, whichfit='linear'):
         a=-0.05124 #+/- 0.006695
         b=14.35 #+/- 1.353
         return a*B + b
+    
+def Gaussian(x, A, x0, sigma, C):
+	"""
+	Returns:  A * np.exp(-(x-x0)**2/(2*sigma**2)) + C
+	"""
+	return A * np.exp(-(x-x0)**2/(2*sigma**2)) + C
 
 df['field']=wigglefield_from_time(df['delay + pulse'])
 df['Eb']=Eb_from_field(df['field'])
@@ -46,7 +55,10 @@ params=['c5','c9','sum95']
 param_headers_list=[]
 param_e_headers_list=[]
 for param in params:
-    headers = ['amp','f0','sigma','offset']
+    if FIX_EB == False:
+        headers = ['amp','f0','sigma','offset']
+    else:
+        headers = ['amp','sigma','offset']
     param_headers = [param + '_' + i for i in headers]
     param_e_headers = [param + '_e_' + i for i in headers]
     param_headers_list.append(param_headers)
@@ -57,8 +69,6 @@ for param in params:
 popt_list=[]
 perr_list=[]
 run_list=[]
-FIX_EB=False
-verbose=False
 
 for irow in range(0, len(df)):
     run_letter=df.iloc[irow]['run']
@@ -73,7 +83,12 @@ for irow in range(0, len(df)):
     
         #print(param)
         #bounds=([-10000, 42,-0.2,0],[0, 44, 0.2, 30000])
-        popt, pcov = curve_fit(Gaussian, run.data['freq (MHz)'], run.data[param],p0=[-3000, run.peakfreq, 0.05, 0])
+        
+        if FIX_EB == True:
+            popt, pcov = curve_fit(lambda f, amp, sigma, offset: Gaussian(f, amp, run.peakfreq, sigma, offset), \
+                                   run.data['freq (MHz)'], run.data[param],p0=[-3000, 0.05, 0])
+        else:
+            popt, pcov = curve_fit(Gaussian, run.data['freq (MHz)'], run.data[param],p0=[-3000, run.peakfreq, 0.05, 0])
         perr = np.sqrt(np.diag(pcov))
        
         if verbose:
@@ -142,7 +157,10 @@ for i,param in enumerate(params):
 ax.legend(loc='upper right')
 ax.set_xlabel('time (us)')
 ax.set_ylabel('amplitude (arb.)')
-ax.set_title('Phase shift from dimer scans, f0 unfixed')
+if FIX_EB == False:
+    ax.set_title('Phase shift from dimer scans, f0 unfixed')
+else:
+    ax.set_title('Phase shift from dimer scans, f0 fixed')
 
 
 ### FUCK
@@ -162,16 +180,6 @@ if FIX_EB == False:
     ax.set_title('Phase shift from dimer scans, f0 unfixed')   
 
 
-
-        
-        
-               
-       
-        
-        
-   
-        
-  
 
 '''
 def func(x, a, b):
