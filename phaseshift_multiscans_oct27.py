@@ -57,7 +57,7 @@ for param in params:
 popt_list=[]
 perr_list=[]
 run_list=[]
-
+FIX_EB=False
 verbose=False
 
 for irow in range(0, len(df)):
@@ -88,35 +88,78 @@ for irow in range(0, len(df)):
         df.loc[irow, param_headers_list[i]]=popt
         df.loc[irow, param_e_headers_list[i]]=perr
         
+        
+# df['c5_Eb']=df['f75'] - df['c5_f0']
+# df['c9_Eb']=df['f75'] - df['c9_f0']
+# df['sum95_Eb']=df['f75'] - df['sum95_f0']
 df.drop([0,3,15,16],inplace=True)
         
 ### Sinusoidal fit to fit results over time ###
-c5_popt, c5_pcov = curve_fit(FixedSin5kHz, df['delay + pulse'], df['c5_amp'], sigma=df['c5_e_amp'])
+## Amplitude 
+bounds=([-np.inf, 0, -np.inf],[np.inf, np.pi, np.inf])
+c5_popt, c5_pcov = curve_fit(FixedSin5kHz, df['delay + pulse'], df['c5_amp'], sigma=df['c5_e_amp'],bounds=bounds)
 c5_perr = np.sqrt(np.diag(c5_pcov))
-c9_popt, c9_pcov = curve_fit(FixedSin5kHz, df['delay + pulse'], df['c9_amp'], sigma=df['c9_e_amp'])
+c9_popt, c9_pcov = curve_fit(FixedSin5kHz, df['delay + pulse'], df['c9_amp'], sigma=df['c9_e_amp'],bounds=bounds)
 c9_perr = np.sqrt(np.diag(c9_pcov))
-sum95_popt, sum95_pcov = curve_fit(FixedSin5kHz, df['delay + pulse'], df['sum95_amp'], sigma=df['sum95_e_amp'])
+sum95_popt, sum95_pcov = curve_fit(FixedSin5kHz, df['delay + pulse'], df['sum95_amp'], sigma=df['sum95_e_amp'],bounds=bounds)
 sum95_perr = np.sqrt(np.diag(sum95_pcov))
-fit_params=[*c5_popt, *c9_popt, *sum95_popt]
-fit_e_params=[c5_perr, c9_perr, sum95_perr]
+fit_params_list=[c5_popt, c9_popt, sum95_popt]
+fit_e_params_list=[c5_perr, c9_perr, sum95_perr]
+
+## Peak frequency
+if FIX_EB == False:
+    # c5_Eb_popt, c5_Eb_pcov = curve_fit(FixedSin5kHz, df['delay + pulse'], df['c5_Eb'], sigma=df['c5_e_f0'])
+    # c5_Eb_perr = np.sqrt(np.diag(c5_Eb_pcov))
+    # c9_Eb_popt, c9_Eb_pcov = curve_fit(FixedSin5kHz, df['delay + pulse'], df['c9_Eb'], sigma=df['c9_e_f0'])
+    # c9_Eb_perr = np.sqrt(np.diag(c9_Eb_pcov))
+    # sum95_Eb_popt, sum95_Eb_pcov = curve_fit(FixedSin5kHz, df['delay + pulse'], df['sum95_Eb'], sigma=df['sum95_e_f0'])
+    # sum95_Eb_perr = np.sqrt(np.diag(sum95_Eb_pcov))
+    # fit_Eb_params_list=[c5_Eb_popt, c9_Eb_popt, sum95_Eb_popt]
+    # fit_e_Eb_params_list=[c5_Eb_perr, c9_Eb_perr, sum95_Eb_perr]
+    c5_f0_popt, c5_f0_pcov = curve_fit(FixedSin5kHz, df['delay + pulse'], df['c5_f0'], sigma=df['c5_e_f0'])
+    c5_f0_perr = np.sqrt(np.diag(c5_f0_pcov))
+    c9_f0_popt, c9_f0_pcov = curve_fit(FixedSin5kHz, df['delay + pulse'], df['c9_f0'], sigma=df['c9_e_f0'])
+    c9_f0_perr = np.sqrt(np.diag(c9_f0_pcov))
+    sum95_f0_popt, sum95_f0_pcov = curve_fit(FixedSin5kHz, df['delay + pulse'], df['sum95_f0'], sigma=df['sum95_e_f0'])
+    sum95_f0_perr = np.sqrt(np.diag(sum95_f0_pcov))
+    fit_f0_params_list=[c5_f0_popt, c9_f0_popt, sum95_f0_popt]
+    fit_e_f0_params_list=[c5_f0_perr, c9_f0_perr, sum95_f0_perr]
 
 ### Plot fit results over time ###
 arb_scaling=24000
 arb_offset=-3500
 tpoints = np.linspace(-100,300,400)
 fig, ax=plt.subplots(1,1)
-ax.plot(tpoints, wigglefield_from_time(tpoints, arb_scaling)+arb_offset, 'b-')
+ax.plot(tpoints, wigglefield_from_time(tpoints, arb_scaling)+arb_offset, 'b-', label='wiggle')
 colors = ["red", 
 		  "green", "orange", 
 		  "purple", "black", "pink"]
+linestyles=['r-','g-','y-','p-','k-','m-']
 for i,param in enumerate(params):
     ax.errorbar(df['delay + pulse'], df[param+'_amp'],df[param+'_e_amp'],color=colors[i], label=param)
-    #ax.plot(tpoints, FixedSin5kHz(tpoints, fit_params[i]), color=colors[i])
+    ax.plot(tpoints, FixedSin5kHz(tpoints, *fit_params_list[i]), linestyles[i])
+
+ax.legend(loc='upper right')
+ax.set_xlabel('time (us)')
+ax.set_ylabel('amplitude (arb.)')
+ax.set_title('Phase shift from dimer scans, f0 unfixed')
+
+
+### FUCK
+if FIX_EB == False:
+    arb_scaling=0.3
+    arb_offset=-158.86
+    tpoints = np.linspace(-100,300,400)
+    fig, ax=plt.subplots(1,1)
+    ax.plot(tpoints, wigglefield_from_time(tpoints, arb_scaling)+arb_offset, 'b-', label='wiggle')
+    for i,param in enumerate(params):
+        ax.errorbar(df['delay + pulse'], df[param+'_f0'],df[param+'_e_f0'],color=colors[i], label=param)
+        ax.plot(tpoints, FixedSin5kHz(tpoints, *fit_f0_params_list[i]), linestyles[i])
+    
     ax.legend(loc='upper right')
-
-
-
-        
+    ax.set_xlabel('time (us)')
+    ax.set_ylabel('f0 (MHz)')
+    ax.set_title('Phase shift from dimer scans, f0 unfixed')   
 
 
 
