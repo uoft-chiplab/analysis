@@ -5,7 +5,7 @@
 
 Functions to call in analysis scripts
 """
-from scipy.constants import pi, hbar, h
+from scipy.constants import pi, hbar, h, k as kB
 from scipy.integrate import trapz, simps, cumtrapz
 import numpy as np
 

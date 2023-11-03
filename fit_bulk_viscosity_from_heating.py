@@ -23,6 +23,8 @@ import os
 
 data_folder = 'data/heating'
 
+temp_param = "ToTFcalc"
+
 plotting = True
 
 test_time_plots = False
@@ -93,10 +95,14 @@ H_1018 = {'filename':'2023-10-18_H_e.dat','Bamp':0.05,'time':1e-3,'B':202.1,
 I_1018 = {'filename':'2023-10-18_I_e.dat','Bamp':0.1,'time':1e-3,'B':202.1,
 		  'Ni':36439,'Ti':0.521}
 
+S_1031 = {'filename':'2023-10-31_S_e.dat','Bamp':0.05,'time':1e-3,'B':202.1,
+		  'Ni':34804,'Ti':0.568, 'GTi':0.604}
+		  
+
 fit_freq = {'param':'freq (kHz)','xlabel':'Wiggle Freq (kHz)','fit':ToTFfunc,
 			'runs':[E_1010,I_1017,
-		   K_1017,H_1018,I_1018#,G_1017
-				   ]}
+		   K_1017,H_1018,I_1018,#,G_1017
+				  S_1031]}
 
 mean_trapfreq = 2*pi*(151.6*429*442)**(1/3)
 Bamp_per_Vpp = 0.1/2
@@ -142,7 +148,7 @@ for run in fit_type['runs']:
 		return np.abs(Ah - Al)/2
 			
 	run.data['A'] = run.data['kF'].apply(calc_A)
-	run.data['DToTFcalc'] = run.data['ToTFcalc']-run.Ti
+	run.data['DToTFcalc'] = run.data[temp_param]-run.Ti
 	
 	run.Amean = run.data['A'].mean()
 	run.EFmean = run.data['EF'].mean()
@@ -218,7 +224,7 @@ for run in fit_type['runs']:
 		return np.abs(Ah - Al)/2
 			
 	run.data['A'] = run.data[fit_type['param']].apply(calc_A)
-	run.data['DToTFcalc'] = run.data['ToTFcalc']-run.Ti
+	run.data['DToTFcalc'] = run.data[temp_param]-run.Ti
 	
 	run.EFmean = run.data['EF'].mean()
 	
@@ -285,7 +291,7 @@ for run in fit_type['runs']:
 	Al = 1/(a97(run.B-run.Bamp)*run.kFmean)
 	run.A = np.abs(Ah - Al)/2
 			
-	run.data['DToTFcalc'] = run.data['ToTFcalc']-run.Ti
+	run.data['DToTFcalc'] = run.data[temp_param]-run.Ti
 	run.EFmean = run.data['EF'].mean()
 	
 	run.data['contact'] = 2*np.sqrt(2)*pi/run.A**2/run.time \
