@@ -90,7 +90,7 @@ def Sin(data):
 	max_y = data[:,1].max()
 	
 	param_names = ["A", "omega", "phi", "C"]
-	guess = [max_y-mean_y, 1, 0, mean_y]
+	guess = [max_y-mean_y, 6*2.5, 0, mean_y]
 	
 	def sin(x, A, omega, phi, C):
 		return A*np.sin(omega*x - phi) + C
@@ -232,16 +232,19 @@ def SinplusCos(data):
 
 	return SinplusCos, guess, param_names
 
-def FixedSin(data):
+def FixedSin(data, f):
 	"""
 	hard coded 10 kHz
 	Returns: A*np.sin(0.0628*x - p) + C
 	"""
 	param_names =  ['Amplitude','phase','offset']
-	guess = [1, 1, 0]
+	
+	mean_y = data[:,1].mean()
+	max_y = data[:,1].max()
+	guess = [max_y-mean_y, 0, mean_y]
 	
 	def FixedSin(t, A, p, C):
-		omega = 0.010 * 2 * np.pi # 10 kHz
+		omega = f * 2 * np.pi # 10 kHz
 		return A*np.sin(omega*t - p) + C
 	
 	return FixedSin, guess, param_names
