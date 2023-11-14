@@ -126,7 +126,7 @@ def Sinc2(data):
 	max_y = data[:,1].max()
 	
 	param_names = ["A", "x0", "sigma", "C"]
-	guess = [max_y-mean_y, x_ofmax, (max_x-min_x)/2, mean_y]
+	guess = [max_y-mean_y, x_ofmin, (max_x-min_x)/2, mean_y]
 	
 	def sinc2(x, A, x0, sigma, C):
 		return A*(np.sinc((x-x0) / sigma)**2) + C
