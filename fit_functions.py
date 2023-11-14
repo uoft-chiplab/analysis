@@ -101,13 +101,14 @@ def Sinc(data):
 	Returns:   A*np.sinc((x-x0) / sigma) + C
 	"""
 	x_ofmax = data[np.abs(data[:,1]).argmax(),0]
+	x_ofmin = data[np.abs(data[:,1]).argmin(),0]
 	max_x = data[:,0].max()
 	min_x = data[:,0].min()
 	mean_y = data[:,1].mean()
 	max_y = data[:,1].max()
 	
 	param_names = ["A", "x0", "sigma", "C"]
-	guess = [max_y-mean_y, x_ofmax, (max_x-min_x)/2, mean_y]
+	guess = [max_y-mean_y, x_ofmin, (max_x-min_x)/2, mean_y]
 	
 	def sinc(x, A, x0, sigma, C):
 		return A*(np.sinc((x-x0) / sigma)) + C
@@ -117,6 +118,7 @@ def Sinc2(data):
 	"""
 	Returns:   A*np.sinc((x-x0) / sigma) + C
 	"""
+	x_ofmin = data[np.abs(data[:,1]).argmin(),0]
 	x_ofmax = data[np.abs(data[:,1]).argmax(),0]
 	max_x = data[:,0].max()
 	min_x = data[:,0].min()

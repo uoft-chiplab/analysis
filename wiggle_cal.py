@@ -20,7 +20,7 @@ import numpy as np
 from tabulate import tabulate
 from data_class import * 
 
-delay_times = np.array(np.linspace(0.01,0.57,15))
+delay_times = np.array(np.linspace(0.005,0.565,15))
 # uncert_list = []
 # file = '2023-11-13_E_e.dat'
 
@@ -89,6 +89,7 @@ plt.ylim(202, 202.2)
 plt.show()
 
 print(*popt)
+print(*perr)
 
 # for i in range(len(delay_times)):
 # 	data = Data(file).data.loc[Data.data['delay']==delay_times[i]]
