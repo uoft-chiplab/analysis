@@ -8,7 +8,6 @@ Analysis field wiggle scans where the frequency of transfer is
 varied, and the delay time is varied. Files are organized by
 delay time due to how MatLab outputs the .dat files.
 """
-
 from data_class import Data
 from fit_functions import Sinc2, Lorentzian, Gaussian, \
 							Parabola, Sin, FixedSin
@@ -20,15 +19,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
-run = "2023-11-13_E"
+run = "2023-11-14_F"
 wiggle_freq = 2.5
 
 data_folder = "data\\"+run
-delay_times = np.linspace(0.05, 0.57, 14)
+delay_times = np.linspace(0.01, 0.69, 18)
 file_prefix = run+"_e"
 
 x_name = "freq"
-y_name = "fraction95"
+y_name = "sum95"
 fit_func = Sinc2
 num = 500
 
@@ -36,7 +35,7 @@ data_list = []
 wiggle_data = []
 
 # initalize no guesses, but fill them in if needed
-guess = None
+guess = [6000, 43.21, .05, 24000]
 guess_list = [guess]*len(delay_times)
 
 # manually fixed guesses
@@ -89,6 +88,8 @@ perr = np.sqrt(np.diag(pcov))
 parameter_table = tabulate([['Values', *popt], 
 								 ['Errors', *perr]], 
 								 headers=fit_params)
+print("Field calibration:")
+print("")
 print(parameter_table)
 	
 plt.figure()
