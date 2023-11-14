@@ -141,9 +141,9 @@ class Data:
 	def fit(self, fit_func, names, guess=None):
 		fit_data = np.array(self.data[names])
 		func, default_guess, param_names = fit_func(fit_data)
-		print(default_guess)
-		print(func(201.5, *default_guess))
-		
+# 		print(default_guess)
+# 		print(func(201.5, *default_guess))
+# 		
 		if guess is None:	
 			guess = default_guess
 			
