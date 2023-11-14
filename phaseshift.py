@@ -20,183 +20,77 @@ import numpy as np
 from tabulate import tabulate
 from data_class import * 
 
-delay_times = np.array(np.linspace(0,0.77,20))
+delay_times = np.array(np.linspace(0,0.77,19))
+delay_times = [0,0.4,0.8,0.12,0.16,0.20,0.24,0.28,0.32,0.36,0.44,0.48,0.52,0.56,0.6]
+names = ['freq','sum95']
 # uncert_list = []
 # file = '2023-11-13_E_e.dat'
 
-print( Data('2023-11-14_F_e_delay=0.25.dat', column_names=['freq','sum95']).popt(Sinc2,names=['freq','sum95']))
-amp_list=np.array([6740.31,
-					5663.22,
-					8561.59,
-					7760.89,
-					5856.96,
-					5614.02,
-					5541.05,
-					44.8195,
-					44.8162,
-					44.8129,
-					44.8103,
-					44.8102,
-					44.8141,
-					44.8169,
-					44.8173
-					])
+directory = os.fsencode('E:/Analysis Scripts/analysis/data/2023-11-14_F/')
 
-amp_err_list=np.array([1022.82,
-					1267.85,
-					1058.19,
-					1079.48,
-					747.095,
-					1057.05,
-					1028.06,
-					743.858,
-					.000570663,
-					.000802226,
-					.000794326,
-					.00078307,
-					.000501847,
-					.000697719,
-					.000683611
-					])
+# data =  Data('2023-11-14_F_e_delay=0.25.dat', column_names=['freq','sum95'])
+
+# print(data.fit.popt)
+
+amp_list=np.array([])
+amper_list=np.array([])
+x0_list=np.array([])
+x0er_list=np.array([])
+
+for file in os.listdir(directory):
+	filename = os.fsdecode(file)
+# 	if filename.endswith(".dat"):
+	data = Data(filename, column_names=names)
+	data.fit(Lorentzian,names=names)
+	amp = data.popt[0]
+	amp_list = np.append(amp_list,amp)
+	errors = np.sqrt(np.diag(data.pcov))
+	amper = errors[0]
+	amper_list = np.append(amper_list,amper)
+	x0 = data.popt[1]
+	x0_list = np.append(x0_list,x0)
+	x0er = errors[1]
+	x0er_list = np.append(x0er_list, x0er)
+		
 
 
-x0_list=np.array([43.2164,
-					43.2109,
-					43.2173,
-					43.2214,
-					43.2413,
-					43.2434,
-					43.2326,
-					44.8195,
-					44.8162,
-					44.8129,
-					44.8103,
-					44.8102,
-					44.8141,
-					44.8169,
-					44.8173
-					])
-
-x0_err_list=np.array([.00339214,
-					.00420081,
-					.00221642,
-					.00256195,
-					.00386556,
-					.00535094,
-					.00231597,
-					.00355531,
-					.000570663,
-					.000802226,
-					.000794326,
-					.00078307,
-					.000501847,
-					.000697719,
-					.000683611
-					])
-
-ampL_list=np.array([6.4504,
-					3.38473,
-					2.35031,
-					3.30784,
-					11.9905,
-					14.0728,
-					2.27962,
-					44.8195,
-					44.8162,
-					44.8129,
-					44.8103,
-					44.8102,
-					44.8141,
-					44.8169,
-					44.8173
-					])
-
-ampL_err_list=np.array([4.12383,
-					3.03427,
-					1.11115,
-					1.63035,
-					8.16284,
-					13.197,
-					1.24042,
-					.000641191,
-					.000570663,
-					.000802226,
-					.000794326,
-					.00078307,
-					.000501847,
-					.000697719,
-					.000683611
-					])
+plt.figure(1)
+plt.plot(delay_times,amp_list)
+plt.show()
 
 
-x0L_list=np.array([43.2149,
-					43.2192,
-					43.2099,
-					43.22,
-					43.2397,
-					43.2404,
-					43.2318,
-					44.8195,
-					44.8162,
-					44.8129,
-					44.8103,
-					44.8102,
-					44.8141,
-					44.8169,
-					44.8173
-					])
-
-x0L_err_list=np.array([.0034015,
-					.00804316,
-					.0045062,
-					.0022986,
-					.00412516,
-					.00575646,
-					.000833965,
-					.000641191,
-					.000570663,
-					.000802226,
-					.000794326,
-					.00078307,
-					.000501847,
-					.000697719,
-					.000683611
-					])
-
-
-
-B_list = np.array(list(map(B_from_FreqMHz, freq_list))).flatten()
-B_list_plus = np.array(list(map(B_from_FreqMHz, freq_list+freq_err_list)))
-B_list_minus = np.array(list(map(B_from_FreqMHz, freq_list-freq_err_list)))
+# B_list = np.array(list(map(B_from_FreqMHz, freq_list))).flatten()
+# B_list_plus = np.array(list(map(B_from_FreqMHz, freq_list+freq_err_list)))
+# B_list_minus = np.array(list(map(B_from_FreqMHz, freq_list-freq_err_list)))
 
 # calculate error in B field, 
 # by checking +freq and -freq error, taking the largest
-B_err_list = np.array([])
-for i in range(len(B_list)):
-	B_err = max([np.abs(B_list[i]-B_list_plus[i]),
-			  np.abs(B_list[i]-B_list_minus[i])])
-	B_err_list = np.append(B_err_list, B_err)
-	
+# B_err_list = np.array([])
+# for i in range(len(B_list)):
+# 	B_err = max([np.abs(B_list[i]-B_list_plus[i]),
+# 			  np.abs(B_list[i]-B_list_minus[i])])
+# 	B_err_list = np.append(B_err_list, B_err)
+# 	
 
-fit_func, guess, params = FixedSin(np.array(list(zip(delay_times,B_list))), 2.5)
-	
-popt, pcov = curve_fit(fit_func, delay_times, B_list, p0=guess, sigma=B_err_list)
-perr = np.sqrt(np.diag(pcov))
+# fit_func, guess, params = FixedSin(np.array(list(zip(delay_times,B_list))), 2.5)
+# 	
+# popt, pcov = curve_fit(fit_func, delay_times, B_list, p0=guess, sigma=B_err_list)
+# perr = np.sqrt(np.diag(pcov))
 
 num = 100
 x_list = np.linspace(0, 0.6, num)
 	
-plt.figure()
-plt.errorbar(delay_times, B_list, yerr=B_err_list, fmt='o')
-# plt.plot(x_list, fit_func(x_list, *guess), 'r--')
-plt.plot(x_list, fit_func(x_list, *popt), 'g')
-plt.xlabel("Delay Time (ms)")
-plt.ylabel("Magnetic Field B (G)")
-plt.ylim(202, 202.2)
-plt.show()
+# plt.figure()
+# plt.errorbar(delay_times, B_list, yerr=B_err_list, fmt='o')
+# # plt.plot(x_list, fit_func(x_list, *guess), 'r--')
+# plt.plot(x_list, fit_func(x_list, *popt), 'g')
+# plt.xlabel("Delay Time (ms)")
+# plt.ylabel("Magnetic Field B (G)")
+# plt.ylim(202, 202.2)
+# plt.show()
 
-print(*popt)
-print(*perr)
+# print(*popt)
+# print(*perr)
 
 # for i in range(len(delay_times)):
 # 	data = Data(file).data.loc[Data.data['delay']==delay_times[i]]
