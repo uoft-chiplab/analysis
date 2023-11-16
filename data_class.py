@@ -168,3 +168,24 @@ class Data:
 					   self.data[f"{names[0]}"].max(), num)
 			self.ax.plot(xlist, func(xlist, *self.popt))
 
+		
+# fit data to fit_func and plot if Data has a figure
+	def fitnoplots(self, fit_func, names, guess=None):
+		fit_data = np.array(self.data[names])
+		func, default_guess, param_names = fit_func(fit_data)
+# 		print(default_guess)
+# 		print(func(201.5, *default_guess))
+# 		
+		if guess is None:	
+			guess = default_guess
+			
+		if hasattr(self, 'avg_data'): # check for averaging
+			self.popt, self.pcov = curve_fit(func, self.avg_data[f"{names[0]}"], 
+						  self.avg_data[f"{names[1]}"],p0=guess, 
+						  sigma=self.avg_data[f"em_{names[1]}"])
+		else:
+			self.popt, self.pcov = curve_fit(func, self.data[f"{names[0]}"], 
+						  self.data[f"{names[1]}"],p0=guess)
+		self.perr = np.sqrt(np.diag(self.pcov))
+		
+				

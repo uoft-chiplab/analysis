@@ -86,10 +86,10 @@ plt.plot(x_list, fit_func(x_list, *popt), 'g')
 plt.xlabel("Delay Time (ms)")
 plt.ylabel("Magnetic Field B (G)")
 plt.ylim(202, 202.2)
-plt.show()
 
-print(*popt)
-print(*perr)
+
+# print(*popt)
+# print(*perr)
 
 # for i in range(len(delay_times)):
 # 	data = Data(file).data.loc[Data.data['delay']==delay_times[i]]

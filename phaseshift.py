@@ -3,61 +3,163 @@
 2023-10-19
 @author: Chip Lab
 
-Data class for loading, fitting, and plotting .dat
-Matlab output files
+script to analyse phase shift measurements
 
-Relies on functions.py
+Relies on data_class.py
 """
-import os 
-from glob import glob
-from library import *
-from fit_functions import *
-from scipy.optimize import curve_fit
-import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib
-import numpy as np
-from tabulate import tabulate
+
 from data_class import * 
+from wiggle_cal import * 
 
-delay_times = np.array(np.linspace(0,0.77,19))
-delay_times = [0,0.4,0.8,0.12,0.16,0.20,0.24,0.28,0.32,0.36,0.44,0.48,0.52,0.56,0.6]
-names = ['freq','sum95']
-# uncert_list = []
-# file = '2023-11-13_E_e.dat'
+# delay_times = np.array(np.linspace(0,0.77,19))
+delay_times_new = [0,0.04,0.08,0.12,0.16,0.20,0.24,0.28,0.32,0.36,0.4,0.44,0.48,0.52,0.56,0.6,0.64,0.68]
+delay_times_new = [0,0.04,0.08,0.12,0.16,0.20,0.24,0.28,0.32,0.36,0.4,0.44,0.48,0.52,0.56,0.6,0.64,0.68,0.72,0.76]
 
-directory = os.fsencode('E:/Analysis Scripts/analysis/data/2023-11-14_F/')
+delay_times = np.array(np.linspace(0.005,0.565,15))
 
-# data =  Data('2023-11-14_F_e_delay=0.25.dat', column_names=['freq','sum95'])
+names1 = ['freq','sum95']
+names = ['freq','ToTFcalc']
 
-# print(data.fit.popt)
+directory1 = os.fsencode('E:/Analysis Scripts/analysis/data/2023-11-14_F/')
+directory = os.fsencode('E:/Analysis Scripts/analysis/data/2023-11-15_C/')
 
-amp_list=np.array([])
-amper_list=np.array([])
-x0_list=np.array([])
-x0er_list=np.array([])
 
-for file in os.listdir(directory):
-	filename = os.fsdecode(file)
-# 	if filename.endswith(".dat"):
-	data = Data(filename, column_names=names)
-	data.fit(Lorentzian,names=names)
-	amp = data.popt[0]
-	amp_list = np.append(amp_list,amp)
-	errors = np.sqrt(np.diag(data.pcov))
-	amper = errors[0]
-	amper_list = np.append(amper_list,amper)
-	x0 = data.popt[1]
-	x0_list = np.append(x0_list,x0)
-	x0er = errors[1]
-	x0er_list = np.append(x0er_list, x0er)
+num = 100
+x_list = np.linspace(0, 0.6, num)
+
+# only values lists and excluding 0.41 
+
+def plots(func, directory):
+	amp_list=np.array([])
+	amper_list=np.array([])
+	x0_list=np.array([])
+	x0er_list=np.array([])	 
+	sigma_list=np.array([])	 
+	
+	for file in os.listdir(directory):
+		filename = os.fsdecode(file)
+		if directory == directory1:
+			names = names1		
+			if func == MinSinc2:
+				if filename.endswith("0.41.dat"):
+					data = Data(filename, column_names=names)
+					data.fitnoplots(func,names=names,guess=[-8000,43.20,0.06,28000])
+				else:
+					data = Data(filename, column_names=names)
+					data.fitnoplots(func,names=names)
+			if func == MinFixedSinc2:
+				if filename.endswith("0.53.dat"):
+					data = Data(filename, column_names=names)
+					data.fitnoplots(func,names=names,guess=[-6000,43.23,26000])
+				else:
+					data = Data(filename, column_names=names)
+					data.fitnoplots(func,names=names)
+			else:
+				data = Data(filename, column_names=names)
+				data.fitnoplots(func,names=names)
+			amp = data.popt[0]
+			amp_list = np.append(amp_list,amp)
+			errors = np.sqrt(np.diag(data.pcov))
+			amper = errors[0]
+			amper_list = np.append(amper_list,amper)
+			x0 = data.popt[1]
+			x0_list = np.append(x0_list,x0)
+			x0er = errors[1]
+			x0er_list = np.append(x0er_list, x0er)
+			sigma = data.popt[2]
+			sigma_list = np.append(sigma_list, sigma)
+		else:
+			data = Data(filename, column_names=['freq','ToTFcalc'])
+			data.fitnoplots(func,names=['freq','ToTFcalc'])
+			amp = data.popt[0]
+			amp_list = np.append(amp_list,amp)
+			errors = np.sqrt(np.diag(data.pcov))
+			amper = errors[0]
+			amper_list = np.append(amper_list,amper)
+			x0 = data.popt[1]
+			x0_list = np.append(x0_list,x0)
+			x0er = errors[1]
+			x0er_list = np.append(x0er_list, x0er)
+			sigma = data.popt[2]
+			sigma_list = np.append(sigma_list, sigma)
 		
+	return amp_list, amper_list, x0_list, x0er_list, sigma_list
 
 
-plt.figure(1)
-plt.plot(delay_times,amp_list)
-plt.show()
+def plotamp(func,directory):
+	fig = plt.figure(0)
+	
+	fit_func, guess, params = FixedSin(np.array(list(zip(delay_times_new,plots(func,directory)[0]))), 2.5)
 
+	popt2, pcov2 = curve_fit(fit_func, delay_times_new, plots(func,directory)[0], p0=guess, sigma=plots(func,directory)[1])
+	perr2 = np.sqrt(np.diag(pcov2))
+
+	plt.title('{} Fit'.format(func))
+	plt.xlabel('delay time (ms)')
+	plt.ylabel('amplitude')
+
+	plt.errorbar(delay_times, B_list/popt[2]*np.average(plots(func,directory)[0]), yerr=B_err_list, fmt='o',label='wiggle cal')
+
+	plt.errorbar(delay_times_new,plots(func,directory)[0],yerr=plots(func,directory)[1],fmt='o', label='heating meas')
+	plt.plot(x_list, fit_func(x_list, *popt2), 'g')
+
+	plt.legend()
+	
+	print(*popt2, perr2)
+
+	return fig
+
+def plotx0(func,directory):
+	fig = plt.figure(0)
+	
+	fit_func, guess, params = FixedSin(np.array(list(zip(delay_times_new,plots(func,directory)[2]))), 2.5)
+
+	popt2, pcov2 = curve_fit(fit_func, delay_times_new, plots(func,directory)[2], p0=guess, sigma=plots(func,directory)[3])
+	perr2 = np.sqrt(np.diag(pcov2))
+
+	plt.title('{} Fit'.format(func))
+	plt.xlabel('delay time (ms)')
+	plt.ylabel('freq center (MHz)')
+	plt.errorbar(delay_times, B_list/popt[2]*np.average(plots(func,directory)[2]), yerr=B_err_list, fmt='o',label='wiggle cal')
+
+	plt.errorbar(delay_times_new,plots(func,directory)[2],yerr=plots(func,directory)[3],fmt='o',label='heating meas')
+	
+	plt.plot(x_list, fit_func(x_list, *popt2), 'g')
+
+	plt.legend()
+	
+	print(*popt2, perr2)
+	
+	return fig
+
+#outputting lists and fit plots and tables 
+
+def plotsplots(func,directory):
+	amp_list=np.array([])
+	amper_list=np.array([])
+	x0_list=np.array([])
+	x0er_list=np.array([])	 
+	
+	for file in os.listdir(directory):
+		filename = os.fsdecode(file)
+		if filename.endswith(".dat"):
+			data = Data(filename, column_names=names1)
+			try:	
+				data.fit(func,names=names1)
+			except RuntimeError:
+				print('failed to fit {}'.format(filename))
+			continue 
+			amp = data.popt[0]
+			amp_list = np.append(amp_list,amp)
+			errors = np.sqrt(np.diag(data.pcov))
+			amper = errors[0]
+			amper_list = np.append(amper_list,amper)
+			x0 = data.popt[1]
+			x0_list = np.append(x0_list,x0)
+			x0er = errors[1]
+			x0er_list = np.append(x0er_list, x0er)
+			
+	return amp_list, amper_list, x0_list, x0er_list
 
 # B_list = np.array(list(map(B_from_FreqMHz, freq_list))).flatten()
 # B_list_plus = np.array(list(map(B_from_FreqMHz, freq_list+freq_err_list)))
@@ -77,9 +179,7 @@ plt.show()
 # popt, pcov = curve_fit(fit_func, delay_times, B_list, p0=guess, sigma=B_err_list)
 # perr = np.sqrt(np.diag(pcov))
 
-num = 100
-x_list = np.linspace(0, 0.6, num)
-	
+
 # plt.figure()
 # plt.errorbar(delay_times, B_list, yerr=B_err_list, fmt='o')
 # # plt.plot(x_list, fit_func(x_list, *guess), 'r--')
