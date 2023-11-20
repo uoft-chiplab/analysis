@@ -32,13 +32,13 @@ def FreqMHz(B, F1, mF1, F2, mF2):
   return 1E-6 *( Ehf(B, F1, mF1) - Ehf(B, F2, mF2))/h
 
 def B_from_FreqMHz(freq, Bguess=202.1, qn=[9/2, -9/2, 9/2, -7/2]):
-	return fsolve(lambda B: FreqMHz(B, *qn) + freq, Bguess)
+	return fsolve(lambda B: FreqMHz(B, *qn) + freq, Bguess)[0]
 
-def Gaussian(x, A, x0, sigma, C):
-	return A * np.exp(-(x-x0)**2/(2*sigma**2)) + C
+# def Gaussian(x, A, x0, sigma, C):
+# 	return A * np.exp(-(x-x0)**2/(2*sigma**2)) + C
 
-def Lorentzian(x, A, x0, sigma, C):
-	return A /((x-x0)**2 + (sigma/2)**2) + C
+# def Lorentzian(x, A, x0, sigma, C):
+# 	return A /((x-x0)**2 + (sigma/2)**2) + C
 
 def FermiEnergy(n, w):
 	return hbar * w * (6 * n)**(1/3)
