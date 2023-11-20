@@ -159,6 +159,11 @@ class Data:
 		self.parameter_table = tabulate([['Values', *self.popt], ['Errors', *self.perr]], 
 								 headers=param_names)
 		print(self.parameter_table)
+		
+		if fit_func == TrapFreq:
+			freq = self.popt[2]*10**3/2/np.pi
+			er = self.perr[2]*10**3/2/np.pi
+			print('The trap frequency is {:.6f} +/-{:.2}'.format(freq,er))
 				
 		self.plot(names, label=None, axes_labels=None)
 		

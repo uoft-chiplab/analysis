@@ -146,6 +146,14 @@ def FixedSinc2(data):
 	
 	param_names = ["A", "x0", "C"]
 	guess = [max_y-mean_y, x_ofmax, mean_y]
+	
+	def fixedsinc2(x, A, x0, C):
+# 		sigma=0.0380103777802075 avg value of sigmas from phaseshift using sinc2 np.absolute(plots(Sinc2)[4])
+# 		sigma = 0.054895027020569725 #abs value of sigmas from above and avg np.average(np.absolute(plots(Sinc2)[4]))
+		sigma = 0.04821735158888396		
+		return A*(np.sinc((x-x0) / sigma)**2) + C
+	return fixedsinc2, guess, param_names
+
 
 def MinSinc2(data):
 	"""
@@ -161,9 +169,9 @@ def MinSinc2(data):
 	param_names = ["A", "x0", "sigma", "C"]
 	guess = [max_y-mean_y, x_ofmin, (max_x-min_x)/2, mean_y]
 	
-	def sinc2(x, A, x0, sigma, C):
+	def minsinc2(x, A, x0, sigma, C):
 		return A*(np.sinc((x-x0) / sigma)**2) + C
-	return sinc2, guess, param_names
+	return minsinc2, guess, param_names
 
 def MinFixedSinc2(data):
 	"""
@@ -196,11 +204,13 @@ def TrapFreq(data):
 	mean_y = data[:,1].mean()
 	max_y = data[:,1].max()
 	
-	param_names = ['Amplitude','b','l','Center','Offset','Linear Slope']
+	param_names = ['Amplitude','fc','omega','Center','Offset','Linear Slope']
 	guess = [10000, 0.05, 20  ,-2 , 100, -0.1]
 	
 	def TrapFreq(x, A, b, l, x0, C, D):
 		return A*np.exp(-x/b)*(np.sin(l * x - x0)) +  C + D*x
+# trap freq is then : 
+# f*10**3/2/np.pi 
 	return TrapFreq, guess, param_names
 
 def TrapFreq2(data):

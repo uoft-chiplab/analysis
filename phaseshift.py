@@ -18,7 +18,7 @@ delay_times_new = [0,0.04,0.08,0.12,0.16,0.20,0.24,0.28,0.32,0.36,0.4,0.44,0.48,
 delay_times = np.array(np.linspace(0.005,0.565,15))
 
 names1 = ['freq','sum95']
-names = ['freq','ToTFcalc']
+names = ['freq','G_ToTFcalc']
 
 directory1 = os.fsencode('E:/Analysis Scripts/analysis/data/2023-11-14_F/')
 directory = os.fsencode('E:/Analysis Scripts/analysis/data/2023-11-15_C/')
