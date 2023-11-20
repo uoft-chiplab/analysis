@@ -29,7 +29,7 @@ drive = '\\\\UNOBTAINIUM\\E_Carmen_Santiago'
 
 # plt.style.use('plottingstyle')
 # plt.style.use('C:/Users/coldatoms/anaconda3/pkgs/matplotlib-base-3.2.2-py38h64f37c6_0/Lib/site-packages/matplotlib/mpl-data/stylelib/plottingstype.mplstyle')
-plt.style.use('./plottingstype.mplstyle')
+# plt.style.use('./plottingstype.mplstyle')
 
 def data1(filename):
 	return  Data("2023-10-19_C_e.dat",column_names=['ToTFcalc']).data -  Data("2023-10-19_E_e.dat",column_names=['ToTFcalc']).data
@@ -141,22 +141,22 @@ class Data:
 	def fit(self, fit_func, names, guess=None):
 		fit_data = np.array(self.data[names])
 		func, default_guess, param_names = fit_func(fit_data)
-		print(default_guess)
-		print(func(201.5, *default_guess))
-		
+# 		print(default_guess)
+# 		print(func(201.5, *default_guess))
+# 		
 		if guess is None:	
 			guess = default_guess
 			
 		if hasattr(self, 'avg_data'): # check for averaging
-			popt, pcov = curve_fit(func, self.avg_data[f"{names[0]}"], 
+			self.popt, self.pcov = curve_fit(func, self.avg_data[f"{names[0]}"], 
 						  self.avg_data[f"{names[1]}"],p0=guess, 
 						  sigma=self.avg_data[f"em_{names[1]}"])
 		else:
-			popt, pcov = curve_fit(func, self.data[f"{names[0]}"], 
+			self.popt, self.pcov = curve_fit(func, self.data[f"{names[0]}"], 
 						  self.data[f"{names[1]}"],p0=guess)
-		perr = np.sqrt(np.diag(pcov))
+		self.perr = np.sqrt(np.diag(self.pcov))
 		
-		self.parameter_table = tabulate([['Values', *popt], ['Errors', *perr]], 
+		self.parameter_table = tabulate([['Values', *self.popt], ['Errors', *self.perr]], 
 								 headers=param_names)
 		print(self.parameter_table)
 				
@@ -166,4 +166,26 @@ class Data:
 			num = 500
 			xlist = np.linspace(self.data[f"{names[0]}"].min(), 
 					   self.data[f"{names[0]}"].max(), num)
-			self.ax.plot(xlist, func(xlist, *popt))
+			self.ax.plot(xlist, func(xlist, *self.popt))
+
+		
+# fit data to fit_func and plot if Data has a figure
+	def fitnoplots(self, fit_func, names, guess=None):
+		fit_data = np.array(self.data[names])
+		func, default_guess, param_names = fit_func(fit_data)
+# 		print(default_guess)
+# 		print(func(201.5, *default_guess))
+# 		
+		if guess is None:	
+			guess = default_guess
+			
+		if hasattr(self, 'avg_data'): # check for averaging
+			self.popt, self.pcov = curve_fit(func, self.avg_data[f"{names[0]}"], 
+						  self.avg_data[f"{names[1]}"],p0=guess, 
+						  sigma=self.avg_data[f"em_{names[1]}"])
+		else:
+			self.popt, self.pcov = curve_fit(func, self.data[f"{names[0]}"], 
+						  self.data[f"{names[1]}"],p0=guess)
+		self.perr = np.sqrt(np.diag(self.pcov))
+		
+				

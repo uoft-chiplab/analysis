@@ -5,8 +5,9 @@
 
 Functions to call in analysis scripts
 """
-from scipy.constants import pi, hbar, h
+from scipy.constants import pi, hbar, h, k as kB
 from scipy.integrate import trapz, simps, cumtrapz
+from scipy.optimize import fsolve
 import numpy as np
 
 uatom = 1.660538921E-27
@@ -29,6 +30,9 @@ def Ehf(B, F, mF):
 
 def FreqMHz(B, F1, mF1, F2, mF2):
   return 1E-6 *( Ehf(B, F1, mF1) - Ehf(B, F2, mF2))/h
+
+def B_from_FreqMHz(freq, Bguess=202.1, qn=[9/2, -9/2, 9/2, -7/2]):
+	return fsolve(lambda B: FreqMHz(B, *qn) + freq, Bguess)
 
 def Gaussian(x, A, x0, sigma, C):
 	return A * np.exp(-(x-x0)**2/(2*sigma**2)) + C

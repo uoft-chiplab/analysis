@@ -52,6 +52,7 @@ def Gaussian(data):
 	"""
 	Returns:  A * np.exp(-(x-x0)**2/(2*sigma**2)) + C
 	"""
+	x_ofmin = data[np.abs(data[:,1]).argmin(),0]
 	x_ofmax = data[np.abs(data[:,1]).argmax(),0]
 	max_x = data[:,0].max()
 	min_x = data[:,0].min()
@@ -59,7 +60,7 @@ def Gaussian(data):
 	max_y = data[:,1].max()
 	
 	param_names = ["A", "x0", "sigma", "C"]
-	guess = [max_y-mean_y, x_ofmax, (max_x-min_x)/2, mean_y]
+	guess = [-(max_y-mean_y), x_ofmin, (max_x-min_x)/2, mean_y]
 	
 	def gaussian(x, A, x0, sigma, C):
 		return A * np.exp(-(x-x0)**2/(2*sigma**2)) + C
@@ -90,7 +91,7 @@ def Sin(data):
 	max_y = data[:,1].max()
 	
 	param_names = ["A", "omega", "phi", "C"]
-	guess = [max_y-mean_y, 1, 0, mean_y]
+	guess = [max_y-mean_y, 6*2.5, 0, mean_y]
 	
 	def sin(x, A, omega, phi, C):
 		return A*np.sin(omega*x - phi) + C
@@ -101,13 +102,14 @@ def Sinc(data):
 	Returns:   A*np.sinc((x-x0) / sigma) + C
 	"""
 	x_ofmax = data[np.abs(data[:,1]).argmax(),0]
+	x_ofmin = data[np.abs(data[:,1]).argmin(),0]
 	max_x = data[:,0].max()
 	min_x = data[:,0].min()
 	mean_y = data[:,1].mean()
 	max_y = data[:,1].max()
 	
 	param_names = ["A", "x0", "sigma", "C"]
-	guess = [max_y-mean_y, x_ofmax, (max_x-min_x)/2, mean_y]
+	guess = [max_y-mean_y, x_ofmin, (max_x-min_x)/2, mean_y]
 	
 	def sinc(x, A, x0, sigma, C):
 		return A*(np.sinc((x-x0) / sigma)) + C
@@ -117,6 +119,7 @@ def Sinc2(data):
 	"""
 	Returns:   A*np.sinc((x-x0) / sigma) + C
 	"""
+	x_ofmin = data[np.abs(data[:,1]).argmin(),0]
 	x_ofmax = data[np.abs(data[:,1]).argmax(),0]
 	max_x = data[:,0].max()
 	min_x = data[:,0].min()
@@ -129,6 +132,58 @@ def Sinc2(data):
 	def sinc2(x, A, x0, sigma, C):
 		return A*(np.sinc((x-x0) / sigma)**2) + C
 	return sinc2, guess, param_names
+
+def FixedSinc2(data):
+	"""
+	Returns:   A*np.sinc((x-x0) / sigma) + C
+	"""
+	x_ofmin = data[np.abs(data[:,1]).argmin(),0]
+	x_ofmax = data[np.abs(data[:,1]).argmax(),0]
+	max_x = data[:,0].max()
+	min_x = data[:,0].min()
+	mean_y = data[:,1].mean()
+	max_y = data[:,1].max()
+	
+	param_names = ["A", "x0", "C"]
+	guess = [max_y-mean_y, x_ofmax, mean_y]
+
+def MinSinc2(data):
+	"""
+	Returns:   A*np.sinc((x-x0) / sigma) + C
+	"""
+	x_ofmin = data[np.abs(data[:,1]).argmin(),0]
+	x_ofmax = data[np.abs(data[:,1]).argmax(),0]
+	max_x = data[:,0].max()
+	min_x = data[:,0].min()
+	mean_y = data[:,1].mean()
+	max_y = data[:,1].max()
+	
+	param_names = ["A", "x0", "sigma", "C"]
+	guess = [max_y-mean_y, x_ofmin, (max_x-min_x)/2, mean_y]
+	
+	def sinc2(x, A, x0, sigma, C):
+		return A*(np.sinc((x-x0) / sigma)**2) + C
+	return sinc2, guess, param_names
+
+def MinFixedSinc2(data):
+	"""
+	Returns:   A*np.sinc((x-x0) / sigma) + C
+	"""
+	x_ofmin = data[np.abs(data[:,1]).argmin(),0]
+	x_ofmax = data[np.abs(data[:,1]).argmax(),0]
+	max_x = data[:,0].max()
+	min_x = data[:,0].min()
+	mean_y = data[:,1].mean()
+	max_y = data[:,1].max()
+	
+	param_names = ["A", "x0", "C"]
+	guess = [max_y-mean_y, x_ofmin, mean_y]
+	
+	def fixedsinc2(x, A, x0, C):
+# 		sigma=0.0380103777802075 avg value of sigmas from phaseshift using sinc2 np.absolute(plots(Sinc2)[4])
+		sigma = 0.054895027020569725 #abs value of sigmas from above and avg np.average(np.absolute(plots(Sinc2)[4]))
+		return A*(np.sinc((x-x0) / sigma)**2) + C
+	return fixedsinc2, guess, param_names
 
 
 def TrapFreq(data):
@@ -232,16 +287,19 @@ def SinplusCos(data):
 
 	return SinplusCos, guess, param_names
 
-def FixedSin(data):
+def FixedSin(data, f):
 	"""
 	hard coded 10 kHz
 	Returns: A*np.sin(0.0628*x - p) + C
 	"""
 	param_names =  ['Amplitude','phase','offset']
-	guess = [1, 1, 0]
+	
+	mean_y = data[:,1].mean()
+	max_y = data[:,1].max()
+	guess = [max_y-mean_y, 0, mean_y]
 	
 	def FixedSin(t, A, p, C):
-		omega = 0.010 * 2 * np.pi # 10 kHz
+		omega = f * 2 * np.pi # 10 kHz
 		return A*np.sin(omega*t - p) + C
 	
 	return FixedSin, guess, param_names

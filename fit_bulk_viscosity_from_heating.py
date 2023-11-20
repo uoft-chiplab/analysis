@@ -23,6 +23,8 @@ import os
 
 data_folder = 'data/heating'
 
+temp_param = "ToTFcalc"
+
 plotting = True
 
 test_time_plots = False
@@ -61,8 +63,47 @@ D_1018 = {'filename':'2023-10-18_D_e.dat','freq':100e3,'Bamp':0.1,'B':202.1,
 E_1018 = {'filename':'2023-10-18_E_e.dat','freq':100e3,'Bamp':0.05,'B':202.1,
 		  'Ni':36439,'Ti':0.521}
 
+G_1107 = {'filename':'2023-11-07_G_e.dat','freq':15e3,'Bamp':0.05*1.8,'B':202.1,
+		  'Ni':40307,'Ti':0.6, 'GTi':0.633}
+
+H_1107 = {'filename':'2023-11-07_H_e.dat','freq':5e3,'Bamp':0.07,'B':202.1,
+		  'Ni':40307,'Ti':0.6, 'GTi':0.633}
+
+J_1107 = {'filename':'2023-11-07_J_e.dat','freq':50e3,'Bamp':0.05*0.7,'B':202.1,
+		  'Ni':40307,'Ti':0.6, 'GTi':0.633}
+
+K_1107 = {'filename':'2023-11-07_K_e.dat','freq':150e3,'Bamp':0.05*0.54,'B':202.1,
+		  'Ni':40307,'Ti':0.6, 'GTi':0.633}
+
+R_1107 = {'filename':'2023-11-07_R_e.dat','freq':10e3,'Bamp':0.05*1.21,'B':202.1,
+		  'Ni':40307,'Ti':0.6, 'GTi':0.633}
+
+M_1107 = {'filename':'2023-11-07_M_e.dat','freq':30e3,'Bamp':0.05*1.286,'B':202.1,
+		  'Ni':40307,'Ti':0.6, 'GTi':0.633}
+
+B_1109 = {'filename':'2023-11-09_B_e.dat','freq':15e3,'Bamp':0.05*1.8,'B':203,
+		  'Ni':49429,'Ti':0.48, 'GTi':0.553}
+
+C_1109 = {'filename':'2023-11-09_C_e.dat','freq':50e3,'Bamp':0.05*(0.7/1),'B':203,
+		  'Ni':49429,'Ti':0.48, 'GTi':0.553}
+
+D_1109 = {'filename':'2023-11-09_D_e.dat','freq':15e3,'Bamp':0.05*1.8,'B':203,
+		  'Ni':28230,'Ti':0.662, 'GTi':0.693}
+
+F_1109 = {'filename':'2023-11-09_F_e.dat','freq':5e3,'Bamp':0.07,'B':203,
+		  'Ni':28230,'Ti':0.662, 'GTi':0.693} 
+
+G_1109 = {'filename':'2023-11-09_G_e.dat','freq':50e3,'Bamp':0.07,'B':203,
+		  'Ni':28230,'Ti':0.662, 'GTi':0.693}
+
+I_1109 = {'filename':'2023-11-09_I_e.dat','freq':150e3,'Bamp':0.07*0.35,'B':203,
+		  'Ni':27603,'Ti':0.582, 'GTi':0.637}
+
 fit_time = {'param':'time (ms)','xlabel':'Time (ms)','fit':ToTFfunc,
-			'runs':[C_1010,C_1018, D_1018,E_1018]}
+			'runs':[B_1109,C_1109,D_1109,F_1109,G_1109,I_1109]}
+
+#B_1109,C_1109,D_1109,F_1109,G_1109,I_1109
+#G_1107,J_1107,K_1107,R_1107,M_1107
 
 # scan amp
 D_1010 = {'filename':'2023-10-10_D_e.dat','freq':10e3,'time':5e-3,'B':202.1,
@@ -93,10 +134,12 @@ H_1018 = {'filename':'2023-10-18_H_e.dat','Bamp':0.05,'time':1e-3,'B':202.1,
 I_1018 = {'filename':'2023-10-18_I_e.dat','Bamp':0.1,'time':1e-3,'B':202.1,
 		  'Ni':36439,'Ti':0.521}
 
+S_1031 = {'filename':'2023-10-31_S_e.dat','Bamp':0.05,'time':1e-3,'B':202.1,
+		  'Ni':34804,'Ti':0.568, 'GTi':0.604}
+	  
+
 fit_freq = {'param':'freq (kHz)','xlabel':'Wiggle Freq (kHz)','fit':ToTFfunc,
-			'runs':[E_1010,I_1017,
-		   K_1017,H_1018,I_1018#,G_1017
-				   ]}
+			'runs':[S_1031]}
 
 mean_trapfreq = 2*pi*(151.6*429*442)**(1/3)
 Bamp_per_Vpp = 0.1/2
@@ -142,7 +185,7 @@ for run in fit_type['runs']:
 		return np.abs(Ah - Al)/2
 			
 	run.data['A'] = run.data['kF'].apply(calc_A)
-	run.data['DToTFcalc'] = run.data['ToTFcalc']-run.Ti
+	run.data['DToTFcalc'] = run.data[temp_param]-run.Ti
 	
 	run.Amean = run.data['A'].mean()
 	run.EFmean = run.data['EF'].mean()
@@ -218,7 +261,7 @@ for run in fit_type['runs']:
 		return np.abs(Ah - Al)/2
 			
 	run.data['A'] = run.data[fit_type['param']].apply(calc_A)
-	run.data['DToTFcalc'] = run.data['ToTFcalc']-run.Ti
+	run.data['DToTFcalc'] = run.data[temp_param]-run.Ti
 	
 	run.EFmean = run.data['EF'].mean()
 	
@@ -285,7 +328,7 @@ for run in fit_type['runs']:
 	Al = 1/(a97(run.B-run.Bamp)*run.kFmean)
 	run.A = np.abs(Ah - Al)/2
 			
-	run.data['DToTFcalc'] = run.data['ToTFcalc']-run.Ti
+	run.data['DToTFcalc'] = run.data[temp_param]-run.Ti
 	run.EFmean = run.data['EF'].mean()
 	
 	run.data['contact'] = 2*np.sqrt(2)*pi/run.A**2/run.time \
