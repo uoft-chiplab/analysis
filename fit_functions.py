@@ -67,6 +67,24 @@ def Gaussian(data, guess=None):
 		return A * np.exp(-(x-x0)**2/(2*sigma**2)) + C
 	return gaussian, guess, param_names
 
+def NegGaussian(data, guess=None):
+	"""
+	Returns:  A * np.exp(-(x-x0)**2/(2*sigma**2)) + C
+	"""
+	if guess is None:
+		x_ofmin = data[np.abs(data[:,1]).argmin(),0]
+		max_x = data[:,0].max()
+		min_x = data[:,0].min()
+		mean_y = data[:,1].mean()
+		min_y = data[:,1].min()
+		guess = [min_y-mean_y, x_ofmin, (max_x-min_x)/10, mean_y]
+	
+	param_names = ["A", "x0", "sigma", "C"]
+	
+	def gaussian(x, A, x0, sigma, C):
+		return A * np.exp(-(x-x0)**2/(2*sigma**2)) + C
+	return gaussian, guess, param_names
+
 def Lorentzian(data, guess=None):
 	"""
 	Returns:  A/((x-x0)**2 + (sigma)**2) + C
