@@ -1,7 +1,7 @@
 figure.facecolor : white
 
 font.size: 15
-font.family: Chiller
+font.family: monospace
 font.sans-serif: Arial, Liberation Sans, DejaVu Sans, Bitstream Vera Sans, sans-serif
 
 
