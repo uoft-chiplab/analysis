@@ -30,6 +30,7 @@ plotting = True
 test_time_plots = False
 test_amp_plots = False
 test_freq_plots = False
+plot_legend = False
 
 NO_OFFSET = False
 EF_CUTOFF = 0
@@ -68,7 +69,7 @@ B_1113 = {'filename':'2023-11-13_B_e.dat','freq':15e3,'Bamp':0.054*1.8,'B':209,
 
 
 # 202p1G, ToTF ~ 0.60
-G_1107 = {'filename':'2023-11-07_G_e.dat','freq':15e3,'Bamp':0.05*1.8,'B':202.1,
+G_1107 = {'filename':'2023-11-07_G_e.dat','freq':15e3,'Bamp':0.054*1.8,'B':202.1,
 		  'Ni':40307,'Ti':0.6, 'GTi':0.633}
 
 H_1107 = {'filename':'2023-11-07_H_e.dat','freq':5e3,'Bamp':0.07,'B':202.1,
@@ -130,11 +131,39 @@ F_1115 = {'filename':'2023-11-15_F_e.dat','freq':150e3,'Bamp':0.054*1.8,'B':202.
 Nov15_runs = [E_1115_10,E_1115_20,E_1115_50,E_1115_100,F_1115]
 Nov15label = "Nov15_ToTF1p4_202p1G"
 
-fit_time = {'param':'wiggle time','xlabel':'Time (ms)','fit':ToTFfunc,
- 			'runs':Nov15_runs, 'save_label':Nov15label}
+# 209G, ToTF = 0.6, bg wiggle heating, so pretend it's at 202p1G for analysis
 
-fit_time = {'param':'time (ms)','xlabel':'Time (ms)','fit':ToTFfunc,
- 			'runs':Nov07_runs, 'save_label':Nov07label}
+D_1118_f5 = {'filename':'2023-11-18_D_e_freq=5.dat','freq':5e3,'Bamp':0.07,'B':202.1,
+		  'Ni':27603,'Ti':0.582, 'GTi':0.637}
+
+D_1118_f20 = {'filename':'2023-11-18_D_e_freq=20.dat','freq':20e3,'Bamp':0.054*1.8,'B':202.1,
+		  'Ni':27603,'Ti':0.582, 'GTi':0.637}
+
+D_1118_f50 = {'filename':'2023-11-18_D_e_freq=50.dat','freq':50e3,'Bamp':0.054*1.8,'B':202.1,
+		  'Ni':27603,'Ti':0.582, 'GTi':0.637}
+
+bg209_runs = [D_1118_f5, D_1118_f20, D_1118_f50]
+bg209label = "Nov18_bg209G"
+
+# 202p1G, ToTF = 0.6, no wiggle bg, split data into different freqs
+E_1118_f15 = {'filename':'2023-11-18_E_e.dat','freq':15e3,'Bamp':0.054*1.8,'B':202.1,
+			  'Ni':27603,'Ti':0.582, 'GTi':0.637}
+E_1118_f5 = {'filename':'2023-11-18_E_e.dat','freq':5e3,'Bamp':0.07,'B':202.1,
+			  'Ni':27603,'Ti':0.582, 'GTi':0.637}
+E_1118_f50 = {'filename':'2023-11-18_E_e.dat','freq':50e3,'Bamp':0.054*0.7,'B':202.1,
+			  'Ni':27603,'Ti':0.582, 'GTi':0.637}
+E_1118_f150 = {'filename':'2023-11-18_E_e.dat','freq':150e3,'Bamp':0.054*0.54,'B':202.1,
+			  'Ni':27603,'Ti':0.582, 'GTi':0.637}
+E_1118_f30 = {'filename':'2023-11-18_E_e.dat','freq':30e3,'Bamp':0.054*1.286,'B':202.1,
+			  'Ni':27603,'Ti':0.582, 'GTi':0.637}
+E_1118_f10 = {'filename':'2023-11-18_E_e.dat','freq':10e3,'Bamp':0.054*1.5,'B':202.1,
+			  'Ni':27603,'Ti':0.582, 'GTi':0.637}
+
+bg202p1_runs = [E_1118_f5, E_1118_f10, E_1118_f15, E_1118_f30, E_1118_f50, E_1118_f150]
+bg202p1label = "Nov18_bg202p1G"
+
+fit_time = {'param':'wiggle time','xlabel':'Time (ms)','fit':ToTFfunc,
+ 			'runs':bg202p1_runs, 'save_label':bg202p1label}
 
 # scan amp
 D_1010 = {'filename':'2023-10-10_D_e.dat','freq':10e3,'time':5e-3,'B':202.1,
@@ -172,9 +201,9 @@ S_1031 = {'filename':'2023-10-31_S_e.dat','Bamp':0.05,'time':1e-3,'B':202.1,
 fit_freq = {'param':'freq (kHz)','xlabel':'Wiggle Freq (kHz)','fit':ToTFfunc,
 			'runs':[S_1031]}
 
-wx = 151.6*np.sqrt(1.5)
-wy = 429*np.sqrt(2)
-wz = 442*np.sqrt(2)
+wx = 151.6#*np.sqrt(1.5)
+wy = 429#*np.sqrt(2)
+wz = 442#*np.sqrt(2)
 mean_trapfreq = 2*pi*(wx*wy*wz)**(1/3)
 Bamp_per_Vpp = 0.07/1.8
 
@@ -434,8 +463,8 @@ if plotting == True:
 						 color=color, capsize=2, fmt='o')
 			xlist = np.linspace(xmin,run.data[fit_type['param']].max(), num)
 			ax.plot(xlist, run.fit_func(xlist, *run.popt), color=color, linestyle='--')
-		
-# 		ax.legend()
+	if plot_legend == True:
+		ax.legend()
 	
 	axs[1,0].set(ylim=[-0.05,0.7])
 	### Fit freq but scaled heating

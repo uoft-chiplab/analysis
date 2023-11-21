@@ -45,6 +45,10 @@ file = data_folder + "Nov07_ToTF0p6_202p1G.txt"
 omegaoEF202p1, bulkmeas202p1, bulkerror202p1 = np.loadtxt(file,
 								  delimiter=',', unpack=True)
 
+file = data_folder + "Nov18_bg202p1G.txt"
+omegaoEFbg202p1, bulkmeasbg202p1, bulkerrorbg202p1 = np.loadtxt(file,
+								  delimiter=',', unpack=True)
+
 EF = 23
 # bulkhot = [.000011,.00000133,.000000952,.000000142,-.00000000654]
 # bulkhoter = [.0000046,.0000025,.00000043,.00000017,.000000092]
@@ -64,15 +68,17 @@ def bulkplot():
 
 	ax.set_xlabel('omega/EF')
 	ax.set_ylabel('Dynamical Bulk Viscosity')
-	ax.loglog(bulkT58[:,0],bulkT58[:,1]/12,linestyle='-',label='T=0.58', color='r')
+	ax.loglog(bulkT58[:,0],bulkT58[:,1]*12,linestyle='-',label='T=0.58', color='r')
 # 	ax.loglog(bulkT58[:,0],bulkT58[:,1],marker='.')
-	ax.loglog(bulkT25[:,0],bulkT25[:,1]/12,linestyle='-',label='T=0.25', color='teal')
-	ax.loglog(bulkT2p0[:,0],bulkT2p0[:,1],linestyle='-',label='T=2.00', color='brown')
+# 	ax.loglog(bulkT25[:,0],bulkT25[:,1]/12,linestyle='-',label='T=0.25', color='teal')
+# 	ax.loglog(bulkT2p0[:,0],bulkT2p0[:,1],linestyle='-',label='T=2.00', color='brown')
 # 	ax.loglog(bulkT25[:,0],bulkT25[:,1],marker='d')
 	ax.errorbar(omegaoEF203,bulkmeas203,yerr = bulk203error,marker='o',
 			 linestyle='None',label='203G, ToTF ~ 0.65')
 	ax.errorbar(omegaoEF202p1,bulkmeas202p1,yerr = bulkerror202p1,marker='o',
 			 linestyle='None',label='202.1G, ToTF ~ 0.60', color='r')
+	ax.errorbar(omegaoEFbg202p1,bulkmeasbg202p1,yerr = bulkerrorbg202p1,marker='o',
+			 linestyle='None',label='bg 202.1G, ToTF ~ 0.60', color='k')
 	ax.errorbar(omegaoEFhot,bulkhot,yerr = bulkhoter,marker='o',
 			 linestyle='None',label='202.1G, ToTF = 1.4', color = 'brown')
 
