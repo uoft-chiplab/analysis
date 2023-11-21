@@ -19,16 +19,17 @@ def Linear(data):
 		return m*x + b 
 	return linear, guess, param_names
 
-def Parabola(data):
+def Parabola(data, guess=None):
 	"""
 	Returns:  A*(x - x0)**2 + C
 	"""
-	x_ofmax = data[np.abs(data[:,1]).argmax(),0]
-	mean_y = data[:,1].mean()
-	max_y = data[:,1].max()
-	
+	if guess is None:
+		x_ofmax = data[np.abs(data[:,1]).argmax(),0]
+		mean_y = data[:,1].mean()
+		max_y = data[:,1].max()
+		
+		guess = [-(max_y-mean_y), x_ofmax, mean_y]
 	param_names = ["A", "x0", "C"]
-	guess = [max_y-mean_y, x_ofmax, mean_y]
 	
 	def parabola(x, A, x0, C):
 		return A*(x - x0)**2 + C
@@ -48,7 +49,7 @@ def Sqrt(data):
 		return A*np.sqrt(x-x0)
 	return sqrt, guess, param_names
 
-def Gaussian(data):
+def Gaussian(data, guess=None):
 	"""
 	Returns:  A * np.exp(-(x-x0)**2/(2*sigma**2)) + C
 	"""
@@ -61,70 +62,94 @@ def Gaussian(data):
 	
 	param_names = ["A", "x0", "sigma", "C"]
 	guess = [-(max_y-mean_y), x_ofmin, (max_x-min_x)/2, mean_y]
+
 	
 	def gaussian(x, A, x0, sigma, C):
 		return A * np.exp(-(x-x0)**2/(2*sigma**2)) + C
 	return gaussian, guess, param_names
 
-def Lorentzian(data):
+def NegGaussian(data, guess=None):
+	"""
+	Returns:  A * np.exp(-(x-x0)**2/(2*sigma**2)) + C
+	"""
+	if guess is None:
+		x_ofmin = data[np.abs(data[:,1]).argmin(),0]
+		max_x = data[:,0].max()
+		min_x = data[:,0].min()
+		mean_y = data[:,1].mean()
+		min_y = data[:,1].min()
+		guess = [min_y-mean_y, x_ofmin, (max_x-min_x)/10, mean_y]
+	
+	param_names = ["A", "x0", "sigma", "C"]
+	
+	def gaussian(x, A, x0, sigma, C):
+		return A * np.exp(-(x-x0)**2/(2*sigma**2)) + C
+	return gaussian, guess, param_names
+
+def Lorentzian(data, guess=None):
 	"""
 	Returns:  A/((x-x0)**2 + (sigma)**2) + C
 	"""
-	x_ofmax = data[np.abs(data[:,1]).argmax(),0]
-	max_x = data[:,0].max()
-	min_x = data[:,0].min()
-	mean_y = data[:,1].mean()
-	max_y = data[:,1].max()
+	if guess is None:
+		x_ofmax = data[np.abs(data[:,1]).argmax(),0]
+		max_x = data[:,0].max()
+		min_x = data[:,0].min()
+		mean_y = data[:,1].mean()
+		max_y = data[:,1].max()
+		guess = [max_y-mean_y, x_ofmax, (max_x-min_x)/2, mean_y]
 	
 	param_names = ["A", "x0", "sigma", "C"]
-	guess = [max_y-mean_y, x_ofmax, (max_x-min_x)/2, mean_y]
 	
 	def lorentzian(x, A, x0, sigma, C):
 		return A/((x-x0)**2 + (sigma)**2) + C
 	return lorentzian, guess, param_names
 
-def Sin(data):
+def Sin(data, guess=None):
 	"""
 	Returns: A*np.sin(omega*x - phi) + C
 	"""
-	mean_y = data[:,1].mean()
-	max_y = data[:,1].max()
-	
+	if guess is None:
+		mean_y = data[:,1].mean()
+		max_y = data[:,1].max()
+		guess = [max_y-mean_y, 6*2.5, 0, mean_y]
+		
 	param_names = ["A", "omega", "phi", "C"]
-	guess = [max_y-mean_y, 6*2.5, 0, mean_y]
 	
 	def sin(x, A, omega, phi, C):
 		return A*np.sin(omega*x - phi) + C
 	return sin, guess, param_names
 
-def Sinc(data):
+def Sinc(data, guess=None):
 	"""
 	Returns:   A*np.sinc((x-x0) / sigma) + C
 	"""
-	x_ofmax = data[np.abs(data[:,1]).argmax(),0]
-	x_ofmin = data[np.abs(data[:,1]).argmin(),0]
-	max_x = data[:,0].max()
-	min_x = data[:,0].min()
-	mean_y = data[:,1].mean()
-	max_y = data[:,1].max()
+	if guess is None:
+		x_ofmax = data[np.abs(data[:,1]).argmax(),0]
+		x_ofmin = data[np.abs(data[:,1]).argmin(),0]
+		max_x = data[:,0].max()
+		min_x = data[:,0].min()
+		mean_y = data[:,1].mean()
+		max_y = data[:,1].max()
+		guess = [max_y-mean_y, x_ofmin, (max_x-min_x)/2, mean_y]
 	
 	param_names = ["A", "x0", "sigma", "C"]
-	guess = [max_y-mean_y, x_ofmin, (max_x-min_x)/2, mean_y]
 	
 	def sinc(x, A, x0, sigma, C):
 		return A*(np.sinc((x-x0) / sigma)) + C
 	return sinc, guess, param_names
 
-def Sinc2(data):
+def Sinc2(data, guess=None):
 	"""
 	Returns:   A*np.sinc((x-x0) / sigma) + C
 	"""
-	x_ofmin = data[np.abs(data[:,1]).argmin(),0]
-	x_ofmax = data[np.abs(data[:,1]).argmax(),0]
-	max_x = data[:,0].max()
-	min_x = data[:,0].min()
-	mean_y = data[:,1].mean()
-	max_y = data[:,1].max()
+	if guess is None:
+		x_ofmin = data[np.abs(data[:,1]).argmin(),0]
+		x_ofmax = data[np.abs(data[:,1]).argmax(),0]
+		max_x = data[:,0].max()
+		min_x = data[:,0].min()
+		mean_y = data[:,1].mean()
+		max_y = data[:,1].max()
+		guess = [max_y-mean_y, x_ofmax, (max_x-min_x)/2, mean_y]
 	
 	param_names = ["A", "x0", "sigma", "C"]
 	guess = [max_y-mean_y, x_ofmax, (max_x-min_x)/2, mean_y]
@@ -297,16 +322,17 @@ def SinplusCos(data):
 
 	return SinplusCos, guess, param_names
 
-def FixedSin(data, f):
+def FixedSin(data, f, guess=None):
 	"""
 	hard coded 10 kHz
 	Returns: A*np.sin(0.0628*x - p) + C
 	"""
-	param_names =  ['Amplitude','phase','offset']
+	if guess is None:
+		mean_y = data[:,1].mean()
+		max_y = data[:,1].max()
+		guess = [max_y-mean_y, 0, mean_y]
 	
-	mean_y = data[:,1].mean()
-	max_y = data[:,1].max()
-	guess = [max_y-mean_y, 0, mean_y]
+	param_names =  ['Amplitude','phase','offset']
 	
 	def FixedSin(t, A, p, C):
 		omega = f * 2 * np.pi # 10 kHz
