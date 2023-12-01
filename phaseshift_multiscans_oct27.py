@@ -45,9 +45,9 @@ plt.style.use('plottingstype.mplstyle')
 
 ### switches ###
 FIX_EB=False
-FIX_WIDTH=False
+FIX_WIDTH=True
 fixedwidth=0.034542573613013806 #taken from the median sigma of an unfixed result
-save_intermediate=False
+save_intermediate=True
 save_final=True
 
 if FIX_EB:
@@ -97,8 +97,7 @@ for irow in range(0, len(df)):
             perr = np.sqrt(np.diag(pcov))
             fit_dict = {'run': run_letter, 'meas': meas, 'amp': popt[0], 'sigma' : popt[1], 'offset': popt[2], \
                         'e_amp':perr[0], 'e_sigma' : perr[1], 'e_offset' : perr[2]}    
-            show_popt = popt
-            show_popt.insert(1, run.peakfreq)
+            show_popt = np.insert(popt,1, run.peakfreq)
             
         elif FIX_WIDTH == True:
             popt, pcov = curve_fit(lambda f, amp, f0, offset: Gaussian(f, amp, f0, fixedwidth, offset), \
@@ -106,8 +105,7 @@ for irow in range(0, len(df)):
             perr = np.sqrt(np.diag(pcov))
             fit_dict = {'run': run_letter, 'meas': meas, 'amp': popt[0], 'f0':popt[1], 'offset': popt[2], \
                      'e_amp':perr[0], 'e_f0' : perr[1],'e_offset' : perr[2]}
-            show_popt = popt
-            show_popt.insert(2, fixedwidth)
+            show_popt = np.insert(popt,2, fixedwidth)
         else:
             #bounds= ([-10000, 40, 0, 0],[0, 46, 0.2,30000])
             popt, pcov = curve_fit(Gaussian, run.data['freq (MHz)'], run.data[meas],p0=[-3000, run.peakfreq, 0.05, 0])
