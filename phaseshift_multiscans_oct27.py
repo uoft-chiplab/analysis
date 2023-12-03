@@ -44,13 +44,14 @@ def Gaussian(x, A, x0, sigma, C):
 plt.style.use('plottingstype.mplstyle')
 
 ### switches ###
-FIX_EB=False
+FIX_EB=True
 FIX_WIDTH=True
 fixedwidth=0.034542573613013806 #taken from the median sigma of an unfixed result
 save_intermediate=True
 save_final=True
-
-if FIX_EB:
+if FIX_EB and FIX_WIDTH:
+    suffix_str = 'f0 fixed and sigma fixed'
+elif FIX_EB:
     suffix_str = 'f0 fixed'
 elif FIX_WIDTH:
     suffix_str = 'sigma fixed'
@@ -91,9 +92,17 @@ for irow in range(0, len(df)):
     for i,meas in enumerate(meass):
     
         # adjusts the fit function depending on fixed fit parameter
-        if FIX_EB == True:
+        if FIX_EB and FIX_WIDTH:
+            popt, pcov = curve_fit(lambda f, amp, offset: Gaussian(f, amp, run.peakfreq, fixedwidth, offset), \
+                                   run.data['freq (MHz)'], run.data[meas],p0=[-3000, 0])
+            perr = np.sqrt(np.diag(pcov))
+            fit_dict = {'run': run_letter, 'meas': meas, 'amp': popt[0], 'offset': popt[1], \
+                        'e_amp':perr[0], 'e_offset' : perr[1]}    
+            show_popt = np.insert(popt,1, run.peakfreq)
+            show_popt = np.insert(show_popt, 2, fixedwidth)
+        elif FIX_EB == True:
             popt, pcov = curve_fit(lambda f, amp, sigma, offset: Gaussian(f, amp, run.peakfreq, sigma, offset), \
-                                   run.data['freq (MHz)'], run.data[meas],p0=[-3000, 0.05, 0])
+                                   run.data['freq (MHz)'], run.data[meas],p0=[-3000, fixedwidth, 0])
             perr = np.sqrt(np.diag(pcov))
             fit_dict = {'run': run_letter, 'meas': meas, 'amp': popt[0], 'sigma' : popt[1], 'offset': popt[2], \
                         'e_amp':perr[0], 'e_sigma' : perr[1], 'e_offset' : perr[2]}    
@@ -107,7 +116,6 @@ for irow in range(0, len(df)):
                      'e_amp':perr[0], 'e_f0' : perr[1],'e_offset' : perr[2]}
             show_popt = np.insert(popt,2, fixedwidth)
         else:
-            #bounds= ([-10000, 40, 0, 0],[0, 46, 0.2,30000])
             popt, pcov = curve_fit(Gaussian, run.data['freq (MHz)'], run.data[meas],p0=[-3000, run.peakfreq, 0.05, 0])
             perr = np.sqrt(np.diag(pcov))
             fit_dict = {'run': run_letter, 'meas': meas, 'amp': popt[0], 'f0':popt[1], 'sigma' : popt[2], 'offset': popt[3], \
@@ -134,7 +142,9 @@ fit_df = pd.DataFrame(fit_dict_list)
 df = pd.merge(df, fit_df, on='run',how='outer')
        
 ### Sinusoidal fit to fit results over time ###
-if FIX_EB:
+if FIX_EB and FIX_WIDTH:
+    params=['amp','offset']
+elif FIX_EB:
     params=['amp','sigma','offset']
 elif FIX_WIDTH:
     params=['amp','f0','offset']
@@ -143,7 +153,7 @@ else:
     
 dflist=[]
 for param in params:
-    bounds=([-np.inf, 0, -np.inf],[np.inf, np.pi, np.inf]) # ensure phase > 0?
+    bounds=([-np.inf, 0, -np.inf],[np.inf, np.pi, np.inf]) # ensure phase > 0
 
     c5_df = df[df.meas=='c5']
     c9_df = df[df.meas=='c9']
@@ -163,12 +173,13 @@ for param in params:
                                {'meas':'sum95',  'param':param,'popt':sum95_popt,'perr':sum95_perr}])  
     dflist.append(temp_df)
     
+# summarize phase shift results
 ps_df = pd.concat(dflist)
 ps_df['phase']=ps_df.popt.map(lambda x: x[1])
 ps_df['e_phase']=ps_df.perr.map(lambda x: x[1])
 
 ##### Plot fit results over time #####
-title_str = 'Phase shift_'+suffix_str
+title_str = 'Phase shift_' + suffix_str
 ### AMPLITUDE
 param='amp'
 arb_scaling=24000
