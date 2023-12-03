@@ -44,11 +44,11 @@ def Gaussian(x, A, x0, sigma, C):
 plt.style.use('plottingstype.mplstyle')
 
 ### switches ###
-FIX_EB=True
-FIX_WIDTH=True
+FIX_EB=False
+FIX_WIDTH=False
 fixedwidth=0.034542573613013806 #taken from the median sigma of an unfixed result
-save_intermediate=True
-save_final=True
+save_intermediate=False
+save_final=False
 if FIX_EB and FIX_WIDTH:
     suffix_str = 'f0 fixed and sigma fixed'
 elif FIX_EB:
@@ -125,7 +125,7 @@ for irow in range(0, len(df)):
         fit_dict_list.append(fit_dict)
     
         if save_intermediate:
-            run_title = run_letter + '_' + str(run_time) + '_' + suffix_str
+            run_title = run_letter + '_' + str(run_time) + '_' + meas + '_'+ suffix_str
             fpoints = np.linspace(run.data['freq (MHz)'].min(), run.data['freq (MHz)'].max(),200)
             fig, ax= plt.subplots(1,1)
             ax.plot(fpoints, Gaussian(fpoints, *show_popt), 'r-')
