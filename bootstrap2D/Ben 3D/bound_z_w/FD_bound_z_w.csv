@@ -1,0 +1,2 @@
+Run           ,B (G)       ,Exclude     ,Offset      ,Amplitude   ,EF (nK)     ,fB (kHz)    ,median_f    ,lower_f     ,upper_f     ,sigma_fM    ,sigma_fP    ,T/TF_fit    ,N_fits      
+Nov7runCz     ,      198.00,           0,    17183.68,      0.0672,     1270.18,      153.03,      153.03,      148.99,      158.35,        4.04,        5.32,        0.30,        1000
