@@ -91,7 +91,7 @@ class Data:
 		file = glob(drive + '\\Analysis Scripts\\analysis\\data\\heating\\' + filename)[0] # EXTREMELY greedy ; for Fermium
 			
 		self.data = pd.read_table(file, delimiter=',') # making dataframe of chosen data
-		
+
 		if column_names:
 			self.data = self.data[column_names]
 		if exclude_list:
@@ -117,15 +117,19 @@ class Data:
 		self.ax = plt.subplot()
 		if label==None:
 			label = self.filename
+			
 
-		if hasattr(self, 'avg_data'): # check for averaging
+# hasattr checks if fcn returns True 
+		if hasattr(self, 'avg_data'): # check for averaging 
 			self.ax.errorbar(self.avg_data[f"{names[0]}"], self.avg_data[f"{names[1]}"], 
 				yerr=self.avg_data[f"em_{names[1]}"], capsize=2, marker='o', ls='',
 				label=label)
 		else:
 			self.ax.plot(self.data[f"{names[0]}"], self.data[f"{names[1]}"], 'o',
 				label = label)
-			
+		
+		
+
 		if axes_labels == None:
 			axes_labels = [f"{names[0]}", f"{names[1]}"]
 			
