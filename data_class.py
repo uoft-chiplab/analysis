@@ -19,6 +19,10 @@ import matplotlib
 import numpy as np
 from tabulate import tabulate
 
+#to use example:
+	#Data("filename").fit(fit_func=One you want, names=['x','y'])
+#Holy moly thanks for writing this ^
+
 # file = '/Users/kierapond/Documents/GitHub/analysis/data/2023-10-19_E_e.dat'
 # file2 = '/Users/kierapond/Documents/GitHub/analysis/data/2023-10-19_C_e.dat'
 # file3 = '/Users/kierapond/Documents/GitHub/analysis/data/subtract.txt'
@@ -43,6 +47,8 @@ def subtract(filename):
 	field = Data("2023-10-19_E_e.dat",column_names=['Field']).data
 	#return pd.concat([field,data1, data3, data4], axis=1)
 	return data2
+
+
 class Data:
 	def __init__(self, filename, path=None, column_names=None, 
 			  exclude_list=None, average_by=None, metadata=None):
@@ -53,7 +59,7 @@ class Data:
 		if path:
 			file = os.path.join(path, filename) # making manual path for the filename
 		else:
- 			file = glob(drive + '\\Data\\2023\\*\\*\\*\\' + filename)[0] # EXTREMELY greedy ; for Fermium
+ 			file = glob(drive + '\\Data\\2024\\*\\*\\*\\' + filename)[0] # EXTREMELY greedy ; for Fermium
  			# file = filename # kiera playing around on their computer 
 			
 		self.data = pd.read_table(file, delimiter=',') # making dataframe of chosen data
