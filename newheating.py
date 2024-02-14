@@ -22,8 +22,9 @@ import pandas as pd
 import matplotlib.pyplot as plt 
 import os
 
-data_folder = 'data/heating'
-drive = '\\\\UNOBTAINIUM\\E_Carmen_Santiago' 
+data_folder = '/data/heating/'
+# drive = '\\\\UNOBTAINIUM\\E_Carmen_Santiago\\Analysis Scripts' 
+drive = os.getcwd()
 
 temp_param = "G_ToTFcalc"
 
@@ -82,13 +83,13 @@ mean_trapfreq = 2*pi*(wx*wy*wz)**(1/3)
 Bamp_per_Vpp = 0.07/1.8
 
 class Data:
-	def __init__(self, filename, path=None, column_names=None, 
+	def __init__(self, file, path=None, column_names=None, 
 			  exclude_list=None, average_by=None, metadata=None):
-		self.filename = filename
+		self.file = file
 		if metadata is not None:
 			self.__dict__.update(metadata)  # Store all the extra variables
 		
-		file = glob(drive + '\\Analysis Scripts\\analysis\\data\\heating\\' + filename)[0] # EXTREMELY greedy ; for Fermium
+		file = os.getcwd()+data_folder+self.file["filename"]+'.dat' # EXTREMELY greedy ; for Fermium
 			
 		self.data = pd.read_table(file, delimiter=',') # making dataframe of chosen data
 
