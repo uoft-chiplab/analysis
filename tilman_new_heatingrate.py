@@ -94,17 +94,21 @@ Etot0 = 2*Etrap0 # valid at unitarity
 print("trap:",Z,Z/Etot0) # relative rate of change in Hz
 print("homogeneous:",Zbulk,Zbulk/Ebulk)
 
-nu0s = np.linspace(0.,20000,25)
+nu0s = np.linspace(0.,150000,25)
 Zs = np.zeros_like(nu0s)
 Zbulks = np.zeros_like(nu0s)
 for i,nu0 in enumerate(nu0s):
     Zs[i],Zbulks[i] = visc(11000,-3800,1500,nu0)
 plt.title(r'Unitary gas with $a^{-1}(t)=\lambda^{-1}\sin(2\pi\nu t)$ at $kT/h=11$kHz')
-plt.plot(nu0s,Zbulks/Ebulk,'bo-',label=r'uniform with local $\varepsilon_F=19$kHz')
+# plt.plot(nu0s,Zbulks/Ebulk,'bo-',label=r'uniform with local $\varepsilon_F=19$kHz')
 plt.plot(nu0s,Zs/Etot0,'ro-',label=r'trap $\bar\nu=305$Hz, global $E_F=19$kHz')
 plt.legend()
 plt.xlabel(r'frequency $\nu$ [Hz]')
 plt.ylabel(r'heating rate $\partial_t E/E$ [Hz]')
 #plt.savefig('heatingrate_fastdrive.pdf')
-plt.savefig('heatingrate_slowdrive.pdf')
+# plt.savefig('heatingrate_slowdrive.pdf')
+
+Elist = [10.92078224808712,10.528362790503234,13.90724158248126,11.488624540498774,14.750032315213994]
+nulist = [5*1000,10*1000,30*1000,50*1000,150*1000]
+plt.plot(nulist,Elist,'o')
 plt.show()

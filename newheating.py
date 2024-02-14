@@ -2,22 +2,17 @@
 """
 @author: Chip Lab
 
-Fit bulk viscosity from wiggle heating data, scanning
-- time
-- freq
-- amp
-
 Relies on data_class.py, library.py
 
 Requires tabulate. In console, execute the command:
 	!pip install tabulate
 """
-from data_class import Data
+
 from library import *
 from scipy.optimize import curve_fit
-from glob import glob
+from fit_functions import *
 
-import numpy as np
+from tabulate import tabulate
 import pandas as pd
 import matplotlib.pyplot as plt 
 import os
@@ -84,7 +79,7 @@ Bamp_per_Vpp = 0.07/1.8
 
 class Data:
 	def __init__(self, file, path=None, column_names=None, 
-			  exclude_list=None, average_by=None, metadata=None):
+			  exclude_list=None, average_by=None, metadata=None, scan_name='time'):
 		self.file = file
 		if metadata is not None:
 			self.__dict__.update(metadata)  # Store all the extra variables
@@ -99,7 +94,12 @@ class Data:
 			self.exclude(exclude_list)
 		if average_by:
 			self.group_by_mean(average_by)
-
+			
+		mean = self.data.groupby([scan_name]).mean().reset_index()
+		sem = self.data.groupby([scan_name]).sem().reset_index().add_prefix("em_")
+		std = self.data.groupby([scan_name]).std().reset_index().add_prefix("e_")
+		self.avg_data = pd.concat([mean, std, sem], axis=1)
+			
 	# exclude list of points
 	def exclude(self, exclude_list):
 		self.data.drop(exclude_list)
@@ -117,8 +117,7 @@ class Data:
 		self.fig = plt.figure()
 		self.ax = plt.subplot()
 		if label==None:
-			label = self.filename
-			
+			label = self.file["filename"]
 
 # hasattr checks if fcn returns True 
 		if hasattr(self, 'avg_data'): # check for averaging 
@@ -128,8 +127,6 @@ class Data:
 		else:
 			self.ax.plot(self.data[f"{names[0]}"], self.data[f"{names[1]}"], 'o',
 				label = label)
-		
-		
 
 		if axes_labels == None:
 			axes_labels = [f"{names[0]}", f"{names[1]}"]
@@ -137,4 +134,72 @@ class Data:
 		self.ax.set_xlabel(axes_labels[0])
 		self.ax.set_ylabel(axes_labels[1])
 		self.ax.legend()
+		self.ymax = max(self.avg_data[f"{names[1]}"])*1000
+		self.ymin = min(self.avg_data[f"{names[1]}"])*1000
+		self.time = max(self.avg_data[f"{names[0]}"])/1000
 		
+				
+	def heatrate(self,names):
+		self.ymax = max(self.avg_data[f"{names[1]}"])*1000
+		self.ymin = min(self.avg_data[f"{names[1]}"])*1000
+		self.time = max(self.avg_data[f"{names[0]}"])/1000
+		
+		
+		DeltaEotoE = (self.ymax - self.ymin)/self.time / (self.ymin)
+		print(DeltaEotoE)
+		
+
+# 		self.table = tabulate(['Heating Rate', DeltaEotoE])
+# 		print(self.table)
+		
+	def fit(self,fit_func,names,guess=None):
+		fit_data = np.array(self.data[names])
+		func, default_guess, param_names = fit_func(fit_data)
+
+ 		
+		if guess is None:	
+			guess = default_guess
+			
+		if hasattr(self, 'avg_data'): # check for averaging
+			self.popt, self.pcov = curve_fit(func, self.avg_data[f"{names[0]}"], 
+						  self.avg_data[f"{names[1]}"],p0=guess, 
+						  sigma=self.avg_data[f"em_{names[1]}"])
+		else:
+			self.popt, self.pcov = curve_fit(func, self.data[f"{names[0]}"], 
+						  self.data[f"{names[1]}"],p0=guess)
+		self.perr = np.sqrt(np.diag(self.pcov))
+		
+		self.parameter_table = tabulate([['Values', *self.popt], ['Errors', *self.perr]], 
+								 headers=param_names)
+		print(self.parameter_table)
+		
+		if fit_func == TrapFreq:
+			freq = self.popt[2]*10**3/2/np.pi
+			er = self.perr[2]*10**3/2/np.pi
+			print('The trap frequency is {:.6f} +/-{:.2}'.format(freq,er))
+				
+		self.plot(names, label=None, axes_labels=None)
+		
+		if hasattr(self, 'ax'): # check for plot
+			num = 500
+			xlist = np.linspace(self.data[f"{names[0]}"].min(), 
+					   self.data[f"{names[0]}"].max(), num)
+			self.ax.plot(xlist, func(xlist, *self.popt))
+
+Elist = []
+
+for file_name in Feb09_runs:
+	 file_name_list =[]
+	 file_name_list.append(file_name)
+	 Data(file_name,average_by='time').plot(names=['time','meanEtot_kHz'])
+	 
+	 temp = Data(file_name,average_by='time').heatrate(names=['time','meanEtot_kHz'])
+	 Elist.append(temp)
+	 
+Elist = [10.92078224808712,10.528362790503234,13.90724158248126,11.488624540498774,14.750032315213994]
+nulist = [5*1000,10*1000,30*1000,50*1000,150*1000]
+ 
+fig6 = plt.figure(10)
+plt.plot(nulist,Elist,'o')
+plt.show(fig6)
+	 
