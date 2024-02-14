@@ -134,9 +134,6 @@ class Data:
 		self.ax.set_xlabel(axes_labels[0])
 		self.ax.set_ylabel(axes_labels[1])
 		self.ax.legend()
-		self.ymax = max(self.avg_data[f"{names[1]}"])*1000
-		self.ymin = min(self.avg_data[f"{names[1]}"])*1000
-		self.time = max(self.avg_data[f"{names[0]}"])/1000
 		
 				
 	def heatrate(self,names):
@@ -195,11 +192,12 @@ for file_name in Feb09_runs:
 	 
 	 temp = Data(file_name,average_by='time').heatrate(names=['time','meanEtot_kHz'])
 	 Elist.append(temp)
+	 print(Elist)
 	 
 Elist = [10.92078224808712,10.528362790503234,13.90724158248126,11.488624540498774,14.750032315213994]
 nulist = [5*1000,10*1000,30*1000,50*1000,150*1000]
  
-fig6 = plt.figure(10)
-plt.plot(nulist,Elist,'o')
-plt.show(fig6)
-	 
+# fig6 = plt.figure(10)
+# plt.plot(nulist,Elist,'o')
+# plt.show(fig6)
+# 	 
