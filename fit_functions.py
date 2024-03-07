@@ -28,12 +28,29 @@ def Parabola(data, guess=None):
 		mean_y = data[:,1].mean()
 		max_y = data[:,1].max()
 		
-		guess = [-(max_y-mean_y), x_ofmax, mean_y]
+		guess = [-(max_y-mean_y), 0, mean_y]
 	param_names = ["A", "x0", "C"]
 	
 	def parabola(x, A, x0, C):
 		return A*(x - x0)**2 + C
 	return parabola, guess, param_names
+
+def Quadratic(data, guess=None):
+	"""
+	Returns:  A*(x - x0)**2 + C
+	"""
+	if guess is None:
+		x_ofmax = data[np.abs(data[:,1]).argmax(),0]
+		mean_y = data[:,1].mean()
+		max_y = data[:,1].max()
+		
+		guess = [-(max_y-mean_y), mean_y]
+	param_names = ["A", "C"]
+	
+	def quadratic(x, A, C):
+		return A*(x)**2 + C
+	return quadratic, guess, param_names
+
 
 def Sqrt(data):
 	"""
@@ -238,7 +255,7 @@ def TrapFreq(data):
 # f*10**3/2/np.pi 
 	return TrapFreq, guess, param_names
 
-def TrapFreq2(data):
+def TrapFreq2(data,guess=None):
 	"""
 	Returns: A*np.exp(-x/b)*(np.sin(l * x - x0)) +  C 
 	"""
@@ -249,9 +266,9 @@ def TrapFreq2(data):
 	max_y = data[:,1].max()
 	
 	param_names = ['Amplitude','b','l','Center','Offset']
-	guess = [10000, 0.05, 20  ,-2 , 100, -0.1]
+	if guess is None: guess = [5, 20, 1  ,0 , 100]
 	
-	def TrapFreq2(x, A, b, l, x0, C, D):
+	def TrapFreq2(x, A, b, l, x0, C):
 		return A*np.exp(-x/b)*(np.sin(l * x - x0)) +  C 
 	return TrapFreq2, guess, param_names
 
@@ -353,3 +370,4 @@ def FixedSin5kHz(data):
 		return A*np.sin(omega*t - p) + C
 	
 	return FixedSin5kHz, guess, param_names
+
