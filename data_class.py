@@ -26,7 +26,7 @@ from tabulate import tabulate
 # file = '/Users/kierapond/Documents/GitHub/analysis/data/2023-10-19_E_e.dat'
 # file2 = '/Users/kierapond/Documents/GitHub/analysis/data/2023-10-19_C_e.dat'
 # file3 = '/Users/kierapond/Documents/GitHub/analysis/data/subtract.txt'
-file = "2023-10-19_C_e.dat"
+file = "2024-03-01_G_e.dat"
 drive = '\\\\UNOBTAINIUM\\E_Carmen_Santiago' 
 #drive = '/Users/kierapond/Documents/GitHub/analysis/data'
 # names = ["Field", "ToTFcalc"]
@@ -126,7 +126,7 @@ class Data:
 			label = self.filename
 		self.ax.plot(self.data[f"{names[0]}"], self.data[f"{names[0]}"]*0, linestyle='-')
 		if hasattr(self, 'avg_data'): # check for averaging
-			self.ax.errorbar(self.avg_data[f"{names[0]}"], self.avg_data[f"{names[1]}"], 
+			self.ax.errorbar(self.avg_data[f"{names[0]}"], self.avg_data[f"{names[1]}"]- func( self.avg_data[f"{names[0]}"],*popt), 
 				yerr=self.avg_data[f"em_{names[1]}"], capsize=2, marker='o', ls='',
 				label=label)
 		else:
@@ -139,8 +139,66 @@ class Data:
 		self.ax.set_xlabel(axes_labels[0])
 		self.ax.set_ylabel(axes_labels[1])
 		self.ax.legend()
-		
-		
+	
+# plotting fit and residuals on subplots 
+
+	def plot2(self, fit_func, names, guess=None, label=None, axes_labels=None):
+
+		self.fig, self.ax = plt.subplots(2,1)
+
+		fit_data = np.array(self.data[names])
+		func, default_guess, param_names = fit_func(fit_data)
+			
+		if guess is None:	
+ 			guess = default_guess
+		if hasattr(self, 'avg_data'): # check for averaging
+ 			self.popt, self.pcov = curve_fit(func, self.avg_data[f"{names[0]}"], 
+						  self.avg_data[f"{names[1]}"],p0=guess, 
+						  sigma=self.avg_data[f"em_{names[1]}"])
+		else:
+ 			self.popt, self.pcov = curve_fit(func, self.data[f"{names[0]}"], 
+						  self.data[f"{names[1]}"],p0=guess)
+		self.perr = np.sqrt(np.diag(self.pcov))
+		residuals = self.data[f"{names[1]}"] - func( self.data[f"{names[0]}"],*self.popt)
+
+		self.parameter_table = tabulate([['Values', *self.popt], ['Errors', *self.perr]], 
+								 headers=param_names)
+		print(self.parameter_table)
+		if label==None:
+ 			label = self.filename
+ 			
+		if hasattr(self, 'avg_data'): # check for averaging
+			self.ax[0].errorbar(self.avg_data[f"{names[0]}"], self.avg_data[f"{names[1]}"], 
+				yerr=self.avg_data[f"em_{names[1]}"], capsize=2, marker='o', ls='',
+				label=label)
+		else:
+			self.ax[0].plot(self.data[f"{names[0]}"], self.data[f"{names[1]}"], 'o',
+				label = label)
+			
+		if axes_labels == None:
+			axes_labels = [f"{names[0]}", f"{names[1]}"]
+			
+		if hasattr(self, 'ax'): # check for plot
+			num = 500
+			xlist = np.linspace(self.data[f"{names[0]}"].min(), 
+					   self.data[f"{names[0]}"].max(), num)
+			self.ax[0].plot(xlist, func(xlist, *self.popt))
+			
+		self.ax[1].plot(self.data[f"{names[0]}"], self.data[f"{names[0]}"]*0, linestyle='-')
+		if hasattr(self, 'avg_data'): # check for averaging
+			self.ax[1].errorbar(self.avg_data[f"{names[0]}"], self.avg_data[f"{names[1]}"]- func( self.avg_data[f"{names[0]}"],*self.popt), 
+				yerr=self.avg_data[f"em_{names[1]}"], capsize=2, marker='o', ls='',
+				label=label)
+		else:
+			self.ax[1].plot(self.data[f"{names[0]}"], residuals,
+				label = label,marker='o')
+ 			
+		if axes_labels == None:
+ 			axes_labels = [f"{names[0]}", f"{names[1]}"]
+ 			
+		self.ax[1].set_xlabel(axes_labels[0])
+		self.ax[0].set_ylabel(axes_labels[1])
+		self.ax[0].legend()
 
 		
 # fit data to fit_func and plot if Data has a figure
