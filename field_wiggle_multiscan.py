@@ -21,10 +21,10 @@ import pandas as pd
 import re
 import os
 
-run = "2024-03-05_F"
+run = "2024-03-08_G"
 wiggle_freq = 10.0 # kHz
 data_folder = "data\\FieldWiggleCal\\"+run
-regex = re.compile('2024-03-05_F_e_delay from wiggle start=(\d+).dat')
+regex = re.compile('2024-03-08_G_e_delay from wiggle start=(\d+).dat')
 x_name = "freq"
 y_name = "fraction95"
 fit_func = Sinc2
@@ -35,7 +35,6 @@ wiggle_data = []
 def FixedSinkHz(t, A, p, C):
 	omega = wiggle_freq/1000.0 * 2 * np.pi # 2.5 kHz
 	return A*np.sin(omega*t - p) + C
-
 
 # initalize no guesses, but fill them in if needed
 guess = None
@@ -75,8 +74,18 @@ xx = np.linspace(0,
 plt.plot(xx, func(xx, *popt), "--")
 plt.errorbar(wiggle_data[:,0], wiggle_data[:,1], 
 			 yerr=wiggle_data[:,2], fmt='go')
-plt.title("2024-03-05_D_" + str(wiggle_freq) + " kHz field wiggle cal")
+plt.title("2024-03-05_G_" + str(wiggle_freq) + " kHz field wiggle cal, 0.4Vpp")
 plt.xlabel('time [us]')
 plt.ylabel('field [G]')
 plt.show()
+
+
+# 10 kHz wiggle cals
+V = [0.4,0.9, 1.0]
+Bamp = [0.021, 0.048, 0.054]
+plt.figure()
+plt.title('10 kHz wiggle cals')
+plt.xlabel('Vpp (50 Ohm term.)')
+plt.ylabel('fitted Bamp (G)')
+plt.plot(V, Bamp, 'ro')
 	

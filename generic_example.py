@@ -24,35 +24,33 @@ from data_class import *
 # data=Data(file)
 # data.data = data.data[data.data['time']< 6]
 # data.fit(TrapFreq2, names=['time','G_ctr_y'],guess=[2,1,2,0,80])
-amplitude_cutoff = 2
 
-data = Data("2024-03-07_G_e_wiggle time=9.dat")
+amplitude_cutoff = 5
+
+data = Data("2024-03-07_G_e_wiggle time=1.dat")
 data.data = data.data.drop(data.data[data.data.amplitude>amplitude_cutoff].index)
 data.group_by_mean("amplitude")
-data.plot2(Quadratic, ["amplitude", "meanEtot_kHz"])
+data.plot2(Linear, ["amplitude", "meanEtot_kHz"])
 
 
 group = ["2024-03-06_Q_e_freq=30.dat","2024-03-06_Q_e_freq=100.dat","2024-03-06_Q_e_freq=50.dat"]
-
-combined_amplitude = []
-combined_meanEtot_kHz = []
 
 
 plt.figure(figsize=(8, 6))
 
 for idx, filename in enumerate(group):	
-	data = Data(filename)
+	data = Data(filename,average_by='amplitude')
 	data.data = data.data.drop(data.data[data.data.amplitude>amplitude_cutoff].index)
-	data.group_by_mean("amplitude")
+	
 
 	
 # 	data.plot2(Quadratic, ["amplitude", "meanEtot_kHz"])
-	plt.plot(data.data['amplitude'], data.data['meanEtot_kHz'], 'o', label=filename)
+# 	plt.plot(data.data['amplitude'], data.data['meanEtot_kHz'], 'o', label=filename)
 
 	
 # plt.plot(combined_amplitude, combined_meanEtot_kHz, 'o')
-plt.title('Plots Overlaid')
-plt.xlabel('Amplitude')
-plt.ylabel('MeanEtot_kHz')
-plt.legend()
-plt.show()
+# plt.title('Plots Overlaid')
+# plt.xlabel('Amplitude')
+# plt.ylabel('MeanEtot_kHz')
+# plt.legend()
+# plt.show()
