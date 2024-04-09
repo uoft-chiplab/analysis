@@ -212,7 +212,7 @@ class Data:
 
 		
 # fit data to fit_func and plot if Data has a figure
-	def fit(self, fit_func, names, guess=None):
+	def fit(self, fit_func, names, guess=None, label=None):
 		fit_data = np.array(self.data[names])
 		func, default_guess, param_names = fit_func(fit_data)
 # 		print(default_guess)
@@ -239,7 +239,7 @@ class Data:
 			er = self.perr[2]*10**3/2/np.pi
 			print('The trap frequency is {:.6f} +/-{:.2}'.format(freq,er))
 				
-		self.plot(names, label=None, axes_labels=None)
+		self.plot(names, label=label, axes_labels=None)
 		
 		if hasattr(self, 'ax'): # check for plot
 			num = 500
