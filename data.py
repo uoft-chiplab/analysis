@@ -25,7 +25,7 @@ def data(filename, datatype='raw',  names=['freq','sum95'],  autofind=True):
 	"""
 	drive = '\\\\UNOBTAINIUM\\E_Carmen_Santiago' # when using Fermium
 	if autofind:
-		file = glob(drive + '\\Data\\2023\\*\\*\\*\\' + filename)[0] # EXTREMELY greedy
+		file = glob(drive + '\\Data\\2024\\*\\*\\*\\' + filename)[0] # EXTREMELY greedy
 	else :
 		file = os.path.join(drive, "Data", "2023", "09 September2023", 
 					 "29September2023", "E_ac_dimer_201G_scanfreq", filename) #making manual path for the filename

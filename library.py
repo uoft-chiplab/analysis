@@ -19,6 +19,12 @@ mK = 39.96399848 * uatom
 ahf = -h * 285.7308E6 # For groundstate 
 gI = 0.000176490 # total nuclear g-factor
 
+def chi_sq(y, yfit, yerr, dof):
+	return 1/dof * np.sum((np.array(y) - np.array(yfit))**2/(yerr**2))
+
+def deBroglie(T):
+	return h/np.sqrt(2*pi*mK*kB*T)
+
 def EhfFieldInTesla(B, F, mF):
 	term1 = -ahf/4 + gI * uB * mF * B
 	term2 = (2*(gJ - gI)*uB *B /ahf/9)
