@@ -20,14 +20,15 @@ from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 
 ### load data and set up
-run = '2024-04-05_F'
+# run = '2024-04-05_F'
+run = '2024-04-15_I'
 run_fn = run + '_UHfit.dat'
 meta_df = pd.read_excel('phaseshift_summary.xlsx')
 meta_df = meta_df.loc[meta_df['filename'] == run_fn]
 x_name = "freq"
 y_name = "N"
 fit_func = Gaussian
-guess = [-5000, 43.23, 0.1, 35000] # A, x0, sigma, C
+guess = [-5000, 43.25, 0.01, 35000] # A, x0, sigma, C
 data_folder = 'data/'
 run = Data(run_fn, path=data_folder)
 
@@ -94,7 +95,7 @@ df = pd.concat(subrun_list)
 df['field'] = Bfield_from_time(df['time'])
 df['Eb'] = Eb_from_field(df['field'])
 
-skip_time = np.array([0.07, 0.09, 0.260, 0.280]) * 1000 + meta_df.pulselength.values[0]/2
+skip_time = np.array([0.06, 0.08, 0.100]) * 1000 + meta_df.pulselength.values[0]/2
 df = df[~df.time.isin(skip_time)]
 times = df.time.unique()
 freqs = df.f0.unique()
@@ -103,9 +104,9 @@ e_freqs = df.e_f0.unique()
 e_amps = df.e_A.unique()
 
 bounds = ([0, 0, -np.inf],[np.inf, 2*np.pi, np.inf])
-f0_guess = [0.1, 0, 43.2]
+f0_guess = [0.05, 0, 43.24]
 f0_popt, f0_pcov = curve_fit(FixedSinkHz, df.time.unique(), df.f0.unique(), sigma=df.e_f0.unique(), bounds=bounds)
-A_guess = [1000, 0, -5000]
+A_guess = [10, 0, -2000]
 A_popt, A_pcov = curve_fit(FixedSinkHz, df.time.unique(), df.A.unique(), bounds=bounds, p0=A_guess)
 f0_perr = np.sqrt(np.diag(f0_pcov))
 A_perr = np.sqrt(np.diag(A_pcov))
