@@ -97,8 +97,8 @@ df = pd.concat(subrun_list)
 df['field'] = Bfield_from_time(df['time'])
 df['Eb'] = Eb_from_field(df['field'])
 
-# skip_time = np.array([0.050,0.150]) * 1000 + meta_df.pulselength.values[0]/2
-# df = df[~df.time.isin(skip_time)]
+skip_time = np.array([0.150]) * 1000 + meta_df.pulselength.values[0]/2
+df = df[~df.time.isin(skip_time)]
 times = df.time.unique()
 freqs = df.f0.unique()
 amps = df.A.unique()
