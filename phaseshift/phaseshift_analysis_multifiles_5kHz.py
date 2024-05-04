@@ -34,7 +34,7 @@ meta_df = pd.read_excel('phaseshift_summary.xlsx')
 meta_df = meta_df.loc[meta_df['filename'] == '2024-04-30_K_e.dat']
 run_freq = meta_df.freq.values[0]
 x_name = "freq"
-y_name = "c5"
+y_name = "sum95"
 # y_name = 'sum95'
 fit_func = Gaussian
 guess = [-5000, 43.2, 0.02, 30000]  # A, x0, sigma, C
@@ -54,6 +54,14 @@ def FixedSinkHz(t, A, p, C):
 
 def BfromFmEB(f, b=9.51554, m=0.261):
     return (f + b) / m
+
+def adjust_lightness(color, amount=0.5):
+    try:
+        c = mc.cnames[color]
+    except:
+        c = color
+    c = colorsys.rgb_to_hls(*mc.to_rgb(c))
+    return colorsys.hls_to_rgb(c[0], max(0, min(1, amount * c[1])), c[2])
 
 subrun_list = []
 for file in os.listdir(data_folder):
@@ -81,10 +89,6 @@ for file in os.listdir(data_folder):
 
     [subrun.data['e_A'], subrun.data['e_f0'], subrun.data['e_sigma'], subrun.data['e_C']] = \
         [*subrun.perr]
-        
-    # convert peak freq to magnetic field
-    # subrun.data['dB'] = BfromFmEB(subrun.data.f0) - B0
-    # subrun.data['e_dB'] = BfromFmEB(subrun.data.f0 + subrun.data.e_f0) - BfromFmEB(subrun.data.f0)
     
     subrun.data['Aosum'] = subrun.data['A'] / subrun.data['sum95'].mean()
     subrun.data['AoROIsum'] = subrun.data['A'] / subrun.data['ROIsum'].mean()
@@ -311,13 +315,6 @@ plt.show()
 # arboff1 = 0
 # arboff2 = 410
 # arboff3 = 1300   
-# def adjust_lightness(color, amount=0.5):
-#     try:
-#         c = mc.cnames[color]
-#     except:
-#         c = color
-#     c = colorsys.rgb_to_hls(*mc.to_rgb(c))
-#     return colorsys.hls_to_rgb(c[0], max(0, min(1, amount * c[1])), c[2])
 
 # color1='blue'
 # color2='green'
