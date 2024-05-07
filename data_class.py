@@ -21,8 +21,10 @@ import matplotlib
 import numpy as np
 from tabulate import tabulate
 
-#to use example:
+#to use fit example:
 	#Data("filename").fit(fit_func=One you want, names=['x','y'])
+#to use multiplot ex:
+	#Data(“filename”).multiplot(fit_func, names=[‘x’,’y’],avg=’x’)
 #Holy moly thanks for writing this ^
 
 file = "2024-04-04_B_UHfit.dat"
@@ -48,14 +50,7 @@ drive = '\\\\UNOBTAINIUM\\E_Carmen_Santiago'
 class Data:
 	def __init__(self, filename, path=None, column_names=None, 
 			  exclude_list=None, average_by=None, metadata=None):
-		if "=" in filename:
-			self.filename = filename
-# 			for idx, filename in enumerate(group):	
-	# 		data = Data(filename)
-	# 		data.data = data.data.drop(data.data[data.data.amplitude>amplitude_cutoff].index)
-	# 		data.group_by_mean("amplitude")
-		else:
-			self.filename = filename
+		self.filename = filename
 		if metadata is not None:
 			self.__dict__.update(metadata)  # Store all the extra variables
 		
@@ -252,9 +247,7 @@ class Data:
 	def fitnoplots(self, fit_func, names, guess=None):
 		fit_data = np.array(self.data[names])
 		func, default_guess, param_names = fit_func(fit_data)
-# 		print(default_guess)
-# 		print(func(201.5, *default_guess))
-# 		
+ 		
 		if guess is None:	
 			guess = default_guess
 			
@@ -267,9 +260,10 @@ class Data:
 						  self.data[f"{names[1]}"],p0=guess)
 		self.perr = np.sqrt(np.diag(self.pcov))
 		
-				
-	def multiplot(self, fit_func, names, guess=None, avg=None, label=None, axes_labels=None):
+# plot multiple plots at once (i.e. from a multi scan where we group by one param)				
+	def multiplot(self, fit_func, names, guess=None, avg=None, axes_labels=None):
 		listi = []
+		mvalues = []
 		for i in os.listdir(os.path.dirname(self.file)):
 			if "=" in i:
 				listi.append(i)
@@ -293,44 +287,48 @@ class Data:
 				
 				    
 
-	#### fitting ###
+	#### fitting ####
 			fit_data = np.array(x,y)
 			func, default_guess, param_names = fit_func(fit_data)
 			if guess is None:	
 				guess = default_guess
 				
-			if hasattr(self,'avg_data'): # check for averaging
+			if avg is None:	
+				popt, pcov = curve_fit(func, x, y,p0=guess)
+			else:
 				popt, pcov = curve_fit(func, avg_data[f"{names[0]}"], 
 						  avg_data[f"{names[1]}"],p0=guess, 
-						  sigma=avg_data[f"em_{names[1]}"])
-
-			else:
-				popt, pcov = curve_fit(func, x, y,p0=guess)
-				
+						  sigma=avg_data[f"em_{names[1]}"])								
 			residuals = y - func( x,*popt)
 			perr = np.sqrt(np.diag(pcov))
-			parameter_table = tabulate([['Values', *popt], ['Errors', *perr]], 
-								 headers=param_names)
-			print(parameter_table)
-
-			if label==None:
-				label = l
-
+			
+			mvalues.append(popt[0])
+			
+	#### plotting ####
 			plt.xlabel(f"{names[0]}")
 			plt.ylabel(f"{names[1]}")
 			
-			if hasattr(self,'avg_data'):
-								plt.errorbar(avg_data[f"{names[0]}"], avg_data[f"{names[1]}"], 
-				yerr=avg_data[f"em_{names[1]}"], capsize=2, marker='o', ls='',
-				label=label)
+			if avg is None:
+				plt.plot(x,y,marker='d',linestyle='',label=l)
 			else: 
-				plt.plot(x,y,marker='d',linestyle='',label=label)
+				plt.errorbar(avg_data[f"{names[0]}"], avg_data[f"{names[1]}"], yerr=avg_data[f"em_{names[1]}"], capsize=2, marker='o', ls='',
+				label=l)
 						
 			num = 500
 			xlist = np.linspace(x.min(), x.max(), num)
 			plt.plot(xlist, func(xlist, *popt))
-			
-# 			plt.legend()
-
+			plt.legend()
+# 		print(valueslist)
 		
+			parameter_table = tabulate([['Values', *popt], ['Errors', *perr]], 
+ 								 headers=param_names)	
+			print(l)
+			print(parameter_table)
+		print()
+
+# mvals = [-88.99076798864414, -91.2429345878061, -111.3760984309834, -96.48405841019768, -91.21568223696836, -118.73570896749739, -107.22430452927524, -93.46532124367161]
+# odtratio = [0.8,0.9,1.1,1.2,1.3,1.4,1.5,1]	
+# plt.xlabel('ODT ratio')
+# plt.ylabel('Slope')
+# plt.plot(odtratio,mvals,'.')
 		

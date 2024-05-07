@@ -28,6 +28,8 @@ plotting = True
 debugging_plots = False
 plot_legend = True
 
+scale_5kHz = 5
+
 def quadratic(x, a, b):
 	return a*x**2 + b
 
@@ -46,12 +48,16 @@ try: # open pkl file if it's there
 except FileNotFoundError: # if file not there then complain
 	print("Can't find data results pickle file, you silly billy.")
 	
+filename_list = ["2024-04-05_C_UHfit.dat", "2024-03-26_B_UHfit.dat",
+				 "2024-03-26_C_UHfit.dat"]
+	
 ### select the data
-amp_data = lr.loc[(lr.ms_param == 'amplitude') | (lr.ms_param2 == 'amplitude')]
+lr = lr[lr.filename.isin(filename_list) == True]
+amp_data = lr[((lr.filename != "2024-03-26_C_UHfit.dat") | (lr.freq != 5))]
 
 ############## PLOTTING ##############		
 # change matplotlib options
-plt.rcParams.update({"figure.figsize": [8,8]})
+plt.rcParams.update({"figure.figsize": [8,10]})
 fig, axs = plt.subplots(2,1)
 num = 500
 font = {'size'   : 12}
@@ -74,13 +80,18 @@ ax_res.set(ylabel=ylabel, xlabel=xlabel)
 for freq, color in zip(amp_data.freq.unique(), colors):
 	df = amp_data.loc[amp_data.freq==freq]
 	
-# 	df = df.drop(df.loc[df.A>0.4].index)
+ 	# df = df.drop(df.loc[df.freq>0.4].index)
 	
 	xx = np.array(df["A"])
 	yy = np.array(df["heating"])
 	yerr = np.array(df["e_heating"]) 
 	
 	label = r"$f=${:.0f} kHz".format(freq)
+	
+	if df.freq.values[0] == 5:
+		yy = scale_5kHz*yy
+		yerr = scale_5kHz*yerr
+		label = r"$f=${:.0f}kHz scaled by x{}".format(freq, scale_5kHz)
 	
 	popt, pcov = curve_fit(quadratic, xx, yy, sigma=yerr)
 	perr = np.sqrt(np.diag(pcov))
