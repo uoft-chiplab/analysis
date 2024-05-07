@@ -19,11 +19,52 @@ mK = 39.96399848 * uatom
 ahf = -h * 285.7308E6 # For groundstate 
 gI = 0.000176490 # total nuclear g-factor
 
+frame_size = 1.5
+plt_settings = {"axes.linewidth": frame_size,
+					 "figure.figsize": [10,7],
+					 "font.size": 12,
+					 "legend.fontsize": 10,
+					 "legend.framealpha": 1.0,
+					 "xtick.major.width": frame_size,
+					 "xtick.minor.width": frame_size*0.75,
+					 "xtick.direction":'in',
+					 "xtick.major.size": 3.5*frame_size,
+					 "xtick.minor.size": 2.0*frame_size,
+					 "ytick.major.width": frame_size,
+					 "ytick.minor.width": frame_size*0.75,
+					 "ytick.major.size": 3.5*frame_size,
+					 "ytick.minor.size": 2.0*frame_size,
+					 "ytick.direction":'in'}
+
+def tint_shade_color(color, amount=0.5):
+    """
+    Tints or shades the given color by multiplying (1-luminosity) by the given amount.
+    Input can be matplotlib color string, hex string, or RGB tuple.
+	
+	From https://stackoverflow.com/questions/37765197/darken-or-lighten-a-color-in-matplotlib
+
+    Examples:
+    >> tint_shade_color('g', 0.3)
+    >> tint_shade_color('#F034A3', 0.6)
+    >> tint_shade_color((.3,.55,.1), 0.5)
+    """
+    import matplotlib.colors as mc
+    import colorsys
+    try:
+        c = mc.cnames[color]
+    except:
+        c = color
+    c = colorsys.rgb_to_hls(*mc.to_rgb(c))
+    return colorsys.hls_to_rgb(c[0], max(0, min(1, amount * c[1])), c[2])
+
 def chi_sq(y, yfit, yerr, dof):
 	return 1/dof * np.sum((np.array(y) - np.array(yfit))**2/(yerr**2))
 
 def deBroglie(T):
 	return h/np.sqrt(2*pi*mK*kB*T)
+
+def deBroglie_kHz(T):
+	return np.sqrt(hbar/(mK*T*1e3))
 
 def EhfFieldInTesla(B, F, mF):
 	term1 = -ahf/4 + gI * uB * mF * B
