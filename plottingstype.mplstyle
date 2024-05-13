@@ -1,12 +1,13 @@
 figure.facecolor : white
 
 font.size: 15
-font.family: monospace
+#font.family: monospace
+font.family: sans-serif
 font.sans-serif: Arial, Liberation Sans, DejaVu Sans, Bitstream Vera Sans, sans-serif
 
 
-axes.facecolor: silver
-
+#axes.facecolor: silver
+axes.facecolor : white
 lines.linewidth : 3
 
 lines.linestyle: none # default line style to none so that when data comes in out of order it doesnt connect it all 

@@ -130,11 +130,13 @@ for irow in range(0, len(df)):
             fig, ax= plt.subplots(1,1)
             ax.plot(fpoints, Gaussian(fpoints, *show_popt), 'r-')
             ax.scatter(run.data['freq (MHz)'], run.data[meas],label=run_filename)
+            ax.set_ylim(13000,23000)
+            ax.set_xlim(43,43.4)
             ax.set_ylabel(meas)
             ax.set_xlabel('freq (MHz)')
             ax.legend(loc='upper right')
             ax.set_title(run_title)
-            plt.savefig(data_folder + '/results/' +run_title + '.png')
+            plt.savefig(data_folder + '/results/' +run_title + '.png',dpi=150)
         
 # merge fit results into original dataframe
 # should have 3 rows for each run, 1 for each measurable
@@ -175,13 +177,19 @@ for param in params:
     
 # summarize phase shift results
 ps_df = pd.concat(dflist)
+ps_df['amp'] = ps_df.popt.map(lambda x: x[0])
 ps_df['phase']=ps_df.popt.map(lambda x: x[1])
+ps_df['offs'] = ps_df.popt.map(lambda x: x[2])
+ps_df['e_amp'] = ps_df.perr.map(lambda x: x[0])
 ps_df['e_phase']=ps_df.perr.map(lambda x: x[1])
+ps_df['e_offs'] = ps_df.perr.map(lambda x: x[2])
 
 ##### Plot fit results over time #####
 title_str = 'Phase shift_' + suffix_str
 ### AMPLITUDE
 param='amp'
+#arb_scaling=9000
+#arb_offset=-4600
 arb_scaling=24000
 arb_offset=-3500
 tpoints = np.linspace(-100,300,400)
@@ -191,6 +199,7 @@ colors = ["red",
 		  "green", "orange", 
 		  "purple", "black", "pink"]
 linestyles=['r-','g-','y-','p-','k-','m-']
+meass=['sum95','c9','c5']
 for i,meas in enumerate(meass):
     
     if meas == 'c5':
@@ -210,7 +219,7 @@ ax.set_xlabel('time (us)')
 ax.set_ylabel('amplitude (arb.)')
 ax.set_title(title_str)
 if save_final:
-    plt.savefig(data_folder + '/results/' + title_str + '_amp.png')
+    plt.savefig(data_folder + '/results/' + title_str + '_amp.png', dpi=200)
 
 ### Plot peak frequency fit results ###
 ### FREQUENCY ###
@@ -239,7 +248,7 @@ if FIX_EB == False:
     ax.set_ylabel('f0 (MHz)')
     ax.set_title(title_str)
     if save_final:
-        plt.savefig(data_folder + '/results/' + title_str + '_f0.png')
+        plt.savefig(data_folder + '/results/' + title_str + '_f0.png', dpi=200)
     
 ### SIGMA
 if FIX_WIDTH==False:
@@ -273,7 +282,7 @@ if FIX_WIDTH==False:
     ax.set_ylim([0.02,0.07])
     ax.set_title(title_str)
     if save_final:
-        plt.savefig(data_folder + '/results/' + title_str + '_sigma.png')
+        plt.savefig(data_folder + '/results/' + title_str + '_sigma.png',dpi=200)
 
 
 ### CONSTANT
@@ -306,4 +315,19 @@ ax.set_xlabel('time (us)')
 ax.set_ylabel('offset (arb.)')
 ax.set_title(title_str)
 if save_final:
-    plt.savefig(data_folder + '/results/' + title_str + '_offset.png')
+    plt.savefig(data_folder + '/results/' + title_str + '_offset.png',dpi=200)
+    
+
+### working
+phi=2.61375
+phi0 = 2.20464
+ps = phi - phi0
+EF = 16 #kHz
+omega = 5
+s = 0.14 # T/TF = 0.58, uniform gas
+z = EF/omega*s*np.tan(ps)
+print(ps)
+print(z)
+    
+    
+    
