@@ -35,6 +35,11 @@ import matplotlib.pyplot as plt
 import os
 import pickle
 
+from fit_functions import Linear
+
+# field wiggle calibration fit
+from field_wiggle_calibration import Bamp_from_Vpp 
+
 ### files and paths
 data_folder = 'data\\heating'
 pkl_filename = 'heating_rate_fit_results.pkl'
@@ -44,7 +49,7 @@ xlsx_results_file = os.path.join(data_folder, xlsx_results_filename)
 metadata_filename = 'heating_metadata.xlsx'
 metadata_file = os.path.join(data_folder, metadata_filename)
 
-### load metadata
+### load metadata dataframe
 metadata = pd.read_excel(metadata_file)
 
 ### script options
@@ -73,7 +78,7 @@ colors = ["blue", "red", "green", "orange",
 files =  metadata.loc[metadata['exclude'] == 0]['filename'].values
 
 # or select files manually, e.g. files = [filename1, filename2, ...]
-files = ["2024-04-04_C_UHfit"]
+# files = ["2024-04-10_D_UHfit"]
 
 # initialize list of runs to fill
 runs = []
@@ -82,64 +87,18 @@ runs = []
 metadata = metadata.set_index('filename')
 metadata = metadata.to_dict(orient='index')
 
-#####
-##### Field wiggle calibrations
-#####
+# analysis options
+settings = {'param':'time',
+			'temp_param':'meanEtot_kHz',
+			'xlabel':'Time (ms)',
+			'files':files}
 
-# freqs = [10, 10, 1, 2.5, 10, 5] # kHz
-# Vpps = [0.4, 0.9, 0.9, 0.9, 1.0, 1.8] # 50 Ohm term
-# fieldAmps = [0.021, 0.048, 0.01, 0.018, 0.054, 0.070] # fit amplitudes in Gauss
-# e_fieldAmps = [0.002, 0.004, 0.001, 0.002, 0.001, 0.003] # fill
-# e_fieldAmp = 2e-3 # estimated as 2 mG
-
-# Bamp_per_Vpp = {1:None,2.5:None,5:None,10:None} # dict to loop and fill below
-# for freq, val in Bamp_per_Vpp.items():
-# 	# compute average scaled by Vpp if multiple calibrations at the same freq
-# 	val_avg = np.mean([fieldAmps[i]/Vpps[i] for i in range(len(freqs)) if freqs[i] == freq])
-# 	err_avg = np.mean([e_fieldAmps[i]/Vpps[i] for i in range(len(freqs)) if freqs[i] == freq])
-# 	Bamp_per_Vpp[freq] = [val_avg, err_avg]
-
-# def Bamp_from_Vpp(Vpp, freq):
-# 	''' Returns Bamp and e_Bamp in an array '''
-# 	key = int(freq)
-# 	if key > 10: # if frequency is above 10 kHz, all cals the same
-# 		key = 10
-# 	return np.array(Bamp_per_Vpp[key]) * Vpp
-
-# fit to 0.9Vpp field wiggle calibration data a 2024-04-01
-WiggleCalpopt = [ 7.42905865e-02, -1.13381420e+01,  3.64847614e-03]
-WiggleCalerr = [1.59511844e-03, 7.35920688e-01, 6.22923408e-04]
-def exponential(x, a, b, c):
-	return a*(1-np.exp(x/b))+c
-
-def Bamp_from_Vpp(Vpp, freq):
-	''' Returns Bamp and e_Bamp in an array '''
-	Bamp = Vpp * exponential(freq,*WiggleCalpopt)/0.9
-	# the below is wrong
-	e_Bamp = 0
-	return  Bamp, e_Bamp
-	
-#####
-##### Trap frequency calibrations
-#####
-
-### 2024-03-06
-## ODTs = 0.2/4
-wx = 169.1 # Hz
-wy = 453#429#*np.sqrt(2)
-wz = 441#442#*np.sqrt(2)
-mean_trapfreq = 2*pi*(wx*wy*wz)**(1/3)
-
-### functions for use in this script
-def linear(x, m, Ei):
-	return m*x + Ei
-
-def find_A(T, Bamp, e_T, e_Bamp):
+### Functions
+def calc_A(B0, T, e_T, Bamp, e_Bamp):
 	''' Returns A and e_A '''
-	B0 = 202.14
-	A = deBroglie(T)/a97(B0-Bamp)
-	e_a97 = np.abs(a97(B0-Bamp) - a97(B0-Bamp+e_Bamp))
-	e_dB = np.abs(deBroglie(T) - deBroglie(T+e_T))
+	A = deBroglie_kHz(T)/a97(B0-Bamp)
+	e_a97 = np.abs(a97(B0-Bamp) - a97(B0-Bamp+e_Bamp)) # assumes symmetric
+	e_dB = np.abs(deBroglie(T) - deBroglie(T+e_T)) # same
 	e_A = A*np.sqrt((e_a97/a97(B0-Bamp))**2 + (e_dB/deBroglie(T))**2)
 	return A, e_A
 
@@ -162,9 +121,9 @@ def fix_attribute(run, attr, attr_names):
 ### fitting and parameter calculation functions
 ### both take class as input, modify class, then return the same class
 def fit_analysis(run):
-	""" takes Data class run, fits computes some stuff, then returns class"""
+	""" takes Data class run, fits and computes some stuff"""
 	# fit energy to fit function
-	run.fit_func = settings['fit']
+	run.fit_func, guess, param_names = Linear([]) # need to pass empty set... LOL
 	
 	run.popt, run.pcov = curve_fit(run.fit_func, run.avg_data[run.param], 
 						run.avg_data[settings['temp_param']], 
@@ -195,14 +154,17 @@ def fit_analysis(run):
 	run.errEF = np.sqrt(np.diag(run.pcovEF))
 	run.EF = run.poptEF[1]/h/1e3
 	run.e_EF = run.errEF[1]/h/1e3
+	run.kF = np.sqrt(2*mK*run.poptEF[1])/hbar
+	run.e_kF = (run.e_EF/run.EF)/2 * run.kF
 	
 	# fit T to get offset
 	run.poptT, run.pcovT = curve_fit(run.fit_func, run.avg_data[run.param], 
 						run.avg_data['T'], 
 						sigma = run.avg_data['em_'+'T'])
 	run.errT = np.sqrt(np.diag(run.pcovT))
-	run.T = run.poptT[1]
-	run.e_T = run.errT[1]
+	run.T = run.poptT[1]*kB/h/1e3
+	run.e_T = run.errT[1]*kB/h/1e3
+	run.lamda = np.sqrt(hbar/(mK*run.T*1e3))
 	
 	# fit N to get offset
 	run.poptN, run.pcovN = curve_fit(run.fit_func, run.avg_data[run.param], 
@@ -216,16 +178,18 @@ def fit_analysis(run):
 
 	# calculate other run params and errors
 	run.Bamp, run.e_Bamp = Bamp_from_Vpp(run.Vpp, run.freq)
-	run.A, run.e_A = find_A(run.T, run.Bamp, run.e_T, run.e_Bamp)
-	run.e_A2 = 2*run.A*run.e_A
+	run.A, run.e_A = calc_A(run.B, run.T, run.e_T, run.Bamp, run.e_Bamp)
+	
+	run.Edot = run.popt[0] # kHz^2
+	run.e_Edot = run.err[0]
 	run.Ei = run.popt[1]
 	run.e_Ei = run.err[1]
-	run.heating = run.popt[0]/run.Ei
-	# careful with correlated errors
-	run.e_heating = run.heating*np.sqrt((run.err[0]/run.popt[0])**2 \
-			   +(run.err[1]/run.popt[1])**2 - 2*run.pcov[0,1]/run.popt[0]/run.popt[1])
-	run.rate = run.heating * 1000/run.A**2
-	run.e_rate = run.rate*np.sqrt((run.e_heating/run.heating)**2+(run.e_A2/run.A**2)**2)
+	
+	# Edot/EF**2/A**2
+	run.rate = run.Edot/run.EF**2/run.A**2
+	run.e_rate= run.rate*np.sqrt((run.e_Edot/run.Edot)**2+ \
+					 (2*run.e_EF/run.EF)**2+(2*run.e_A/run.A))
+		
 
 def analysis_for_dof_equals_two(run):
 	"""For use when dof = 2, i.e. you can't fit."""
@@ -237,8 +201,10 @@ def analysis_for_dof_equals_two(run):
 	run.e_ToTF = float(df1.em_ToTF)
 	run.EF = float(df1.EF)/h/1e3
 	run.e_EF = float(df1.em_EF)/h/1e3
-	run.T = float(df1['T']) # .T is the transpose operation... LOL
-	run.e_T = float(df1.em_T)
+	run.kF = np.sqrt(2*mK*h*1e3*run.EF)/hbar
+	run.e_kF = (run.e_EF/run.EF)/2 * run.kF
+	run.T = float(df1['T'])*kB/h/1e3 # .T is the transpose operation... LOL
+	run.e_T = float(df1.em_T)*kB/h/1e3
 	run.Ei = float(df1[settings['temp_param']])
 	run.e_Ei = float(df1['em_'+settings['temp_param']])
 	Ef = float(df2[settings['temp_param']])
@@ -248,38 +214,41 @@ def analysis_for_dof_equals_two(run):
 	Nf = float(df2.N)
 	e_Nf = float(df2.em_N)
 	
-	run.Bamp, run.e_Bamp = Bamp_from_Vpp(run.Vpp, run.freq)
-	run.A, run.e_A = find_A(run.T, run.Bamp, run.e_T, run.e_Bamp)
-	run.e_A2 = 2*run.A*run.e_A
-	
-	# rise over run...
-	deltax = float(df2[run.param])-float(df1[run.param])
-	deltay = Ef/run.Ei - 1
-# 	deltay = Ef-run.Ei
-	
-	run.heating = deltay/deltax 
-	run.e_heating = Ef/run.Ei/deltax * np.sqrt((e_Ef/Ef)**2 + (run.e_Ei/run.Ei)**2)
-	
-# 	run.e_heating = np.sqrt((e_Ef)**2 + (run.e_Ei)**2)
-	
-	run.rate = run.heating * 1000/run.A**2
-	run.e_rate = run.rate*np.sqrt((run.e_heating/run.heating)**2+(run.e_A2/run.A**2)**2)
-	# I think this is done right... plz check.
-		
-	run.loss_rate = (Nf-run.N)/deltax/run.N
-	run.e_loss_rate = Nf/run.N/deltax * np.sqrt((e_Nf/Nf)**2 + (run.e_N/run.N)**2)
-		
 	run.dof = 0
 	run.chi_sq = 1
-
+	
+	run.Bamp, run.e_Bamp = Bamp_from_Vpp(run.Vpp, run.freq)
+	run.lamda = np.sqrt(hbar/(mK*run.T*1e3))
+	run.A, run.e_A = calc_A(run.B, run.T, run.e_T, run.Bamp, run.e_Bamp)
+	# rise over run...
+	deltax = (float(df2[run.param])-float(df1[run.param])) 
+	deltay = Ef-run.Ei
+	
+	# I think this is done right... plz check.
+	run.loss_rate = (Nf-run.N)/deltax/run.N
+	run.e_loss_rate = Nf/run.N/deltax * np.sqrt((e_Nf/Nf)**2 + (run.e_N/run.N)**2)
+	
+	run.Edot = deltay/deltax # kHz^2
+	run.e_Edot = run.Edot*np.sqrt((e_Ef/Ef)**2 + (run.e_Ei/run.Ei)**2)
+	
+	# Edot/EF**2/A**2
+	run.rate = run.Edot/run.EF**2/run.A**2
+	run.e_rate = run.rate*np.sqrt((run.e_Edot/run.Edot)**2+ \
+							 (2*run.e_EF/run.EF)**2 + (2*run.e_A/run.A)**2)
+	
+def zeta_and_C(run):
+	run.zeta = (run.kF*run.lamda)**2/(9*pi*run.freq**2)*run.Edot/run.A**2
+	# zeta propto EF * Edot, so
+	run.e_zeta = run.zeta*np.sqrt((run.e_EF/run.EF)**2+(run.e_Edot/run.Edot)**2)
+	
+	pi_factors = 2/9*36*pi*(2*pi)**(3/2)
+	fandT_factors = (run.freq/run.T)**(3/2)/(run.lamda*run.kF)/(2*pi*run.freq**2)
+	run.C = pi_factors*fandT_factors*run.Edot/run.A**2
+	# C propto Edot/kF, so
+	run.e_C = run.C*np.sqrt((run.e_kF/run.kF)**2+(run.e_Edot/run.Edot)**2)
+	
+	
 ############## FITTING ##############
-
-# analysis options
-settings = {'param':'time',
-			'temp_param':'meanEtot_kHz',
-			'xlabel':'Time (ms)',
-			'fit':linear,
-			'files':files}
 
 # loop over files, split into runs if they are multiscans
 for file in files:
@@ -333,7 +302,7 @@ for file in files:
 		# make sure there isn't a repeated point at the end of the file
 		# FILL
 		
-		# calculate correct energy from Will's code output
+		# calculate correct energy from Will's code output in kHz
 		run.data[settings['temp_param']] = run.data['ENoEF'] * run.data['EF']/1000/h
 		
 		# average data
@@ -355,9 +324,12 @@ for file in files:
 		else: # we just do linear fits
 			fit_analysis(run)
 			
+		# calculate the rest
+		zeta_and_C(run)
+			
 		try:
 			run.beta = run.avg_data['beta'].values[0]
-		except KeyError: # if old .dat file, then there is no beta, so beta
+		except KeyError: # if old .dat file, then there is no beta, so define beta
 # 			print("This must be an old .dat file, adding old beta value")
 			run.beta = 1.8339e-05
 	

@@ -31,7 +31,7 @@ def Gaussian2D(x, y, A, sigma):
 def I1(x, y ,z):
 	A = 2*P1/pi
 	sigma = np.sqrt(w1**2+(x*lamda/pi/w1)**2)
-	return Gaussian2D(y, z, A, sigma)
+	return Gaussian2D(y, z, A, sigma)	 
 
 def I2(x, y ,z):
 	A = 2*P2/pi

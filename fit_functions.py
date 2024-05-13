@@ -138,19 +138,18 @@ def Sin(data, guess=None):
 
 def Sin2Decay(data, guess=None):
 	"""
-	Returns: A*np.exp(-x/tau)*np.sin(omega*x - phi)**2  + C
+	Returns: A*np.exp(-x/tau)*np.sin(omega*x - phi)**2 + C
 	"""
 	if guess is None:
 		mean_y = data[:,1].mean()
 		max_y = data[:,1].max()
-		guess = [max_y-mean_y, 6*2.5, 0, mean_y]
+		guess = [max_y-mean_y, 1, 0, mean_y, 1]
 		
 	param_names = ["A", "omega", "phi", "C", "tau"]
 	
 	def sin2decay(x, A, omega, phi, C, tau):
-		return A*np.exp(-x/tau)*np.sin(omega*x - phi)**2  + C
+		return A*np.exp(-x/tau)*np.sin(omega*x - phi) + C
 	return sin2decay, guess, param_names
-
 
 def Sinc(data, guess=None):
 	"""
@@ -292,14 +291,14 @@ def RabiFreq(data):
 	"""
 	Returns:  A*(np.sin(b/2 * x - x0))**2 + C
 	"""
-	param_names = ['Amplitdue','b','Center','Offset']
+	param_names = ['Amplitude','b','Center','Offset']
 	guess = [1,1,1,0]
 	
 	def RabiFreq(x, A, b, x0, C):
 		return A*(np.sin(b/2 * x - x0))**2 + C
 	return RabiFreq, guess, param_names
 
-def Expontial(data):
+def Exponential(data):
 	"""
 	Returns: A*np.exp(-x/sigma)
 	"""
@@ -327,7 +326,6 @@ def RabiLine(data):
 		return (b**2 / (l**2 + (x - m)**2 ) ) * (A * np.sin(np.sqrt(s**2 + (x - j)**2 ) * k)**2 + p )
 
 	return RabiLine, guess, param_names
-
 
 
 def ErfcFit(data):
@@ -387,3 +385,30 @@ def FixedSin5kHz(data):
 	
 	return FixedSin5kHz, guess, param_names
 
+def FixedSin1kHz(data):
+	"""
+	hard coded 1 kHz
+	Returns: A*np.sin(0.0314*x - p) + C
+	"""
+	param_names =  ['Amplitude','phase','offset']
+	guess = [1, 1, 0]
+	
+	def FixedSin1kHz(t, A, p, C):
+		omega = 1 * 2 * np.pi # 1 kHz
+		return A*np.sin(omega*t - p) + C
+	
+	return FixedSin1kHz, guess, param_names
+
+def FixedSin2kHz(data):
+	"""
+	hard coded 2 kHz
+	Returns: A*np.sin(0.0314*x - p) + C
+	"""
+	param_names =  ['Amplitude','phase','offset']
+	guess = [1, 1, 0]
+	
+	def FixedSin2kHz(t, A, p, C):
+		omega = 2 * 2 * np.pi # 1 kHz
+		return A*np.sin(omega*t - p) + C
+	
+	return FixedSin2kHz, guess, param_names
