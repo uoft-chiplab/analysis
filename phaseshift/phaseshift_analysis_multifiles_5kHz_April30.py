@@ -24,30 +24,25 @@ if module_folder not in sys.path:
     sys.path.insert(0, module_folder)
 
 # load data and set up
-# run = '2024-04-05_F'
-# run = '2024-04-29_H'
 run = '2024-04-30_K'
-# run = '2024-05-02_B'
 boxsize = 'midbox'
 run_fn = run + '_e_' + boxsize+'_time=0.(\d+).dat'
 meta_df = pd.read_excel('phaseshift_summary.xlsx')
 meta_df = meta_df.loc[meta_df['filename'] == '2024-04-30_K_e.dat']
 run_freq = meta_df.freq.values[0]
 x_name = "freq"
-y_name = "c5"
+y_name = "sum95"
 # y_name = 'sum95'
 fit_func = Gaussian
 guess = [-5000, 43.2, 0.02, 30000]  # A, x0, sigma, C
 data_folder = 'data/'
 title_pre = run+ '_' + y_name
-# run = Data(run_fn, path=data_folder)
+
 regex = re.compile(run_fn)
-# regex2 = re.compile('2024-05-02_B_e_sig1_time=0.(\d+).dat')
+
 
 ### functions ###
 # Fixed sinusoidal function depending on given wiggle freq
-
-
 def FixedSinkHz(t, A, p, C):
     omega = run_freq / 1000 * 2 * np.pi  # kHz
     return A*np.sin(omega * t - p) + C
@@ -63,14 +58,17 @@ def adjust_lightness(color, amount=0.5):
         c = color
     c = colorsys.rgb_to_hls(*mc.to_rgb(c))
     return colorsys.hls_to_rgb(c[0], max(0, min(1, amount * c[1])), c[2])
-
+dB_popt_fixed = np.array([ 7.16815199e-02,  2.11861446e+00, -1.01003763e-12]) # from fitting the entire dataset
+dB_perr_p = 0.038827
+def FixedSinkHzFixedPhase(t, A, C):
+    omega = run_freq / 1000 * 2 * np.pi
+    return A*np.sin(omega*t-2.2006124) + C
 subrun_list = []
 for file in os.listdir(data_folder):
     res= regex.match(file)
     if not res: continue
 
     subrun = Data(file, path=data_folder)
-
     # ms->us + 1/2length, won't be consistent across all data
     subrun.data.time = subrun.data.time * 1000 + \
         (meta_df.pulselength.values[0]/2.0) + 200
@@ -97,12 +95,10 @@ for file in os.listdir(data_folder):
 
 df = pd.concat(subrun_list)
 
-# the result from this point looked weird. I think there are issues at long time
-# skip_time = np.array([0.01,0.06,0.11,0.16,0.21,0.26,0.31,0.36,0.41,0.46]) * \
-    # 1000 + meta_df.pulselength.values[0]/2
-# skip_time = np.array([0.46,0.08,0.18,0.28,0.38,0.48]) * \
-    # 1000 + meta_df.pulselength.values[0]/2
-# df = df[~df.time.isin(skip_time)]
+
+skip_time = np.array([0.51,0.56,0.61]) * \
+    1000 + meta_df.pulselength.values[0]/2
+df = df[~df.time.isin(skip_time)]
 times = df.time.unique()
 freqs = df.f0.unique()
 amps = df.A.unique()
@@ -209,10 +205,15 @@ plt.xlabel('time [us]')
 plt.title(title_pre)
 plt.savefig(title_pre+'_offset.png',dpi=300)
 
-ps = A_popt[1] - f0_popt[1]
-e_ps = np.sqrt(A_perr[1]**2 + f0_perr[1]**2)
-ps_Anorm = Anorm_popt[1] - f0_popt[1]
-e_psAnorm = np.sqrt(Anorm_perr[1]**2 + f0_perr[1]**2)
+# ps = A_popt[1] - f0_popt[1]
+# e_ps = np.sqrt(A_perr[1]**2 + f0_perr[1]**2)
+# ps_Anorm = Anorm_popt[1] - f0_popt[1]
+# e_psAnorm = np.sqrt(Anorm_perr[1]**2 + f0_perr[1]**2)
+ps = A_popt[1] - dB_perr_p
+e_ps = np.sqrt(A_perr[1]**2 + dB_perr_p**2)
+ps_Anorm = Anorm_popt[1] - dB_popt_fixed[1]
+e_psAnorm = np.sqrt(Anorm_perr[1]**2 + dB_perr_p**2)
+
 
 fig, ax1 = plt.subplots()
 title_str = 'phase shift: {:.2f} +/- {:.2f}, {}, {}, {}'.format(
@@ -229,12 +230,13 @@ ax2.plot(xx, yyA, color=color)
 ax2.tick_params(axis='y', labelcolor=color)
 ax2.set_ylabel('Amplitude [arb.]', color=color)
 ax2.set_title(title_str)
-
+ax.tick_params(width=2)
 fig.tight_layout()  # otherwise the right y-label is slightly clipped
 plt.savefig('phaseshift_comp.png', dpi=300)
 plt.show()
 
 fig, ax1 = plt.subplots()
+plt.rcParams.update({'font.size':14})
 title_str = 'phase shift: {:.2f} +/- {:.2f}, {}, {}, {}'.format(
     ps_Anorm, e_psAnorm, y_name, fit_func.__name__, boxsize)
 ax1.plot(xx, yydB, 'b-')
@@ -249,24 +251,25 @@ ax2.plot(xx, yyAnorm, color=color)
 ax2.tick_params(axis='y', labelcolor=color)
 ax2.set_ylabel('Amplitude [arb.]', color=color)
 ax2.set_title(title_str)
-
+ax1.tick_params(width=2)
 fig.tight_layout()  # otherwise the right y-label is slightly clipped
-plt.savefig('phaseshift_Anorm_comp.png', dpi=300)
+# plt.savefig('phaseshift_Anorm_comp.png', dpi=600)
+plt.savefig('phaseshift_Anorm_comp.pdf', format='pdf', bbox_inches="tight", dpi=600)
 plt.show()
 
 
-# def plot_gaussian(x, A, x0, sigma, C):
-#     return A * np.exp(-(x-x0)**2/(2*sigma**2)) + C
+def plot_gaussian(x, A, x0, sigma, C):
+    return A * np.exp(-(x-x0)**2/(2*sigma**2)) + C
 
 
-# def plot_sinc2(x, A, x0, sigma, C):
-#     return A*(np.sinc((x-x0) / sigma)**2) + C
+def plot_sinc2(x, A, x0, sigma, C):
+    return A*(np.sinc((x-x0) / sigma)**2) + C
 
 
-### stuff for poster
-# df1 = df[df['time'] == 20]
-# df2 = df[df['time'] == 70]
-# df3 = df[df['time'] == 120]
+# ## stuff for poster
+# df1 = df[df['time'] == 220]
+# df2 = df[df['time'] == 270]
+# df3 = df[df['time'] == 320]
 
 # # calculate mean and std of points for plotting purposes
 # df1gb = df1.groupby('freq').agg({y_name:['mean','std','sem']}).reset_index()
@@ -287,7 +290,7 @@ plt.show()
 
 # if fit_func.__name__ == 'Gaussian':
 #     df1_popt,_ = curve_fit(plot_gaussian, df1gb.dB.values, df1gb[y_name, 'mean'].values, sigma= df1gb[y_name,'std'], p0 = [-1000, 0, 0.1, 12000])
-#     df2_popt,_ = curve_fit(plot_gaussian, df2gb.dB.values, df2gb[y_name, 'mean'].values, sigma= df2gb[y_name,'std'], p0 = [-1000, 0, 0.1, 12000])
+#     df2_popt,_ = curve_fit(plot_gaussian, df2gb.dB.values, df2gb[y_name, 'mean'].values, sigma= df2gb[y_name,'std'], p0 = [-3000, 0, 0.01, 12000])
 #     df3_popt,_ = curve_fit(plot_gaussian, df3gb.dB.values, df3gb[y_name, 'mean'].values, sigma= df3gb[y_name,'std'], p0 = [-1000, 0, 0.1, 12000])
 #     yy1 = plot_gaussian(
 #         xx, *df1_popt)
@@ -308,8 +311,8 @@ plt.show()
     
 # # for plotting purposes
 # arboff1 = 0
-# arboff2 = 410
-# arboff3 = 1300   
+# arboff2 = 900
+# arboff3 = -1500   
 
 # color1='blue'
 # color2='green'
@@ -331,5 +334,6 @@ plt.show()
 # ax.set_xlabel('B-B0 [G]')
 # ax.set_ylabel('Atom num [arb.]')
 # plt.setp(ax.spines.values(), linewidth=2)
+# ax.tick_params(width=2)
 # ax.legend()
 # # plt.savefig('tucan_sample_spectra.png', dpi=500)

@@ -136,6 +136,22 @@ def Sin(data, guess=None):
 		return A*np.sin(omega*x - phi) + C
 	return sin, guess, param_names
 
+def Sin2Decay(data, guess=None):
+	"""
+	Returns: A*np.exp(-x/tau)*np.sin(omega*x - phi)**2  + C
+	"""
+	if guess is None:
+		mean_y = data[:,1].mean()
+		max_y = data[:,1].max()
+		guess = [max_y-mean_y, 6*2.5, 0, mean_y]
+		
+	param_names = ["A", "omega", "phi", "C", "tau"]
+	
+	def sin2decay(x, A, omega, phi, C, tau):
+		return A*np.exp(-x/tau)*np.sin(omega*x - phi)**2  + C
+	return sin2decay, guess, param_names
+
+
 def Sinc(data, guess=None):
 	"""
 	Returns:   A*np.sinc((x-x0) / sigma) + C
