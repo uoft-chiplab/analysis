@@ -20,22 +20,28 @@ import os
 import pickle
 
 ARBITRARY_RESCALING = 1
-tintshade = 0.4
+error_band = 0.14
+band_alpha = 0.2
 
-removed_files = ["2024-03-26_C_UHfit.dat",
+removed_files = ["2024-03-26_B_UHfit.dat",
+				"2024-03-26_C_UHfit.dat",
 				"2024-04-03_B_UHfit.dat",
 				"2024-04-03_C_UHfit.dat",
 				"2024-04-03_D_UHfit.dat",
+				"2024-04-03_F_UHfit.dat",
+# 				"2024-04-04_C_UHfit.dat",
 				"2024-04-05_C_UHfit.dat",
-				"2024-03-26_B_UHfit.dat",
 				"2024-04-08_G_UHfit.dat",
 				"2024-04-10_C_UHfit.dat",
 				"2024-04-10_D_UHfit.dat"
 # 				"2024-03-19_L_UHfit.dat",
-# 				"2024-04-03_F_UHfit.dat"
+# 				"2024-04-03_F_UHfit.dat",
+				"2024-05-09_M_UHfit.dat"
 				]
 
-removed_names = ["2024-04-03_F_f=1_Vpp=1.80", 
+removed_names = ["2024-03-21_B_f=75_Vpp=0.25",
+				 "2024-03-21_D_f=15_Vpp=0.40",
+				"2024-04-03_F_f=1_Vpp=1.80", 
 				 "2024-04-03_F_f=2_Vpp=1.80",
 				 "2024-04-08_G_f=20_Vpp=1.80"]
 
@@ -48,24 +54,13 @@ BVT_pkl_file = os.path.join(data_folder, BVT_pkl_filename)
 
 TilmanPRL0p58ToTF_filename = "zetaomega_T0.58.txt"
 
-plotting = True
 plot_legend = True
 load_theory = True # load Tilman lines from previous evaluation
 debugging_plots = False
 
 # only use up to max freq
 nu_min = 1
-nu_max = 120
-
-cmap = cm.get_cmap('jet')
-def get_color(var, minvar, maxvar):
-	if var < minvar:
-		val = 0
-	elif var > maxvar:
-		val = 1
-	else: # convert to value between 0 and 1
-		val = (var-minvar)/(maxvar-minvar)
-	return cmap(val)
+nu_max = 140
 
 def mutrap_est(ToTF):
 	a = -70e3
@@ -82,15 +77,9 @@ def Edot_from_C(freq, C, EF):
 	pi_factors = (4*pi)**(3/2)/(36*pi*(2*pi)**(3/2))
 	return pi_factors * (EF/freq)**(3/2) * C
 
-
-colors = ["blue", "red", "green", "orange", 
-		  "purple", "teal", "brown", "olive", 
-		  "pink",  "black", "blue", "red", 
-		  "green", "orange", "purple", "black", 
-		  "brown", "teal", "olive", "pink"]
-
-markers = ["o", "s", "^", "D", "h", "o", "s", "^", "D", "h",
-		   "o", "s", "^", "D", "h", "o", "s", "^", "D", "h"]
+def zeta_from_phase(freq, EF, phase, sumrule):
+	"""See OverLeaf note"""
+	return EF/freq*sumrule*np.tan(phase)
 
 ############ LOAD DATA ############
 try: # open pkl file if it's there
@@ -110,23 +99,32 @@ else:
 ############## PLOTTING ##############		
 # change matplotlib options
 plt.rcParams.update(plt_settings)
+plt.rcParams.update({"figure.figsize": [12,8]})
 fig, axs = plt.subplots(2,2)
-
-for ax in axs.flatten():
-	ax.tick_params(which='both', direction='in')
 
 ###
 ### Scaled heating rate data compared to theory (First Column)
 ###
 
 # select frequencies within a band.
-lr = lr[lr.freq <= max_freq]
-lr = lr[lr.freq >= min_freq]
+lr = lr[lr.freq <= nu_max]
+lr = lr[lr.freq >= nu_min]
 
 # other selection criteria
 lr = lr[lr.filename.isin(removed_files) == False] # WTF pandas
 lr = lr[lr.index.isin(removed_names) == False] # WTF pandas
 
+# Parameter sets to group color and marker by
+eps = 1e-3
+EF_range_16 = [13,17] # kHz
+# EF_range_14 = [13,14.99] # kHz
+EF_range_12 = [11,13-eps] # kHz
+ToTF_range_0p5 = [0.45, 0.55-eps]
+ToTF_range_0p6 = [0.55, 0.65-eps]
+ToTF_range_0p7 = [0.65, 0.75-eps]
+range_names = ['EF', 'ToTF']
+param_sets = np.array([[EF_range_16, ToTF_range_0p5],[EF_range_16, ToTF_range_0p6],
+					   [EF_range_12, ToTF_range_0p7]])
 
 num = int(nu_max/nu_min)
 nus = np.linspace(nu_min*1e3, nu_max*1e3, num)
@@ -137,11 +135,11 @@ label_C = 'Contact'
 	
 ax = axs[0,1]
 ylabel = "Heating Rate $h \\langle\dot{E}\\rangle/(E_F\\,A)^2$"
-xlabel = "Drive Frequency $\omega/E_F$"
+xlabel = "Drive Frequency $\hbar\omega/E_F$"
 ax.set(ylabel=ylabel, xlabel=xlabel)
 
 ax_res = axs[1,0]
-ylabel = "Meas./Theory"
+ylabel = "Measurement/Theory"
 ax_res.set(ylabel=ylabel, xlabel=xlabel)
 
 ax_zeta = axs[0,0]
@@ -157,14 +155,18 @@ if plot_legend==False:
 	ax_res_zeta.set(xlabel=xlabel, ylabel=ylabel)
 
 ### Heating rate measurements
-loops = len(lr.filename.unique()) # to count over to pull the right theory curve if loading
+loops = len(param_sets) # to count over to pull the right theory curve if loading
 used_colors = []
 Tmeans = []
-for file, color, marker, i in zip(lr.filename.unique(), colors, markers, range(loops)):
-	df = lr.loc[lr['filename'] == file] # get rows from lr that correspond to file
-	
-	df = df.loc[df['rate']-df['e_rate'] > 0]
+for param_set, color, marker, i in zip(param_sets, colors, markers, range(loops)):
+	# non-zero rates for log plotting
+	df = lr.loc[lr['rate']-lr['e_rate'] > 0]
 	df = df.loc[df['rate']> 0]
+	
+	# selection dataset from df
+	for name, j in zip(range_names, range(len(range_names))):
+		df = df.loc[df[name] > param_set[j,0]]
+		df = df.loc[df[name] < param_set[j,1]]
 	
 	xx = np.array(df.freq)
 	yy = np.array(df.rate)
@@ -176,9 +178,9 @@ for file, color, marker, i in zip(lr.filename.unique(), colors, markers, range(l
 	zetas = np.array(df.zeta)
 	e_zetas = np.array(df.e_zeta) # just scales with the other params in the same way
 	mean_df = df.groupby(['filename'], as_index=False).mean()
-	barnu = float((mean_df.wx*mean_df.wy*mean_df.wz)**(1/3))
-	EFmean = float(mean_df.EF)
-	ToTFmean = float(mean_df.ToTF)
+	barnu = float((mean_df.wx.mean()*mean_df.mean().wy*mean_df.wz.mean())**(1/3))
+	EFmean = float(mean_df.EF.mean())
+	ToTFmean = float(mean_df.ToTF.mean())
 	Tmean = ToTFmean*EFmean
 	
 	used_colors.append(color)
@@ -186,8 +188,12 @@ for file, color, marker, i in zip(lr.filename.unique(), colors, markers, range(l
 	
 # 	print(ToTF, EF, barnu)
 	
-	label = r'[{}_{}]  $E_F={:.1f}$kHz, $T/T_F={:.2f}$, $\bar \nu={:.0f}Hz$'.format(df.date.values[0], 
-								  df.run.values[0], EFmean, ToTFmean, barnu)
+# 	label = r'[{}_{}]  $E_F={:.1f}$kHz, $T/T_F={:.2f}$, $\bar \nu={:.0f}$Hz'.format(df.date.values[0], 
+# 								  df.run.values[0], EFmean, ToTFmean, barnu)
+	
+	label = r'$E_F={:.1f}$kHz, $T/T_F={:.2f}$, $\bar \nu={:.0f}$Hz'.format(EFmean, 
+															ToTFmean, barnu)
+	
 	# trap $\bar\omega={:.0f}$Hz, 
 	light_color = tint_shade_color(color, amount=1+tintshade)
 	dark_color = tint_shade_color(color, amount=1-tintshade)
@@ -214,14 +220,30 @@ for file, color, marker, i in zip(lr.filename.unique(), colors, markers, range(l
 	for nu in nus:
 		if nu < (2*BVT.T):
 			nu_small += 1
-	ax.plot(BVT.nus/BVT.EF,BVT.Edottraps/(2*BVT.Ns)/BVT.EF**2,
-				 ':', color=color, label=label_Drude)
-	ax.plot(BVT.nus[nu_small:]/BVT.EF, BVT.EdottrapsC[nu_small:]/(2*BVT.Ns)/BVT.EF**2,
-		 '--', color=color, label=label_C)
-	ax_zeta.plot(BVT.nus[:nu_small]/BVT.EF, BVT.zetatraps[:nu_small],':', 
-			  color=color, label=label_Drude)
-	ax_zeta.plot(BVT.nus[nu_small:]/BVT.EF, BVT.zetatrapsC[nu_small:],'--', 
-			  color=color, label=label_C)
+	
+	nusoEF = BVT.nus/BVT.EF
+	
+	# plot Drude form if small frequencies exist
+	if xx.min() < 2*Tmean:
+		Edots = BVT.Edottraps/(2*BVT.Ns)/BVT.EF**2
+		ax.plot(nusoEF[:nu_small], Edots[:nu_small], ':', color=color, label=label_Drude)
+		ax.fill_between(nusoEF[:nu_small], Edots[:nu_small]*(1 - error_band), 
+					 Edots[:nu_small]*(1 + error_band), alpha=band_alpha, color=color)
+		
+		ax_zeta.plot(nusoEF[:nu_small], BVT.zetatraps[:nu_small],':', color=color, label=label_Drude)
+		ax_zeta.fill_between(nusoEF[:nu_small], BVT.zetatraps[:nu_small]*(1 - error_band), 
+			  BVT.zetatraps[:nu_small]*(1 + error_band), alpha=band_alpha, color=color)
+	
+	# plot contact determined lines if large frequencies exist
+	if xx.max() > 2*Tmean:
+		Edots = BVT.EdottrapsC/(2*BVT.Ns)/BVT.EF**2
+		ax.plot(nusoEF[nu_small:], Edots[nu_small:],'--', color=color, label=label_C)
+		ax.fill_between(nusoEF[nu_small:], Edots[nu_small:]*(1 - error_band), 
+		 Edots[nu_small:]*(1 + error_band), alpha=band_alpha, color=color)
+		ax_zeta.plot(nusoEF[nu_small:], BVT.zetatrapsC[nu_small:],'--', 
+				  color=color, label=label_C)
+		ax_zeta.fill_between(nusoEF[nu_small:], BVT.zetatrapsC[nu_small:]*(1 - error_band), 
+			  BVT.zetatrapsC[nu_small:]*(1 + error_band), alpha=band_alpha, color=color)
 
 ### Residual ratio
 	residuals = []
@@ -257,12 +279,9 @@ for file, color, marker, i in zip(lr.filename.unique(), colors, markers, range(l
 # set dashed line to illustrate change from Drude to Contact
 ymin, ymax = ax_res.get_ylim()
 Tline = np.mean(Tmean)
-ax_res.vlines(2*Tline, ymin, ymax, colors='grey')
-ax_res.set(ylim=[ymin,ymax])
+ax_res.vlines(2*Tline, 0, ymax, colors='grey')
+ax_res.set(ylim=[0,ymax])
 
-# 	if plot_legend == False:
-# 		ax_res_zeta.errorbar(xx, np.array(residuals)*ARBITRARY_RESCALING, yerr=e_res, color=color, capsize=0, fmt=marker)
-# 	
 
 ### Add contact line
 C = 0.78
@@ -278,17 +297,37 @@ ax_res.plot(nus[nu_small:]/1e3, C/C_theory*np.ones(len(nus[nu_small:])),'k--',
 ### Add tabulated Tilman 0.58ToTF line from PRL
 xtilman, ytilman = np.loadtxt(TilmanPRL0p58ToTF_filename, unpack=True, delimiter=' ')
 
-trap_to_uni_ratio = 0.111 # determined by compared tabulated uni 
-										# data and trap-averaged at one freq. 
-										# This is not precise
-										# 0.111?
-# have to divide by twelve because Tilman scaled by 12 for some reason
-# ax_zeta.plot(xtilman, ytilman/12*trap_to_uni_ratio, ':r', 
-# 			 label=r'scaled L-W calculation:  $T/T_F=0.58$')
+	
 
-### Manually add measured phase shift result
-# ax_zeta.errorbar(5/19, 0.04/ARBITRARY_RESCALING, yerr=0.01, marker='x', color='k',
-#  		 label=r"Phase Shift:  $E_F \sim 19$kHz, $T/T_F \sim 0.58$")
+### Manually add measured phase shift 
+dCdkFainv = 1.69
+sumrule = dCdkFainv/(18*pi)
+EF = 16
+freqs = np.array([2, 5])
+phases = np.array([-0.06, 0.35])
+phases_err = np.array([0.09, 0.06])
+zetas_phase = np.array([zeta_from_phase(freq, EF, phase, sumrule) \
+						for freq, phase in zip(freqs, phases)])
+zetas_phase_err = np.array([zeta_from_phase(freq, EF, phase, sumrule) \
+			for freq, phase in zip(freqs, phases+phases_err)]) - zetas_phase
+
+color = colors[1]
+marker = '^'
+light_color = tint_shade_color(color, amount=1+tintshade)
+dark_color = tint_shade_color(color, amount=1-tintshade)
+ax_zeta.errorbar(freqs/EF, zetas_phase, yerr=zetas_phase_err, capsize=0, 
+				 fmt=marker, color=dark_color, markerfacecolor=light_color, 
+			 markeredgecolor=dark_color, markeredgewidth=2)
+
+label_phase = r"Phase Shift: $E_F = 16$kHz, $T/T_F = 0.56$"
+
+freq_indices = [1, 4] # 2 kHz and 5 kHz
+BVT = BVTs[0] # ToTF = 0.50
+residuals = zetas_phase/BVT.zetatraps[freq_indices]
+e_res = zetas_phase_err/BVT.zetatraps[freq_indices]
+ax_res.errorbar(freqs, residuals, yerr=e_res, capsize=0, fmt=marker, 
+			  label=label_phase, color=dark_color, markerfacecolor=light_color, 
+			  markeredgecolor=dark_color, markeredgewidth=2)
 
 ###
 ### Legend in own subplot
@@ -301,7 +340,7 @@ if plot_legend:
 
 	
 fig.tight_layout()
-# fig.savefig("test.pdf")
+fig.savefig("figures/summary.pdf")
 plt.show()
 
 ########### SAVE THEORY ###########

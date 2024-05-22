@@ -55,6 +55,7 @@ metadata = pd.read_excel(metadata_file)
 ### script options
 plotting = True
 save = True
+select_plotting = False
 
 # only fit data up to max time in ms
 max_time = 120
@@ -66,10 +67,6 @@ del_attr = ['data', 'avg_data', 'fit_func', 'popt',
 			'pcovToTF', 'errToTF','poptN', 'pcovN', 
 			'errN', 'label', 'res_label', 'exclude']
 
-# will only plot up to length of this list. Add more colors to plot more.
-colors = ["blue", "red", "green", "orange", 
-		  "purple", "black", "pink", "brown"]
-
 ##############################################
 #### add list of files to analyze here #######
 ##############################################
@@ -78,7 +75,13 @@ colors = ["blue", "red", "green", "orange",
 files =  metadata.loc[metadata['exclude'] == 0]['filename'].values
 
 # or select files manually, e.g. files = [filename1, filename2, ...]
-# files = ["2024-04-10_D_UHfit"]
+files = ["2024-05-10_S_UHfit"]
+
+# names for select_plotting
+# plot_names = ["2024-03-19_L_f=20_Vpp=0.70",
+# 			  "2024-03-19_L_f=40_Vpp=0.50",
+# 				"2024-03-21_B_f=35_Vpp=0.45",
+# 				"2024-03-21_D_f=55_Vpp=0.30"]
 
 # initialize list of runs to fill
 runs = []
@@ -144,7 +147,7 @@ def fit_analysis(run):
 						run.avg_data['ToTF'], 
 						sigma = run.avg_data['em_'+'ToTF'])
 	run.errToTF = np.sqrt(np.diag(run.pcovToTF))
-	run.ToTF = run.poptToTF[1]
+	run.ToTF = (run.poptToTF[1]+5*run.poptToTF[0])
 	run.e_ToTF = run.errToTF[1]
 	
 	# fit EF to get offset
@@ -152,7 +155,7 @@ def fit_analysis(run):
 						run.avg_data['EF'], 
 						sigma = run.avg_data['em_'+'EF'])
 	run.errEF = np.sqrt(np.diag(run.pcovEF))
-	run.EF = run.poptEF[1]/h/1e3
+	run.EF = (run.poptEF[1]+5*run.poptEF[0])/h/1e3
 	run.e_EF = run.errEF[1]/h/1e3
 	run.kF = np.sqrt(2*mK*run.poptEF[1])/hbar
 	run.e_kF = (run.e_EF/run.EF)/2 * run.kF
@@ -162,7 +165,7 @@ def fit_analysis(run):
 						run.avg_data['T'], 
 						sigma = run.avg_data['em_'+'T'])
 	run.errT = np.sqrt(np.diag(run.pcovT))
-	run.T = run.poptT[1]*kB/h/1e3
+	run.T = (run.poptT[1]+5*run.poptT[0])*kB/h/1e3
 	run.e_T = run.errT[1]*kB/h/1e3
 	run.lamda = np.sqrt(hbar/(mK*run.T*1e3))
 	
@@ -171,7 +174,7 @@ def fit_analysis(run):
 						run.avg_data['N'], 
 						sigma = run.avg_data['em_'+'N'])
 	run.errN = np.sqrt(np.diag(run.pcovN))
-	run.N = run.poptN[1]
+	run.N = (run.poptN[1]+5*run.poptN[0])
 	run.e_N = run.errN[1]
 	run.loss_rate = run.poptN[0]/run.N
 	run.e_loss_rate = run.loss_rate*np.sqrt((run.e_N/run.N)**2 + (run.poptN[0]/run.errN[0])**2)
@@ -197,20 +200,22 @@ def analysis_for_dof_equals_two(run):
 	df1 = run.avg_data.loc[run.avg_data[run.param] == run.avg_data[run.param].min()]
 	df2 = run.avg_data.loc[run.avg_data[run.param] == run.avg_data[run.param].max()]
 	
-	run.ToTF = float(df1.ToTF)
+	run.ToTF = (float(df2.ToTF)+float(df1.ToTF))/2
 	run.e_ToTF = float(df1.em_ToTF)
-	run.EF = float(df1.EF)/h/1e3
+	run.EF = (float(df2.EF)+float(df1.EF))/2/h/1e3
 	run.e_EF = float(df1.em_EF)/h/1e3
 	run.kF = np.sqrt(2*mK*h*1e3*run.EF)/hbar
 	run.e_kF = (run.e_EF/run.EF)/2 * run.kF
-	run.T = float(df1['T'])*kB/h/1e3 # .T is the transpose operation... LOL
+	run.T = (float(df2['T'])+float(df1['T']))/2*kB/h/1e3 # .T is the transpose operation... LOL
 	run.e_T = float(df1.em_T)*kB/h/1e3
 	run.Ei = float(df1[settings['temp_param']])
 	run.e_Ei = float(df1['em_'+settings['temp_param']])
 	Ef = float(df2[settings['temp_param']])
 	e_Ef = float(df2['em_'+settings['temp_param']])
-	run.N = float(df1.N)
+	run.N = (float(df2.N)+float(df1.N))/2
 	run.e_N = float(df1.em_N)
+	Ni = float(df2.N)
+	e_Ni = float(df2.em_N)
 	Nf = float(df2.N)
 	e_Nf = float(df2.em_N)
 	
@@ -225,8 +230,8 @@ def analysis_for_dof_equals_two(run):
 	deltay = Ef-run.Ei
 	
 	# I think this is done right... plz check.
-	run.loss_rate = (Nf-run.N)/deltax/run.N
-	run.e_loss_rate = Nf/run.N/deltax * np.sqrt((e_Nf/Nf)**2 + (run.e_N/run.N)**2)
+	run.loss_rate = (Nf-Ni)/deltax/run.N
+	run.e_loss_rate = run.loss_rate * np.sqrt((e_Nf/Nf)**2 + (run.e_N/run.N)**2)
 	
 	run.Edot = deltay/deltax # kHz^2
 	run.e_Edot = run.Edot*np.sqrt((e_Ef/Ef)**2 + (run.e_Ei/run.Ei)**2)
@@ -337,6 +342,8 @@ for file in files:
 		run.label = "$B_{{amp}}=${:.0f}({:.0f}) mG, $f=${:.0f} kHz, $T/T_F=${:.2f}({:.0f}), $E_F=${:.1f}({:.0f}) kHz".format(
 					   run.Bamp*1e3, run.e_Bamp*1e3, run.freq, run.ToTF, 
 					      run.e_ToTF*1e2, run.EF, run.e_EF*1e1)
+		run.label = "$B_{{amp}}=${:.0f}({:.0f}) mG, $f=${:.0f} kHz".format(
+					   run.Bamp*1e3, run.Bamp*1e3*0.07, run.freq)
 		run.res_label = r"$\chi^2=${:.2f}".format(run.chi_sq)
 		
 		run.date = run.date.strftime('%Y-%m-%d')
@@ -347,12 +354,20 @@ for file in files:
 												run.freq, run.Vpp)
 		
 		# put run class into list, for later plotting and saving
-		runs.append(run)
+		if select_plotting == True:
+			if run.name in plot_names:
+				runs.append(run)
+				
+		else:
+			runs.append(run)
+		
 
 ############## PLOTTING ##############		
 if plotting == True:
 	### matplotlib options
-	plt.rcParams.update({"figure.figsize": [14,7]})
+	plt.rcParams.update(plt_settings)
+	plt.rcParams.update({"figure.figsize": [12,6],
+						  "legend.fontsize": 9})
 	fig, axs = plt.subplots(2,3)
 	num = 500
 	font = {'size'   : 12}
@@ -364,7 +379,7 @@ if plotting == True:
 	###
 	ax = axs[0,0]
 	xlabel = settings['xlabel']
-	ylabel = "Energy (kHz)"
+	ylabel = r"Energy per particle $E_\mathrm{tot}/N$ (kHz)"
 	ax.set(xlabel=xlabel, ylabel=ylabel)
 	
 	### loop over runs, plotting fits
@@ -372,14 +387,17 @@ if plotting == True:
 	if len(runs) > max_plots: # check if we are ignoring some fits when plotting
 		print("Only showing {} datasets. Add more colors, ".format(max_plots))
 		print("or reduce the number of runs to fit.")
-	for run, color in zip(runs, colors): 
+	for run, color, marker in zip(runs, colors, markers): 
+		light_color = tint_shade_color(color, amount=1+tintshade)
+		dark_color = tint_shade_color(color, amount=1-tintshade)
+		
 		xx = np.array(run.avg_data[settings['param']])
 		yy = np.array(run.avg_data[settings['temp_param']])
 		yerr = np.array(run.avg_data['em_'+settings['temp_param']])
 		
-		ax.errorbar(xx, yy, yerr=yerr,
-			  label=run.label, color=color, capsize=2,
-			   fmt='o')
+		ax.errorbar(xx, yy, yerr=yerr, capsize=0, fmt=marker,
+			  color=dark_color, markerfacecolor=light_color, 
+			  markeredgecolor=dark_color, markeredgewidth=2, label=run.label)
 		
 		xx = np.array(run.avg_data[settings['param']])
 		yy = np.array(run.avg_data[settings['temp_param']])
@@ -401,15 +419,18 @@ if plotting == True:
 	ax.plot(xlist, np.zeros(num), color='k', linestyle='--')
 	
 	# residuals
-	for run, color in zip(runs, colors):
+	for run, color, marker in zip(runs, colors, markers):
+		light_color = tint_shade_color(color, amount=1+tintshade)
+		dark_color = tint_shade_color(color, amount=1-tintshade)
 		xx = np.array(run.avg_data[settings['param']])
 		yy = np.array(run.avg_data[settings['temp_param']])
 		yerr = np.array(run.avg_data['em_'+settings['temp_param']])
 		if len(xx) == 2: # no fit, no residual
 			continue 
 		residuals =  yy - run.fit_func(xx, *run.popt)
-		ax.errorbar(xx, residuals, yerr=yerr, label=run.res_label, color=color, 
-			  capsize=2, fmt='o')
+		ax.errorbar(xx, residuals, yerr=yerr, capsize=0, fmt=marker,
+			  color=dark_color, markerfacecolor=light_color, 
+			  markeredgecolor=dark_color, markeredgewidth=2, label=run.res_label)
 		
 	###
 	### ToTF
@@ -420,12 +441,16 @@ if plotting == True:
 	ax.set(xlabel=xlabel, ylabel=ylabel)
 	
 	# loop over runs, plotting fits
-	for run, color in zip(runs, colors):
+	for run, color, marker in zip(runs, colors, markers):
+		light_color = tint_shade_color(color, amount=1+tintshade)
+		dark_color = tint_shade_color(color, amount=1-tintshade)
 		xx = np.array(run.avg_data[settings['param']])
 		yy = np.array(run.avg_data['ToTF'])
 		yerr = np.array(run.avg_data['em_'+'ToTF'])
 		
-		ax.errorbar(xx, yy, yerr=yerr,label=run.label, color=color, capsize=2, fmt='o')
+		ax.errorbar(xx, yy, yerr=yerr, capsize=0, fmt=marker,
+			  color=dark_color, markerfacecolor=light_color, 
+			  markeredgecolor=dark_color, markeredgewidth=2, label=run.label)
 		
 		if len(xx) == 2:
 			ax.plot(xx, yy, color=color, linestyle='--')
@@ -442,12 +467,16 @@ if plotting == True:
 	ax.set(xlabel=xlabel, ylabel=ylabel)
 	
 	# loop over runs, plotting fits
-	for run, color in zip(runs, colors):
+	for run, color, marker in zip(runs, colors, markers):
+		light_color = tint_shade_color(color, amount=1+tintshade)
+		dark_color = tint_shade_color(color, amount=1-tintshade)
 		xx = np.array(run.avg_data[settings['param']])
 		yy = np.array(run.avg_data['EF']/1e3/h)
 		yerr = np.array(run.avg_data['em_'+'EF']/h/1e3)
 		
-		ax.errorbar(xx, yy, yerr=yerr,label=run.label, color=color, capsize=2, fmt='o')
+		ax.errorbar(xx, yy, yerr=yerr, capsize=0, fmt=marker,
+			  color=dark_color, markerfacecolor=light_color, 
+			  markeredgecolor=dark_color, markeredgewidth=2, label=run.label)
 		
 		if len(xx) == 2:
 			ax.plot(xx, yy, color=color, linestyle='--')
@@ -464,12 +493,16 @@ if plotting == True:
 	ax.set(xlabel=xlabel, ylabel=ylabel)
 	
 	# loop over runs, plotting fits
-	for run, color in zip(runs, colors):
+	for run, color, marker in zip(runs, colors, markers):
+		light_color = tint_shade_color(color, amount=1+tintshade)
+		dark_color = tint_shade_color(color, amount=1-tintshade)
 		xx = np.array(run.avg_data[settings['param']])
 		yy = np.array(run.avg_data['N'])
 		yerr = np.array(run.avg_data['em_'+'N'])
 		
-		ax.errorbar(xx, yy, yerr=yerr,label=run.label, color=color, capsize=2, fmt='o')
+		ax.errorbar(xx, yy, yerr=yerr, capsize=0, fmt=marker,
+			  color=dark_color, markerfacecolor=light_color, 
+			  markeredgecolor=dark_color, markeredgewidth=2, label=run.label)
 		
 		if len(xx) == 2:
 			ax.plot(xx, yy, color=color, linestyle='--')
@@ -482,12 +515,12 @@ if plotting == True:
 	###
 	lax = axs[1,2]
 	h, l = axs[0,0].get_legend_handles_labels() # get legend from first plot
-	lax.legend(h, l, borderaxespad=0, prop={'size':legend_font_size})
+	lax.legend(h, l, borderaxespad=0)
 	lax.axis("off")
 	
 	fig.tight_layout()
 	plt.show()
-# 	fig.savefig('heating_rate_data.pdf')
+	fig.savefig('figures/heating_fits.pdf')
 
 ############ SAVE RESULTS ############	
 if save == True:

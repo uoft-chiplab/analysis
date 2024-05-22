@@ -87,5 +87,6 @@ def Bamp_from_Vpp(Vpp, freq):
 	''' Returns Bamp and e_Bamp in an array '''
 	Bamp = linear(Vpp, *popt_amp)/linear(0.9, *popt_amp) * exponential(freq, *popt_freq)
 	# the below is wrong
-	e_Bamp = 0.0 
+	e_Bamp = Bamp*0.00 # 0.07 average error ratio for the measurements, 
+						# i.e. average error bar size
 	return Bamp, e_Bamp

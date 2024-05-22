@@ -5,7 +5,7 @@
 
 Functions to call in analysis scripts
 """
-from scipy.constants import pi, hbar, h, k as kB
+from scipy.constants import pi, hbar, h, c, k as kB
 from scipy.integrate import trapz, simps, cumtrapz
 from scipy.optimize import fsolve
 import numpy as np
@@ -19,9 +19,9 @@ mK = 39.96399848 * uatom
 ahf = -h * 285.7308E6 # For groundstate 
 gI = 0.000176490 # total nuclear g-factor
 
+# plt settings
 frame_size = 1.5
 plt_settings = {"axes.linewidth": frame_size,
-					 "figure.figsize": [10,7],
 					 "font.size": 12,
 					 "legend.fontsize": 10,
 					 "legend.framealpha": 1.0,
@@ -35,6 +35,14 @@ plt_settings = {"axes.linewidth": frame_size,
 					 "ytick.major.size": 3.5*frame_size,
 					 "ytick.minor.size": 2.0*frame_size,
 					 "ytick.direction":'in'}
+
+# plot color and markers
+colors = ["blue", "red", "green", "orange", 
+		  "purple", "teal", "pink", "brown"]
+
+markers = ["o", "s", "^", "D", "h", "x", "o", "s", "^", "D", "h"]
+	
+tintshade=0.6
 
 def tint_shade_color(color, amount=0.5):
     """

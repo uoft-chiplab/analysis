@@ -29,6 +29,7 @@ from tabulate import tabulate
 
 file = "2024-04-04_B_UHfit.dat"
 drive = '\\\\UNOBTAINIUM\\E_Carmen_Santiago' 
+plt.rcParams.update(plt_settings)
 
 # plt.style.use('plottingstyle')
 # plt.style.use('C:/Users/coldatoms/anaconda3/pkgs/matplotlib-base-3.2.2-py38h64f37c6_0/Lib/site-packages/matplotlib/mpl-data/stylelib/plottingstype.mplstyle')
@@ -64,14 +65,14 @@ class Data:
 		
 		if column_names:
 			self.data = self.data[column_names]
-		if exclude_list:
+		if exclude_list is not None:
 			self.exclude(exclude_list)
 		if average_by:
 			self.group_by_mean(average_by)
 
 	# exclude list of points
 	def exclude(self, exclude_list):
-		self.data.drop(exclude_list)
+		self.data = self.data.drop(index=exclude_list)
 		
 	# group by scan name, compute mean 
 	def group_by_mean(self, scan_name):

@@ -13,32 +13,23 @@
 import numpy as np
 from baryrat import BarycentricRational
 import matplotlib.pyplot as plt
-from scipy.integrate import quad
+from scipy.integrate import quad, tplquad
 from scipy.optimize import root_scalar
 import pickle
 import os
+from library import c, plt_settings, tint_shade_color, tintshade
+from contact_tabulated import ContactInterpolation
 
 pi = np.pi
 
 # print results
 print_results = False
-trap_plot = True
-bulk_plot = True
+trap_plot = False
+bulk_plot = False
+show_data = False
 
-#
-# Contact density estimate from Vale paper
-# Crappy eye-balled piecewise function
-def contact_density(Theta):
-	# ToTF < 0.18
-	def func1(Theta):
-		return 3
-	# ToTF >= 0.18
-	def func2(Theta):
-		# linearly interpolate two points: (ToTF, C): {(0.2, 2.65), (1.0, 2.3)}
-		m = (2.65-2.3)/(0.2-1.0)
-		b = 2.65 - m*0.2
-		return m*Theta + b
-	return np.piecewise(Theta, [Theta<0.18, Theta>=0.18], [func1, func2])
+hbar = 1.05e-34
+m = 40*1.67e-27 # potassium
 
 #
 # properties of homogeneous (bulk) gas: EOS, bulk viscosity, and bulk thermodynamics
@@ -114,7 +105,7 @@ def heating_from_zeta(T,betamu,betaomega,zeta):
 
 def C_bulk(betamu):
     """compute Contact Density for bulk gas"""
-    Cbulk = contact_density(Theta(betamu))
+    Cbulk = ContactInterpolation(Theta(betamu))
     return Cbulk
 
 def heating_C(T, betaomega, C):
@@ -126,7 +117,7 @@ def heating_C(T, betaomega, C):
 def zeta_C(betamu, betaomega):
     """compute heating rate at high frequency from contact density"""
     pifactors = 3*pi**2/(36*pi*(2*pi)**(3/2))
-    zetaC = pifactors*eos_ufg(betamu) * contact_density(Theta(betamu)) / (betaomega)**(3/2)
+    zetaC = pifactors*eos_ufg(betamu) * ContactInterpolation(Theta(betamu)) / (betaomega)**(3/2)
     return zetaC
 
 def sumruleintC(betamu, Theta):
@@ -152,8 +143,6 @@ class BulkViscUniform:
 		#
 		self.T = T
 		self.mubulk = mubulk
-		hbar = 1.05e-34
-		m = 40*1.67e-27 # potassium
 		lambda_T = np.sqrt(hbar/(m*T)) # thermal wavelength (unit of length, in meters)
 		a0 = lambda_T # put actual amplitude of scattering length drive, in meters
 		self.A = lambda_T/a0 # dimensionless amplitude of drive
@@ -209,62 +198,121 @@ class BulkViscUniform:
 # trapped gas
 #
 
-def weight(v,betabaromega):
+lambda_ODT = 1.064 # um
+omega_ODT = c/lambda_ODT * 2*pi
+
+lambda_D1 = 0.77010837 # um
+omega_D1 = c/lambda_D1 * 2*pi
+Gamma_D1 = 2*pi*5.956 # 1/s
+
+lambda_D2 = 0.76670067 # um
+omega_D2 = c/lambda_D2 * 2*pi
+Gamma_D2 = 2*pi*6.035e6 # 1/s
+
+# combining (averaging?) both D1 and D2
+Gamma = 2*pi*5.98e6
+omega_0 = (omega_D1+omega_D2)/2
+lambda_0 = c/omega_0 * 2*pi
+Delta = omega_ODT-omega_0 # should be negative
+
+Ufactor_1 = 3 *pi *c**2 * Gamma/2 /omega_D2**3 /Delta
+Ufactor = 3/16/pi**2 * Gamma/Delta * lambda_0**3/c
+
+w1 = 25
+w2 = 70
+
+P1 = 0.0495
+P2 = 0.447
+
+eps = 1e-4
+eps_Dirac = 1e-4
+
+def weight_harmonic(v,betabaromega):
     """area of equipotential surface of potential value V/T=v=0...inf"""
     return 2/(betabaromega**3)*np.sqrt(v/np.pi)
 
-def number_per_spin(betamu,betabaromega):
+def Gaussian_potential(x, y, z, P, w):
+	""" For an ODT beam propagating in the x direction """
+	prefactor = 2*P/pi
+	sigma_sq = (w**2 + (x*lambda_ODT/pi/w)**2)
+	return Ufactor/1e12 * prefactor/sigma_sq * np.exp(-2*(y**2+z**2)/sigma_sq)
+	
+def ODT_potential(x, y, z, w1=w1, w2=w2, P1=P1, P2=P2):
+	""" Combined ODT potential """
+	return Gaussian_potential(x,y,z,w=w1,P=P1)*Gaussian_potential(z,y,x,w=w2,P=P2)
+
+def DiracDeltaLorentz(x, eps): 
+	return (eps/pi)*(1/(x**2 + eps**2))
+
+def weight_gaussian(v,beta):
+	"""area of equipotential surface of potential value V/T=v=0...inf"""
+	V = lambda x, y, z: ODT_potential(x,y,z)    # Some function to integrate
+	xlim = w2*3
+	ylim = w1*3
+	zlim = w1*3
+	x1 = lambda y, z: -xlim   # Lower boundary for x
+	x2 = lambda y, z: xlim   # Upper boundary for x
+	y1 = lambda z: -ylim      # Lower boundary for y
+	y2 = lambda z: ylim     	 # Upper boundary for y
+	z1 = -zlim
+	z2 = zlim
+	lambda_T = np.sqrt(2*pi*hbar**2*beta/m)
+
+	return 1/lambda_T**3 * tplquad(DiracDeltaLorentz(beta*V-v, eps_Dirac), 
+								z1, z2, y1, y2, x1, x2)
+
+def number_per_spin(betamu,betabaromega,weight_func):
     """compute number of particles per spin state for trapped unitary gas:
        N_sigma = int_0^infty dv w(v) f_n_sigma*lambda^3(mu-v)"""
-    N_sigma,Nerr = quad(lambda v: weight(v,betabaromega)*eos_ufg(betamu-v)/2,0,np.inf,epsrel=1e-4)
+    N_sigma,Nerr = quad(lambda v: weight_func(v,betabaromega)*eos_ufg(betamu-v)/2,0,np.inf,epsrel=eps)
     return N_sigma
 
-def Epot_trap(betamu,betabaromega):
+def Epot_trap(betamu,betabaromega,weight_func):
     """compute trapping potential energy (in units of T):
        E_trap = int_0^infty dv w(v) f_n*lambda^3(mu-v) v"""
-    Epot,Eerr = quad(lambda v: weight(v,betabaromega)*eos_ufg(betamu-v)*v,0,np.inf,epsrel=1e-4)
+    Epot,Eerr = quad(lambda v: weight_func(v,betabaromega)*eos_ufg(betamu-v)*v,0,np.inf,epsrel=eps)
     return Epot
 
-def thermo_trap(T,betamu,betabaromega):
+def thermo_trap(T,betamu,betabaromega,weight_func):
     """compute thermodynamics of trapped gas"""
-    Ns = number_per_spin(betamu,betabaromega)
+    Ns = number_per_spin(betamu,betabaromega,weight_func)
     EF = T*betabaromega*(6*Ns)**(1/3) # in Hz, without 2pi
     Theta = T/EF
-    Epot = T*Epot_trap(betamu,betabaromega) # in Hz, without 2pi
+    Epot = T*Epot_trap(betamu,betabaromega,weight_func) # in Hz, without 2pi
     return Ns,EF,Theta,Epot
 
-def heating_trap(T,betamu,betaomega,betabaromega):
+def heating_trap(T,betamu,betaomega,betabaromega,weight_func):
     """compute viscous heating rate E-dot averaged over the trap"""
-    Ztrap,Ztraperr = quad(lambda v: weight(v,
+    Ztrap,Ztraperr = quad(lambda v: weight_func(v,
 			   betabaromega)*eos_ufg(betamu-v)**(1/3)*zeta(betamu-v,betaomega),0,np.inf,epsrel=1e-4)
     # Ztrap_norm,Ztraperr_norm = quad(lambda v: weight(v,betabaromega)*eos_ufg(betamu-v)**(1/3),0,np.inf,epsrel=1e-4)
     Edot = 9*np.pi*(T*betaomega)**2/(3*np.pi**2)**(2/3)*Ztrap
     return Edot #, Ztrap/Ztrap_norm # modified to return trap avged zeta
 
-def phaseshift_arg_trap(betamu,betaomega,betabaromega):
+def phaseshift_arg_trap(betamu,betaomega,betabaromega,weight_func):
     """compute viscous heating rate E-dot averaged over the trap"""
-    argtrap,argtraperr = quad(lambda v: weight(v,
+    argtrap,argtraperr = quad(lambda v: weight_func(v,
 		   betabaromega)*eos_ufg(betamu-v)**(1/3)*phaseshift_Drude(betamu-v,betaomega),0,np.inf,epsrel=1e-4)
-    argtrap_norm,argtraperr_norm = quad(lambda v: weight(v,betabaromega)*eos_ufg(betamu-v)**(1/3),0,
-										np.inf,epsrel=1e-4)
+    argtrap_norm,argtraperr_norm = quad(lambda v: weight_func(v,betabaromega)*eos_ufg(betamu-v)**(1/3),0,
+										np.inf,epsrel=eps)
     return argtrap/argtrap_norm #, Ztrap/Ztrap_norm # modified to return trap avged zeta
 
-def find_betamu(T, ToTF, betabaromega, guess=None):
+def find_betamu(T, ToTF, betabaromega, weight_func, guess=None):
 	"""solves for betamu that matches T, EF and betabaromega of trap"""
 	sol = root_scalar(lambda x: T/ToTF - T*betabaromega*(6*number_per_spin(x, 
-				 betabaromega))**(1/3), bracket=[20e3/T, -300e3/T], x0=guess)
+				 betabaromega, weight_func))**(1/3), bracket=[20e3/T, -300e3/T], x0=guess)
 	return sol.root, sol.iterations
 
-def sumrule_trap(betamu, betabaromega):
+def sumrule_trap(betamu, betabaromega, weight_func):
     """sumrule in temperature units"""
-    sumruleT, sumruleTerr = quad(lambda v: weight(v, betabaromega)*np.where(betamu-v<-4.8,0.36*np.exp(betamu-v)**(5/3),
-					sumrat(np.exp(betamu-v))),0,np.inf,epsrel=1e-4) # area under viscosity peak in units of T
+    sumruleT, sumruleTerr = quad(lambda v: weight_func(v, betabaromega)*np.where(betamu-v<-4.8,0.36*np.exp(betamu-v)**(5/3),
+					sumrat(np.exp(betamu-v))),0,np.inf,epsrel=eps) # area under viscosity peak in units of T
     return sumruleT
 
-def C_trap(betamu, betabaromega):
+def C_trap(betamu, betabaromega,weight_func):
     """compute Contact Density averaged over the trap"""
-    Ctrap,Ctraperr = quad(lambda v: weight(v,
-			   betabaromega)*eos_ufg(betamu-v)**(4/3)*contact_density(Theta(betamu)),0,np.inf,epsrel=1e-4)
+    Ctrap,Ctraperr = quad(lambda v: weight_func(v,
+			   betabaromega)*eos_ufg(betamu-v)**(4/3)*ContactInterpolation(Theta(betamu-v)),0,np.inf,epsrel=eps)
 	### FLAG the above is wrong, Theta should depend on betamu-v
     return Ctrap
 
@@ -279,8 +327,6 @@ class BulkViscTrap:
 		self.T = T
 		self.barnu = barnu
 		self.mutrap = mutrap
-		hbar = 1.05e-34
-		m = 40*1.67e-27 # potassium
 		self.lambda_T = np.sqrt(hbar/(m*T)) # thermal wavelength (unit of length, in meters)
 		self.nus = nus
 		
@@ -288,12 +334,20 @@ class BulkViscTrap:
 		betamutrap = self.mutrap/self.T
 		betabaromega = barnu/T # all frequencies, temperatures and energies are without the 2pi
 		
+		if trap == 'harmonic':
+			weight_func = weight_harmonic
+		elif trap == 'gaussian':
+			weight_func = weight_gaussian
+			betabaromega = 1/self.T
+		else:
+			raise ValueError("Select harmonic or gaussian, not {}".format(trap))
+		
 		#
 		# if ToTF given, then find betamutrap that produces correct ToTF given T, ToTF and betabaromega
 		#
 		if ToTF is not None:
 			betamutrap_guess = betamutrap
-			betamutrap, no_iter = find_betamu(T, ToTF, betabaromega, guess=betamutrap_guess)
+			betamutrap, no_iter = find_betamu(T, ToTF, betabaromega, weight_func, guess=betamutrap_guess)
 			if print_results == True:
 				print("Found betamutrap={:.2f} in {} iterations".format(betamutrap, no_iter))
 				print("From initial guess {:.2f}".format(betamutrap_guess))
@@ -306,21 +360,21 @@ class BulkViscTrap:
 		#
 		# compute trap properties
 		#
-		self.Ns,self.EF,self.Theta,Epot = thermo_trap(self.T,betamutrap,betabaromega)
+		self.Ns,self.EF,self.Theta,Epot = thermo_trap(self.T,betamutrap,betabaromega,weight_func)
 		self.kF = np.sqrt(4*pi*m*self.EF/hbar) # global k_F, i.e. peak k_F
 		self.Etotal = 2*Epot # virial theorem valid at unitarity, 
 		# but we have to decide if we want to normalize the trap heating rate by the total or by the internal energy
 		self.Edottraps = self.A**2*np.array([heating_trap(self.T,betamutrap,
-						betaomega,betabaromega) for betaomega in betaomegas])
+						betaomega,betabaromega,weight_func) for betaomega in betaomegas])
 	
-		self.Ctrap =  C_trap(betamutrap, betabaromega)/(self.kF*self.lambda_T)*(3*pi**2)**(1/3)/self.Ns/2
+		self.Ctrap =  C_trap(betamutrap, betabaromega,weight_func)/(self.kF*self.lambda_T)*(3*pi**2)**(1/3)/self.Ns/2
 		self.EdottrapsC = self.A**2*np.array([heating_C(self.T,betaomega,
-				   C_trap(betamutrap, betabaromega)) for betaomega in betaomegas])
+				   C_trap(betamutrap, betabaromega,weight_func)) for betaomega in betaomegas])
 		
 		self.zetatraps = self.Edottraps/self.A**4 * (self.lambda_T**2*self.kF**2)/(9*pi*nus**2*2*self.Ns)
 		self.zetatrapsC = self.EdottrapsC/self.A**4 * (self.lambda_T**2*self.kF**2)/(9*pi*nus**2*2*self.Ns)
 		
-		self.sumruletrap = sumrule_trap(betamutrap, betabaromega) * self.T/self.EF
+		self.sumruletrap = sumrule_trap(betamutrap, betabaromega,weight_func) * self.T/self.EF
 		self.sumruletrapint = sumrule_zetaint(self.nus, self.zetatraps)
 		
 		self.betabaromega = betabaromega
@@ -387,6 +441,9 @@ if load_data == True:
 ### Plotting
 ###
 
+### Load plt settings
+plt.rcParams.update(plt_settings)
+
 ### Uniform Density System 
 
 if bulk_plot == True:
@@ -413,9 +470,9 @@ if bulk_plot == True:
 	# set plotting parameters
 	plt.rcParams.update({"figure.figsize": [12,8]})
 	xlabel=r'Frequency $\omega/E_F$'
-	font = {'size'   : 12}
-	plt.rc('font', **font)
-	legend_font_size = 10 # makes legend smaller, so plot is visible
+# 	font = {'size'   : 12}
+# 	plt.rc('font', **font)
+# 	legend_font_size = 10 # makes legend smaller, so plot is visible
 	fig, axs = plt.subplots(2,2)
 	
 	# make frequency array
@@ -437,13 +494,14 @@ if bulk_plot == True:
 	ax_phase.set(xlabel=xlabel, ylabel=ylabel, xscale='log')
 	
 	ax_table = axs[1,1]
-	ax_table.set(title=titlebulk)
+# 	ax_table.set(title=titlebulk)
 	ax_table.axis('off')
 	ax_table.axis('tight')
 	
 	label_Drude = 'Drude'
 	label_LW = 'L-W'
-	label_C = 'Contact'
+	label_C = r'$\tilde{\zeta} \propto \mathcal{C}/\omega^{3/2}$'
+	labels_ToTF = ["$T/T_F=0.25$", "$T/T_F=0.58$"]
 
 	# loop over ToTF
 	BVUs = []
@@ -487,9 +545,21 @@ if bulk_plot == True:
 		else:
 			continue
 		
-		if i == 0:
-			ax_zeta.legend(prop={'size':legend_font_size})
-			ax_phase.legend(prop={'size':legend_font_size})
+		if i == 1:
+			if show_data == True:
+				EF = 19
+				freqs = np.array([2, 5])/EF
+				phases = np.array([0.054, 0.32])
+				phases_err = np.array([0.1, 0.18])
+				label = r"Measurements"
+				light_color = tint_shade_color(color, amount=1+tintshade)
+				dark_color = tint_shade_color(color, amount=1-tintshade)
+				ax_phase.errorbar(freqs, phases, yerr=phases_err, capsize=0, 
+					  fmt="^", color=dark_color, markerfacecolor=light_color, 
+					    markeredgecolor=dark_color, markeredgewidth=2, label=label)
+				
+			ax_zeta.legend()
+			ax_phase.legend()
 		
 		
 		table_row = ["{:.2f}".format(Thetas[i]),
@@ -503,7 +573,7 @@ if bulk_plot == True:
 		table_rows.append(table_row)
 		
 	# add temperature legend
-	ax_Edot.legend(prop={'size':legend_font_size})
+	ax_Edot.legend()
 	
 	# generate table
 	quantities = ["Theta", "$E_F$", "$\\bar\omega$", "Drude $s$", 
@@ -512,15 +582,14 @@ if bulk_plot == True:
 	
 	the_table = ax_table.table(cellText=table, loc='center')
 	the_table.auto_set_font_size(False)
-	the_table.set_fontsize(legend_font_size)
+	the_table.set_fontsize(10)
 	the_table.scale(1,1.5)
-	
+	fig.savefig("figures/uniform_density_plots.pdf")
 	plt.tight_layout()
 	plt.show()
 
 
 ### Harmonic Trap
-
 if trap_plot == True:
 	title = 'Harmonically Trapped Gas'
 	
@@ -530,7 +599,7 @@ if trap_plot == True:
 	mubulks = [7520, 1500] # uniform trap chemical potential
 	mutraps = [9825, -3800] # harmonic trap chemical potential
 	colors = ['teal', 'r']
-	theta_indices = [1]
+	theta_indices = [0,1]
 	params_trap = list(zip(Ts, barnus, mutraps))
 	params_bulk = list(zip(Ts, mubulks)) # for comparison
 	
@@ -568,13 +637,14 @@ if trap_plot == True:
 	label_Drude = 'Drude'
 	label_LW = 'L-W'
 	label_C = 'Contact'
+	labels_ToTF = ["$T/T_F=0.25$", "$T/T_F=0.58$"]
 
 	# loop over ToTF
 	BVTs = []
 	table_rows = []
 	for i in theta_indices:
 		color = colors[i]
-		BVT = BulkViscTrap(*params_trap[i], nus, ToTF=Thetas[i], a0=-2.70e-6)
+		BVT = BulkViscTrap(*params_trap[i], nus, ToTF=Thetas[i], a0=-2.70e-6, trap='harmonic')
 		BVU = BulkViscUniform(*params_bulk[i], nus)
 		label = "$T/T_F=${:.2f}".format(Thetas[i])
 		
