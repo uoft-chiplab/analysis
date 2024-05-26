@@ -132,6 +132,7 @@ nus = np.linspace(nu_min*1e3, nu_max*1e3, num)
 label_Drude = 'Drude'
 label_LW = 'L-W'
 label_C = 'Contact'
+label_Qcrit = 'Qcrit'
 	
 ax = axs[0,1]
 ylabel = "Heating Rate $h \\langle\dot{E}\\rangle/(E_F\\,A)^2$"
@@ -234,7 +235,8 @@ for param_set, color, marker, i in zip(param_sets, colors, markers, range(loops)
 						color=dark_color, mfc=light_color, 
 						mec=dark_color, mew=2)
 	
-	ax_ps.errorbar(xx/T, yy/scalesus/xx, capsize=0, fmt=marker, color=dark_color, mfc=light_color, mec=dark_color, mew=2)
+	# huh??? EF???
+	ax_ps.errorbar(xx/T, yy/scalesus/xx*EF, capsize=0, fmt=marker, color=dark_color, mfc=light_color, mec=dark_color, mew=2)
 	
 
 ### Heating rate theory line(s)
@@ -269,6 +271,7 @@ for param_set, color, marker, i in zip(param_sets, colors, markers, range(loops)
 			  BVT.zetatraps[:nu_small]*(1 + error_band), alpha=band_alpha, color=color)
 		
 		ax_EdotSus.plot(nusoEF[:nu_small], BVT.EdottrapsS[:nu_small]/BVT.Etotal, ':', color=color, label=label_Drude)
+		ax_EdotSus.plot(nusoEF[:nu_small], BVT.EdottrapsS2[:nu_small]/BVT.Etotal, '-.', color=color, label=label_Drude)
 	
 	# plot contact determined lines if large frequencies exist
 	if load_theory == False: print('plot contact')
@@ -284,7 +287,10 @@ for param_set, color, marker, i in zip(param_sets, colors, markers, range(loops)
 		
 		ax_EdotCon.plot(nusoEF[nu_small:], BVT.EdottrapsNormC[nu_small:]/BVT.Etotal, '--',color=color, label=label_C)
 		ax_EdotCon.plot(nusoEF[nu_small:], BVT.EdottrapsNormC[nu_small:]/BVT.Etotal*4, '-.',color=color, label=label_C)
-
+		# factor of 4 lmao how
+	# does this work?...
+	ax_ps.plot(nus/BVT.T, BVT.phaseshiftsQcrit, '--', color=color, label=label_Qcrit)
+	
 ### Residual ratio
 	residuals = []
 	e_res = []

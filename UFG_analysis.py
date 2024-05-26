@@ -25,7 +25,7 @@ pi = np.pi
 # print results
 print_results = False
 trap_plot = False
-bulk_plot = True
+bulk_plot = False
 show_data = False
 
 hbar = 1.05e-34
@@ -408,6 +408,11 @@ class BulkViscTrap:
 		self.sumruletrap = sumrule_trap(betamutrap, betabaromega,weight_func) * self.T/self.EF
 		self.sumruletrap2 = sumrule_trap2(betamutrap, betabaromega, weight_func) * self.T/self.EF
 		self.sumruletrapint = sumrule_zetaint(self.nus, self.zetatraps)
+		self.EdottrapsS2 = self.Edottraps / self.sumruletrap
+		self.EdottrapsS3 = self.Edottraps / self.sumruletrap2
+		self.EdottrapsS4 = self.Edottraps/ self.sumruletrapint
+
+		self.phaseshiftsQcrit = np.array([phaseshift_qcrit(T, betaomega) for betaomega in betaomegas])
 
 		self.betabaromega = betabaromega
 		self.betamutrap = betamutrap
@@ -670,8 +675,9 @@ if trap_plot == True:
 	
 	ax_EdotS = axs[2,0]
 	ylabel = r'Heating Rate $\dot{E}/E/S$'
-# 	ylims = [0,2]
-	ax_EdotS.set(xlabel=xlabel, ylabel=ylabel)
+	ylims = [-0.01,0.03]
+	xlims=[0,2]
+	ax_EdotS.set(xlabel=xlabel, ylabel=ylabel,ylim=ylims,xlim=xlims)
 	
 	ax_EdotC = axs[2,1]
 	ylabel = r'Heating Rate $\dot{E}/E/C$'
@@ -705,6 +711,9 @@ if trap_plot == True:
 		
 		# S for Snorm, C for Cnorm
 		ax_EdotS.plot(BVT.nus/BVT.EF, BVT.EdottrapsS/BVT.Etotal, ':', color=color)
+		ax_EdotS.plot(BVT.nus/BVT.EF, BVT.EdottrapsS2/BVT.Etotal,'-.',color=color)
+		ax_EdotS.plot(BVT.nus/BVT.EF, BVT.EdottrapsS3/BVT.Etotal,'.',color=color)
+		ax_EdotS.plot(BVT.nus/BVT.EF, BVT.EdottrapsS4/BVT.Etotal,'--',color=color)
 		ax_EdotC.plot(BVT.nus[nu_small:]/BVT.EF, BVT.EdottrapsNormC[nu_small:]/BVT.Etotal, '--',color=color)
 		
 		ax_zeta.plot(BVT.nus/BVT.EF, BVT.zetatraps, ':', label=label_Drude, color=color)
