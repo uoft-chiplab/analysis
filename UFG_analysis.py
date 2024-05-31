@@ -22,15 +22,15 @@ from contact_tabulated import ContactInterpolation
 
 pi = np.pi
 
-# print_results = True
-# trap_plot = True
-# bulk_plot = True
-# show_data = True
+print_results = True
+trap_plot = True
+bulk_plot = True
+show_data = True
 
-print_results = False
-trap_plot = False
-bulk_plot = False
-show_data = False
+# print_results = False
+# trap_plot = False
+# bulk_plot = False
+# show_data = False
 
 hbar = 1.05e-34
 m = 40*1.67e-27 # potassium
@@ -718,8 +718,11 @@ if trap_plot == True:
 		  color=color)
 		ax_Edot.plot(BVT.nus[nu_small:]/BVT.EF, BVT.EdottrapsC[nu_small:]/BVT.Etotal, '--', color=color)
 		
-		# plot "normzlied" heating rates
+		# plot "normalized" heating rates
 		ax_EdotS.plot(BVT.nus/BVT.EF, BVT.EdottrapsS/BVT.Etotal, ':', color=color,label=label)
+				
+		sumrulezetaint = sumrule_zetaint(BVT.nus, BVT.zetatraps)
+		ax_EdotS.plot(BVT.nus/BVT.EF, BVT.Edottraps/sumrulezetaint/BVT.Etotal, '--',color=color, label=label)
 # 		ax_EdotS.plot(BVT.nus/BVT.EF, BVT.EdottrapsS2/BVT.Etotal, '--',color=color,label=label)
 		ax_EdotC.plot(BVT.nus[nu_small:]/BVT.EF, BVT.EdottrapsNormC[nu_small:]/BVT.Etotal, '--',color=color,label=label)
 		
