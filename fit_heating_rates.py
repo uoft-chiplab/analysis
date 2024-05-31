@@ -54,7 +54,7 @@ metadata = pd.read_excel(metadata_file)
 
 ### script options
 plotting = True
-save = True
+save = False
 select_plotting = False
 
 # only fit data up to max time in ms
@@ -416,7 +416,7 @@ if plotting == True:
 	ax.set(xlabel=xlabel, ylabel=ylabel)
 	
 	# zero line
-	ax.plot(xlist, np.zeros(num), color='k', linestyle='--')
+	#ax.plot(xlist, np.zeros(num), color='k', linestyle='--')
 	
 	# residuals
 	for run, color, marker in zip(runs, colors, markers):
@@ -520,7 +520,7 @@ if plotting == True:
 	
 	fig.tight_layout()
 	plt.show()
-	fig.savefig('figures/heating_fits.pdf')
+	#fig.savefig('figures/heating_fits.pdf')
 
 ############ SAVE RESULTS ############	
 if save == True:

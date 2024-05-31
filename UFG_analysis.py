@@ -24,9 +24,9 @@ pi = np.pi
 
 # print results
 print_results = False
-trap_plot = False
+trap_plot = True
 bulk_plot = False
-show_data = False
+show_data = True
 
 hbar = 1.05e-34
 m = 40*1.67e-27 # potassium
@@ -41,10 +41,10 @@ eosfit = {'nodes': np.array([5.45981500e+01, 3.35462628e-04, 4.48168907e+00, 1.2
 eosrat = BarycentricRational(eosfit['nodes'],eosfit['values'],eosfit['weights'])
 
 def eos_ufg(betamu):
-    """EOS of unitary gas: phase space density f_n(beta*mu) for both spin components (Zwierlein data)"""
-    z = np.exp(betamu)
-    f_n = 2*np.where(betamu<-8,z,eosrat(z)) # approximant is for a single spin component, so multiply by 2
-    return f_n
+	"""EOS of unitary gas: phase space density f_n(beta*mu) for both spin components (Zwierlein data)"""
+	z = np.exp(betamu)
+	f_n = 2*np.where(betamu<-8,z,eosrat(z)) # approximant is for a single spin component, so multiply by 2
+	return f_n
 
 def Theta(betamu):
 	return (4*pi)/((3*pi**2)* eos_ufg(betamu))**(2/3)
@@ -371,8 +371,9 @@ class BulkViscTrap:
 		self.EdottrapsC = self.A**2*np.array([heating_C(self.T,betaomega,
 				   C_trap(betamutrap, betabaromega,weight_func)) for betaomega in betaomegas])
 		
-		self.zetatraps = self.Edottraps/self.A**4 * (self.lambda_T**2*self.kF**2)/(9*pi*nus**2*2*self.Ns)
-		self.zetatrapsC = self.EdottrapsC/self.A**4 * (self.lambda_T**2*self.kF**2)/(9*pi*nus**2*2*self.Ns)
+		# these were divided by A**4 for some reason when I first saw this code. Why?
+		self.zetatraps = self.Edottraps/self.A**2 * (self.lambda_T**2*self.kF**2)/(9*pi*nus**2*2*self.Ns)
+		self.zetatrapsC = self.EdottrapsC/self.A**2 * (self.lambda_T**2*self.kF**2)/(9*pi*nus**2*2*self.Ns)
 		
 		self.sumruletrap = sumrule_trap(betamutrap, betabaromega,weight_func) * self.T/self.EF
 		self.sumruletrapint = sumrule_zetaint(self.nus, self.zetatraps)
@@ -407,7 +408,7 @@ def phaseshift_from_zeta(nus, EF, zetas):
 	return phi
 
 ############ LOAD DATA ############
-load_data = False
+load_data = True
 
 if load_data == True:
 	files = ["2024-03-21_B_UHfit.dat", "2024-04-03_E_UHfit.dat"]

@@ -233,7 +233,9 @@ class Data:
 		if fit_func == TrapFreq:
 			freq = self.popt[2]*10**3/2/np.pi
 			er = self.perr[2]*10**3/2/np.pi
+			ot = self.popt[1]*self.popt[2]
 			print('The trap frequency is {:.6f} +/-{:.2}'.format(freq,er))
+			print('omega*tau is',ot)
 				
 		self.plot(names, label=label, axes_labels=None)
 		

@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 import os
 import pickle
 
-ARBITRARY_RESCALING = 1
+#ARBITRARY_RESCALING = 1
 error_band = 0.14
 band_alpha = 0.2
 
@@ -136,7 +136,9 @@ label_C = 'Contact'
 ax = axs[0,1]
 ylabel = "Heating Rate $h \\langle\dot{E}\\rangle/(E_F\\,A)^2$"
 xlabel = "Drive Frequency $\hbar\omega/E_F$"
-ax.set(ylabel=ylabel, xlabel=xlabel)
+ylims=[0,0.1]
+ax.set(ylabel=ylabel, xlabel=xlabel, ylim=ylims)
+
 
 ax_res = axs[1,0]
 ylabel = "Measurement/Theory"
@@ -185,8 +187,7 @@ for param_set, color, marker, i in zip(param_sets, colors, markers, range(loops)
 	
 	used_colors.append(color)
 	Tmeans.append(Tmean)
-	
-# 	print(ToTF, EF, barnu)
+	print(ToTF, EF, barnu)
 	
 # 	label = r'[{}_{}]  $E_F={:.1f}$kHz, $T/T_F={:.2f}$, $\bar \nu={:.0f}$Hz'.format(df.date.values[0], 
 # 								  df.run.values[0], EFmean, ToTFmean, barnu)
@@ -222,10 +223,14 @@ for param_set, color, marker, i in zip(param_sets, colors, markers, range(loops)
 			nu_small += 1
 	
 	nusoEF = BVT.nus/BVT.EF
-	
+	C = 0.78
+	dCdkFainv = 1.69
+	sumrule = dCdkFainv/(18*pi)
+	print(sumrule)
+	Edotnorm = (2*BVT.Ns)/BVT.EF**2 * sumrule
 	# plot Drude form if small frequencies exist
 	if xx.min() < 2*Tmean:
-		Edots = BVT.Edottraps/(2*BVT.Ns)/BVT.EF**2
+		Edots = BVT.Edottraps/Edotnorm
 		ax.plot(nusoEF[:nu_small], Edots[:nu_small], ':', color=color, label=label_Drude)
 		ax.fill_between(nusoEF[:nu_small], Edots[:nu_small]*(1 - error_band), 
 					 Edots[:nu_small]*(1 + error_band), alpha=band_alpha, color=color)
@@ -236,7 +241,7 @@ for param_set, color, marker, i in zip(param_sets, colors, markers, range(loops)
 	
 	# plot contact determined lines if large frequencies exist
 	if xx.max() > 2*Tmean:
-		Edots = BVT.EdottrapsC/(2*BVT.Ns)/BVT.EF**2
+		Edots = BVT.EdottrapsC/Edotnorm
 		ax.plot(nusoEF[nu_small:], Edots[nu_small:],'--', color=color, label=label_C)
 		ax.fill_between(nusoEF[nu_small:], Edots[nu_small:]*(1 - error_band), 
 		 Edots[nu_small:]*(1 + error_band), alpha=band_alpha, color=color)
@@ -254,14 +259,14 @@ for param_set, color, marker, i in zip(param_sets, colors, markers, range(loops)
 		for j in range(len(BVT.nus)):
  			if BVT.nus[j]/1e3 == freq:
 				 if BVT.nus[j] < 2*BVT.T:
-	 				 residuals.append(rate/(BVT.Edottraps[j]/(2*BVT.Ns)/BVT.EF**2))
+	 				 residuals.append(rate/(BVT.Edottraps[j]/Edotnorm))
 	 				 residuals_zeta.append(zeta/BVT.zetatraps[j])
-	 				 e_res.append(e_rate/(BVT.Edottraps[j]/(2*BVT.Ns)/BVT.EF**2))
+	 				 e_res.append(e_rate/(BVT.Edottraps[j]/Edotnorm))
 	 				 e_res_zeta.append(e_zeta/BVT.zetatraps[j])
 				 else: 
-	 				 residuals.append(rate/(BVT.EdottrapsC[j]/(2*BVT.Ns)/BVT.EF**2))
+	 				 residuals.append(rate/(BVT.EdottrapsC[j]/Edotnorm))
 	 				 residuals_zeta.append(zeta/BVT.zetatrapsC[j])
-	 				 e_res.append(e_rate/(BVT.EdottrapsC[j]/(2*BVT.Ns)/BVT.EF**2))
+	 				 e_res.append(e_rate/(BVT.EdottrapsC[j]/Edotnorm))
 	 				 e_res_zeta.append(e_zeta/BVT.zetatrapsC[j])
 				 continue
  	
@@ -340,7 +345,7 @@ if plot_legend:
 
 	
 fig.tight_layout()
-fig.savefig("figures/summary.pdf")
+#fig.savefig("figures/summary.pdf")
 plt.show()
 
 ########### SAVE THEORY ###########
