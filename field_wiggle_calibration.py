@@ -20,7 +20,7 @@ def linear(x, a, b):
 ###
 ### Load measurement analysis results
 ###
-folder = "data\\FieldWiggleCal"
+folder = "data//FieldWiggleCal"
 csv_filename = "field_cal_summary.csv"
 df = pd.read_csv(os.path.join(folder, csv_filename))
 num = 500
