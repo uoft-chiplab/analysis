@@ -41,7 +41,7 @@ from fit_functions import Linear
 from field_wiggle_calibration import Bamp_from_Vpp 
 
 ### files and paths
-data_folder = 'data\\heating'
+data_folder = 'data//heating'
 pkl_filename = 'heating_rate_fit_results.pkl'
 pkl_file = os.path.join(data_folder, pkl_filename)
 xlsx_results_filename = 'heating_data_results.xlsx'
@@ -75,7 +75,7 @@ del_attr = ['data', 'avg_data', 'fit_func', 'popt',
 files =  metadata.loc[metadata['exclude'] == 0]['filename'].values
 
 # or select files manually, e.g. files = [filename1, filename2, ...]
-files = ["2024-05-10_S_UHfit"]
+# files = ["2024-05-10_S_UHfit"]
 
 # names for select_plotting
 # plot_names = ["2024-03-19_L_f=20_Vpp=0.70",
@@ -104,6 +104,13 @@ def calc_A(B0, T, e_T, Bamp, e_Bamp):
 	e_dB = np.abs(deBroglie(T) - deBroglie(T+e_T)) # same
 	e_A = A*np.sqrt((e_a97/a97(B0-Bamp))**2 + (e_dB/deBroglie(T))**2)
 	return A, e_A
+
+# shitty hard-coded linear fit of C/kFN vs. B field [G]
+def calc_Ca(B0,Bamp):
+	m = -2.07499885
+	b = 420.18726779
+	Ca = np.abs(m*Bamp)
+	return Ca
 
 # read description!!!
 def fix_attribute(run, attr, attr_names):
@@ -182,6 +189,7 @@ def fit_analysis(run):
 	# calculate other run params and errors
 	run.Bamp, run.e_Bamp = Bamp_from_Vpp(run.Vpp, run.freq)
 	run.A, run.e_A = calc_A(run.B, run.T, run.e_T, run.Bamp, run.e_Bamp)
+	run.Ca = calc_Ca(run.B, run.Bamp)
 	
 	run.Edot = run.popt[0] # kHz^2
 	run.e_Edot = run.err[0]
@@ -214,7 +222,7 @@ def analysis_for_dof_equals_two(run):
 	e_Ef = float(df2['em_'+settings['temp_param']])
 	run.N = (float(df2.N)+float(df1.N))/2
 	run.e_N = float(df1.em_N)
-	Ni = float(df2.N)
+	Ni = float(df2.N) # this needs to be df1?
 	e_Ni = float(df2.em_N)
 	Nf = float(df2.N)
 	e_Nf = float(df2.em_N)
@@ -225,6 +233,7 @@ def analysis_for_dof_equals_two(run):
 	run.Bamp, run.e_Bamp = Bamp_from_Vpp(run.Vpp, run.freq)
 	run.lamda = np.sqrt(hbar/(mK*run.T*1e3))
 	run.A, run.e_A = calc_A(run.B, run.T, run.e_T, run.Bamp, run.e_Bamp)
+	run.Ca = calc_Ca(run.B, run.Bamp)
 	# rise over run...
 	deltax = (float(df2[run.param])-float(df1[run.param])) 
 	deltay = Ef-run.Ei
@@ -416,7 +425,7 @@ if plotting == True:
 	ax.set(xlabel=xlabel, ylabel=ylabel)
 	
 	# zero line
-	ax.plot(xlist, np.zeros(num), color='k', linestyle='--')
+# 	ax.plot(xlist, np.zeros(num), color='k', linestyle='--')
 	
 	# residuals
 	for run, color, marker in zip(runs, colors, markers):
@@ -533,16 +542,23 @@ if save == True:
 			results.pop(attr, None) # None in case of key error
 		
 		# stuff result (dict) in dataframe OH YEAH BABY
-		save_results = save_results.append(results, ignore_index=True)
-	
+		# pandas doesn't let you use append on dataframes anymore as of 2.0, now it's ugly
+# 		save_results = save_results.append(results, ignore_index=True)
+		save_results = pd.concat([save_results, pd.DataFrame([results])], ignore_index=True)
+# 		print(save_results.head())
 	# set index as name
 	save_results = save_results.set_index('name')
 	try: # open pkl file if it's there
 		with open(pkl_file, 'rb') as f:
 			loaded_results = pickle.load(f) # load all results in file
+# 			loaded_results['Ca'] = save_results['Ca']
+# 			print(loaded_results.columns)
 			# update index, then rows of loaded df
 			loaded_results = loaded_results.reindex(loaded_results.index.union(save_results.index))
-			loaded_results.update(save_results)
+# 			print(loaded_results.columns)
+# 			print(loaded_results.head())
+			loaded_results.update(save_results) # this only updates values in shared columns, does not merge new columns
+# 			print(loaded_results.columns)
 		with open(pkl_file, 'wb') as f:
 			pickle.dump(loaded_results, f)  # write new pkl file
 			loaded_results.to_excel(xlsx_results_file)

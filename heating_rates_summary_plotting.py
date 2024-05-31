@@ -45,7 +45,7 @@ removed_names = ["2024-03-21_B_f=75_Vpp=0.25",
 				 "2024-04-03_F_f=2_Vpp=1.80",
 				 "2024-04-08_G_f=20_Vpp=1.80"]
 
-data_folder = 'data\\heating'
+data_folder = 'data//heating'
 pkl_filename = 'heating_rate_fit_results.pkl'
 pkl_file = os.path.join(data_folder, pkl_filename)
 
@@ -100,7 +100,7 @@ else:
 # change matplotlib options
 plt.rcParams.update(plt_settings)
 plt.rcParams.update({"figure.figsize": [12,8]})
-fig, axs = plt.subplots(2,2)
+fig, axs = plt.subplots(4,2)
 
 ###
 ### Scaled heating rate data compared to theory (First Column)
@@ -131,6 +131,7 @@ nus = np.linspace(nu_min*1e3, nu_max*1e3, num)
 
 label_Drude = 'Drude'
 label_LW = 'L-W'
+label_Qcrit = r'$\arctan(\frac{\omega\tau} {1+\omega^2\tau^2})$'
 label_C = 'Contact'
 	
 ax = axs[0,1]
@@ -147,12 +148,36 @@ ylabel = "Contact Correlation $\\langle\\tilde{\zeta}(\omega)\\rangle $"
 xlims = [0.05, 15] # omega/EF
 ax_zeta.set(xlabel=xlabel, ylabel=ylabel, yscale='log', xscale='log', xlim=xlims)
 
-if plot_legend==False:
-	ax_res_zeta = axs[1,1]
-	ylabel = "$a^2 \zeta$ Meas./Theory"
-	xlabel = "Drive Frequency (kHz)"
-# 	xlims = [0.05, 15] # omega/EF
-	ax_res_zeta.set(xlabel=xlabel, ylabel=ylabel)
+ax_EdotSus = axs[1,1]
+ylabel = "$h \\langle\dot{E}\\rangle/(E_F\\,A)^2 / \\langle \\tilde{S} \\rangle$"
+xlabel = "Drive Frequency $\hbar\omega/E_F$"
+xlims=[0,2]
+ylims=[-0.1,0.9]
+ax_EdotSus.set(ylabel=ylabel, xlabel=xlabel, xlim=xlims, ylim=ylims)
+
+ax_EdotCon = axs[3,1]
+ylabel = "$h \\langle\dot{E}\\rangle/(E_F\\,A)^2 / \\langle \\tilde{C} \\rangle$"
+xlabel = "Drive Frequency $\hbar\omega/E_F$"
+xlims=[1,10]
+ax_EdotCon.set(ylabel=ylabel, xlabel=xlabel, xlim=xlims)
+
+ax_ps = axs[2,0]
+ylabel = "$tan^{-1} h \\langle\dot{E}\\rangle/(E_F\\,A)^2  / \\langle \\tilde{S} \\rangle / \omega$"
+xlabel = "$\omega/T$"
+ylims=[-0.1,0.7]
+ax_ps.set(xlabel=xlabel, ylabel=ylabel, xscale='log', ylim=ylims)
+
+ax_ps2 = axs[2,1]
+ylabel = "$\phi$ from Tan's C"
+xlabel = "$\omega/T$"
+ylims=[-0.1,0.7]
+ax_ps2.set(xlabel=xlabel, ylabel=ylabel, xscale='log', ylim=ylims)
+# doesn't do anything right now
+# ax_res_zeta = axs[2,0]
+# ylabel = "$a^2 \zeta$ Meas./Theory"
+# xlabel = "Drive Frequency (kHz)"
+# # 	xlims = [0.05, 15] # omega/EF
+# ax_res_zeta.set(xlabel=xlabel, ylabel=ylabel)
 
 ### Heating rate measurements
 loops = len(param_sets) # to count over to pull the right theory curve if loading
@@ -168,6 +193,7 @@ for param_set, color, marker, i in zip(param_sets, colors, markers, range(loops)
 		df = df.loc[df[name] > param_set[j,0]]
 		df = df.loc[df[name] < param_set[j,1]]
 	
+	print(df.head())
 	xx = np.array(df.freq)
 	yy = np.array(df.rate)
 	yerr = np.array(df.e_rate)
@@ -177,7 +203,10 @@ for param_set, color, marker, i in zip(param_sets, colors, markers, range(loops)
 	ToTF = np.array(df.ToTF)
 	zetas = np.array(df.zeta)
 	e_zetas = np.array(df.e_zeta) # just scales with the other params in the same way
-	mean_df = df.groupby(['filename'], as_index=False).mean()
+	Cas = np.array(df.Ca)
+	As = np.array(df.A)
+	adbsinphi = 4*pi*yy/xx/EF/As/Cas * EF**2*As**2 # heating rate yy is already normalized by (EF*A)**2, have to remove it
+	mean_df = df.groupby('filename').mean(numeric_only=True) # had to do this for pandas 2.1.1
 	barnu = float((mean_df.wx.mean()*mean_df.mean().wy*mean_df.wz.mean())**(1/3))
 	EFmean = float(mean_df.EF.mean())
 	ToTFmean = float(mean_df.ToTF.mean())
@@ -205,6 +234,26 @@ for param_set, color, marker, i in zip(param_sets, colors, markers, range(loops)
 	ax_zeta.errorbar(xx/EF, zetas, yerr=e_zetas, capsize=0, fmt=marker,
 			  color=dark_color, markerfacecolor=light_color, 
 			  markeredgecolor=dark_color, markeredgewidth=2)
+	
+	# Edot over Scale sus
+	# these values were taken from a Contact Correlations slide
+	dCdkFainvlow = 1.56 - 0.23
+	dCdkFainvhigh = 1.56 + 0.23
+	scalesuslow = dCdkFainvlow/(18*pi) # dimensionless scale sus
+	scalesushigh = dCdkFainvhigh/(18*pi)
+	dCdkFainv = 1.56
+	scalesus = dCdkFainv/(18*pi)
+	ax_EdotSus.errorbar(xx/EF, yy/scalesus, yerr=yerr/scalesus, capsize=0, fmt=marker, 
+						color=dark_color, mfc=light_color, 
+						mec=dark_color, mew=2)
+	# Edot over Contact
+	Cmeas = 0.78 # hard-coded...
+	ax_EdotCon.errorbar(xx/EF, yy/Cmeas, yerr=yerr/Cmeas, capsize=0, fmt=marker, 
+						color=dark_color, mfc=light_color, 
+						mec=dark_color, mew=2)
+	# phase shifts
+	ax_ps.errorbar(xx/T, np.arctan(yy/scalesus/xx*EF), capsize=0, fmt=marker, color=dark_color, mfc=light_color, mec=dark_color, mew=2)
+	ax_ps2.errorbar(xx/T, np.arcsin(adbsinphi), capsize=0, fmt=marker, color=dark_color, mfc=light_color, mec=dark_color, mew=2)
 
 ### Heating rate theory line(s)
 	if load_theory == False:
@@ -212,20 +261,23 @@ for param_set, color, marker, i in zip(param_sets, colors, markers, range(loops)
 		params_trap = [Tmean*1e3, barnu, -3800] # give T, barnu and mutrap_guess in Hz
 		BVT = BulkViscTrap(*params_trap, nus, ToTF=ToTFmean)
 		BVTs.append(BVT)
+		print("Computation complete.")
 	else:
 		BVT = BVTs[i]
 	
 	# find nus for nu/EF > 1 to use for high_freq
+	if load_theory == False: print('find nus')
 	nu_small = 0
 	for nu in nus:
-		if nu < (2*BVT.T):
+		if nu < (3*BVT.T):
 			nu_small += 1
 	
 	nusoEF = BVT.nus/BVT.EF
-	
+	Edotnorm = (2*BVT.Ns) * (BVT.EF**2)
 	# plot Drude form if small frequencies exist
+	if load_theory == False: print('plot Drude')
 	if xx.min() < 2*Tmean:
-		Edots = BVT.Edottraps/(2*BVT.Ns)/BVT.EF**2
+		Edots = BVT.Edottraps/Edotnorm
 		ax.plot(nusoEF[:nu_small], Edots[:nu_small], ':', color=color, label=label_Drude)
 		ax.fill_between(nusoEF[:nu_small], Edots[:nu_small]*(1 - error_band), 
 					 Edots[:nu_small]*(1 + error_band), alpha=band_alpha, color=color)
@@ -233,10 +285,13 @@ for param_set, color, marker, i in zip(param_sets, colors, markers, range(loops)
 		ax_zeta.plot(nusoEF[:nu_small], BVT.zetatraps[:nu_small],':', color=color, label=label_Drude)
 		ax_zeta.fill_between(nusoEF[:nu_small], BVT.zetatraps[:nu_small]*(1 - error_band), 
 			  BVT.zetatraps[:nu_small]*(1 + error_band), alpha=band_alpha, color=color)
-	
+		
+		ax_EdotSus.plot(nusoEF[:nu_small], BVT.EdottrapsS[:nu_small]/BVT.Etotal, ':', color=color, label=label_Drude)
+
 	# plot contact determined lines if large frequencies exist
+	if load_theory == False: print('plot contact')
 	if xx.max() > 2*Tmean:
-		Edots = BVT.EdottrapsC/(2*BVT.Ns)/BVT.EF**2
+		Edots = BVT.EdottrapsC/Edotnorm
 		ax.plot(nusoEF[nu_small:], Edots[nu_small:],'--', color=color, label=label_C)
 		ax.fill_between(nusoEF[nu_small:], Edots[nu_small:]*(1 - error_band), 
 		 Edots[nu_small:]*(1 + error_band), alpha=band_alpha, color=color)
@@ -244,7 +299,13 @@ for param_set, color, marker, i in zip(param_sets, colors, markers, range(loops)
 				  color=color, label=label_C)
 		ax_zeta.fill_between(nusoEF[nu_small:], BVT.zetatrapsC[nu_small:]*(1 - error_band), 
 			  BVT.zetatrapsC[nu_small:]*(1 + error_band), alpha=band_alpha, color=color)
-
+		
+		ax_EdotCon.plot(nusoEF[nu_small:], BVT.EdottrapsNormC[nu_small:]/BVT.Etotal, '--',color=color, label=label_C)
+		ax_EdotCon.plot(nusoEF[nu_small:], BVT.EdottrapsNormC[nu_small:]/BVT.Etotal*4, '-.',color=color, label='4*Contact')
+		# factor of 4 lmao how
+	# does this work?...
+	ax_ps.plot(nus/BVT.T, BVT.phaseshiftsQcrit, '--', color=color, label=label_Qcrit)
+	ax_ps2.plot(nus/BVT.T, BVT.phaseshiftsQcrit, '--', color=color, label=label_Qcrit)
 ### Residual ratio
 	residuals = []
 	e_res = []
@@ -254,14 +315,14 @@ for param_set, color, marker, i in zip(param_sets, colors, markers, range(loops)
 		for j in range(len(BVT.nus)):
  			if BVT.nus[j]/1e3 == freq:
 				 if BVT.nus[j] < 2*BVT.T:
-	 				 residuals.append(rate/(BVT.Edottraps[j]/(2*BVT.Ns)/BVT.EF**2))
+	 				 residuals.append(rate/(BVT.Edottraps[j]/Edotnorm))
 	 				 residuals_zeta.append(zeta/BVT.zetatraps[j])
-	 				 e_res.append(e_rate/(BVT.Edottraps[j]/(2*BVT.Ns)/BVT.EF**2))
+	 				 e_res.append(e_rate/(BVT.Edottraps[j]/Edotnorm))
 	 				 e_res_zeta.append(e_zeta/BVT.zetatraps[j])
 				 else: 
-	 				 residuals.append(rate/(BVT.EdottrapsC[j]/(2*BVT.Ns)/BVT.EF**2))
+	 				 residuals.append(rate/(BVT.EdottrapsC[j]/Edotnorm))
 	 				 residuals_zeta.append(zeta/BVT.zetatrapsC[j])
-	 				 e_res.append(e_rate/(BVT.EdottrapsC[j]/(2*BVT.Ns)/BVT.EF**2))
+	 				 e_res.append(e_rate/(BVT.EdottrapsC[j]/Edotnorm))
 	 				 e_res_zeta.append(e_zeta/BVT.zetatrapsC[j])
 				 continue
  	
@@ -275,6 +336,10 @@ for param_set, color, marker, i in zip(param_sets, colors, markers, range(loops)
 	if i == 0:
 		ax.legend()
 		ax_zeta.legend()
+		ax_EdotSus.legend()
+		ax_EdotCon.legend()
+		ax_ps.legend()
+		ax_ps2.legend()
 		
 # set dashed line to illustrate change from Drude to Contact
 ymin, ymax = ax_res.get_ylim()
@@ -300,12 +365,15 @@ xtilman, ytilman = np.loadtxt(TilmanPRL0p58ToTF_filename, unpack=True, delimiter
 	
 
 ### Manually add measured phase shift 
-dCdkFainv = 1.69
-sumrule = dCdkFainv/(18*pi)
+dCdkFainv = 1.5
+sumrule = dCdkFainv/(18*pi) # dimensionless scale sus
 EF = 16
+ToTF = 0.56
+T = ToTF*EF
 freqs = np.array([2, 5])
 phases = np.array([-0.06, 0.35])
 phases_err = np.array([0.09, 0.06])
+
 zetas_phase = np.array([zeta_from_phase(freq, EF, phase, sumrule) \
 						for freq, phase in zip(freqs, phases)])
 zetas_phase_err = np.array([zeta_from_phase(freq, EF, phase, sumrule) \
@@ -329,11 +397,18 @@ ax_res.errorbar(freqs, residuals, yerr=e_res, capsize=0, fmt=marker,
 			  label=label_phase, color=dark_color, markerfacecolor=light_color, 
 			  markeredgecolor=dark_color, markeredgewidth=2)
 
+# add phase shift measurements to phi plots
+ax_ps.errorbar(freqs/T, phases, yerr=phases_err, capsize=0, fmt=marker, label=label_phase,
+				color=dark_color, mfc=light_color, mec=dark_color, mew=2)
+
+ax_ps2.errorbar(freqs/T, phases, yerr=phases_err, capsize=0, fmt=marker, label=label_phase,
+				color=dark_color, mfc=light_color, mec=dark_color, mew=2)
+
 ###
 ### Legend in own subplot
 ###
 if plot_legend:
-	lax = axs[1,1]
+	lax = axs[3,0]
 	h, l = ax_res.get_legend_handles_labels() # get legend from first plot
 	lax.legend(h, l, borderaxespad=0)
 	lax.axis("off")
@@ -347,3 +422,4 @@ plt.show()
 if load_theory == False:
 	with open(BVT_pkl_file, 'wb') as f:  
 		pickle.dump(BVTs, f)
+		
