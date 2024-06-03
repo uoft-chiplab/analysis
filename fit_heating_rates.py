@@ -23,6 +23,8 @@ there are any empty DataFrame entries in the new "update" DataFrame. I'm not
 sure how to get around this. Currently, this analysis file does not produce
 any DataFrame rows that have empty cells, so this shouldn't be an issue.
 """
+
+
 from data_class import Data
 from library import *
 from scipy.optimize import curve_fit
@@ -54,7 +56,7 @@ metadata = pd.read_excel(metadata_file)
 
 ### script options
 plotting = True
-save = False
+save = True
 select_plotting = False
 
 # only fit data up to max time in ms
