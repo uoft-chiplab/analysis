@@ -131,9 +131,9 @@ class Data:
 		if axes_labels == None:
 			axes_labels = [f"{names[0]}", f"{names[1]}"]
 			
-		self.ax.set_xlabel(axes_labels[0])
-		self.ax.set_ylabel(axes_labels[1])
-		self.ax.legend()
+		self.ax.set_xlabel("Time (ms)")
+		self.ax.set_ylabel("$\Delta  E(t)$ (kHz)")
+# 		self.ax.legend()
 		
 				
 	def heatrate(self,names):
@@ -188,10 +188,11 @@ Elist = []
 for file_name in Feb09_runs:
 	 file_name_list =[]
 	 file_name_list.append(file_name)
-	 Data(file_name,average_by='time').plot(names=['time','meanEtot_kHz'])
+	 Data(file_name,average_by='time').fit(Linear,names=['time','meanEtot_kHz'])
 	 
 	 temp = Data(file_name,average_by='time').heatrate(names=['time','meanEtot_kHz'])
 	 Elist.append(temp)
+	 plt.savefig(f'{file_name}.pdf',format='pdf')
 	 print(Elist)
 	 
 Elist = [10.92078224808712,10.528362790503234,13.90724158248126,11.488624540498774,14.750032315213994]
