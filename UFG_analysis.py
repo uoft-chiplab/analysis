@@ -22,15 +22,15 @@ from contact_tabulated import ContactInterpolation
 
 pi = np.pi
 
-print_results = True
-trap_plot = True
-bulk_plot = True
-show_data = True
+# print_results = True
+# trap_plot = True
+# bulk_plot = True
+# show_data = True
 
-# print_results = False
-# trap_plot = False
-# bulk_plot = False
-# show_data = False
+print_results = False
+trap_plot = False
+bulk_plot = False
+show_data = False
 
 hbar = 1.05e-34
 m = 40*1.67e-27 # potassium
@@ -297,23 +297,35 @@ def heating_trap(T,betamu,betaomega,betabaromega,weight_func):
 def tau_inv(betamu, T):
 	z = np.exp(betamu)
 	tauinv = (1.739 - 0.0892*z + 0.00156*z**2) * T
+# 	print('tauinv: ' + str(tauinv))
 	return tauinv
 
 # unused; this gives weird results
 def heating_trap_sumrule(T,betamu,betaomega,betabaromega,weight_func):
- 	"""compute viscous heating rate E-dot averaged over the trap normalized by scale sus"""
- 	tau = 1/tau_inv(betamu, T) # inverse scattering rate
- 	drude_form = tau / (1 + (betaomega*T*tau)**2)
+	"""compute viscous heating rate E-dot averaged over the trap normalized by scale sus"""
+	tau = 1/tau_inv(betamu, T) # inverse scattering rate
+	drude_form = tau / (1 + (betaomega*T*tau)**2)
 
- 	# Strap,Straperr = quad(lambda v: weight_func(v,
-# 			   betabaromega)*eos_ufg(betamu-v)**(1/3)*sumrule(betamu-v),0,np.inf,epsrel=1e-4)
- 	Edot = 9*np.pi*(T*betaomega)**2/(3*np.pi**2)**(2/3)*drude_form
- 	return Edot 
+	Strap,Straperr = quad(lambda v: weight_func(v,
+ 			   betabaromega)*eos_ufg(betamu-v)**(1/3)*sumrule(betamu-v),0,np.inf,epsrel=1e-4)
+	Edot = 9*np.pi*(T*betaomega)**2/(3*np.pi**2)**(2/3)*Strap
+	return Edot 
+	 
+def S_trap(T, betamu, betaomega, betabaromega, weight_func):
+	Strap,Straperr = quad(lambda v: weight_func(v,
+ 			   betabaromega)*eos_ufg(betamu-v)**(1/3)*sumrule(betamu-v),0,np.inf,epsrel=1e-4)
+	return Strap
 
 def phaseshift_qcrit(T, betaomega, betamu):
 	"""phi = arctan(omegatau/(1+(omegatau**2)) Eq.(30) in May note"""
-	tau = 1/tau_inv(betamu, T)
+	tau = 1/tau_inv(betamu, T) 
 	phiqcrit = np.arctan(betaomega*T * tau / (1 + (betaomega*T*tau)**2))
+# 	print('betaomega:' + str(betaomega))
+# 	print('betaomegaT:' + str(betaomega*T))
+# 	print('tau:'+str(tau))
+# 	print('betaomega*T*tau:' + str(betaomega*T*tau))
+# 	print('1+ (betaomega*T*tau)**2:' + str(1+(betaomega*T*tau)**2))
+# 	print('phiqcrit:' + str(phiqcrit))
 	return phiqcrit
 
 def phaseshift_arg_trap(betamu,betaomega,betabaromega,weight_func):
@@ -399,6 +411,7 @@ class BulkViscTrap:
 				   C_trap(betamutrap, betabaromega,weight_func)) for betaomega in betaomegas])
 		self.EdottrapsNormC = self.A**2*np.array([heating_C(self.T,betaomega, 1) for betaomega in betaomegas])
 		
+		
 		self.zetatraps = self.Edottraps/self.A**4 * (self.lambda_T**2*self.kF**2)/(9*pi*nus**2*2*self.Ns)
 		self.zetatrapsC = self.EdottrapsC/self.A**4 * (self.lambda_T**2*self.kF**2)/(9*pi*nus**2*2*self.Ns)
 		
@@ -406,8 +419,10 @@ class BulkViscTrap:
 		self.EdottrapsS = self.Edottraps / self.sumruletrap
 		
 		# was trying to calculate Edot over S in alternate ways but there are some weird factor problems with these versions
-# 		self.EdottrapsS2 = self.A**2*np.array([heating_trap_sumrule(self.T,betamutrap,
-# 				betaomega,betabaromega,weight_func) for betaomega in betaomegas])
+		self.Strap = np.array([S_trap(self.T, betamutrap, betaomega, betabaromega, weight_func) for betaomega in betaomegas]) * self.T/self.EF
+		self.EdottrapsS2 = self.A**2*np.array([heating_trap_sumrule(self.T,betamutrap,
+ 				betaomega,betabaromega,weight_func) for betaomega in betaomegas]) / self.Strap
+	
 
 		self.phaseshiftsQcrit = np.array([phaseshift_qcrit(T, betaomega, betamutrap) for betaomega in betaomegas])
 		
@@ -684,9 +699,9 @@ if trap_plot == True:
 	
 	ax_EdotS = axs[2,0]
 	ylabel = r'Heating Rate $\dot{E}/E/S$'
-# 	ylims = [-0.01,0.03]
-	xlims=[0,2]
-	ax_EdotS.set(xlabel=xlabel, ylabel=ylabel,xlim=xlims)
+	ylims = [-0.01,0.03]
+	xlims=[0,1]
+	ax_EdotS.set(xlabel=xlabel, ylabel=ylabel,xlim=xlims,ylim=ylims)
 	
 	ax_EdotC = axs[2,1]
 	ylabel = r'Heating Rate $\dot{E}/E/C$'
@@ -705,6 +720,8 @@ if trap_plot == True:
 		color = colors[i]
 		BVT = BulkViscTrap(*params_trap[i], nus, ToTF=Thetas[i], a0=-2.70e-6, trap='harmonic')
 		BVU = BulkViscUniform(*params_bulk[i], nus)
+		print('ToTF: ' + str(Thetas[i]))
+		print('Ctrap: ' + str(BVT.Ctrap))
 		label = "$T/T_F=${:.2f}".format(Thetas[i])
 		
 		# find nus for nu/EF > 1 to use for high_freq
@@ -721,9 +738,9 @@ if trap_plot == True:
 		# plot "normalized" heating rates
 		ax_EdotS.plot(BVT.nus/BVT.EF, BVT.EdottrapsS/BVT.Etotal, ':', color=color,label=label)
 				
-		sumrulezetaint = sumrule_zetaint(BVT.nus, BVT.zetatraps)
-		ax_EdotS.plot(BVT.nus/BVT.EF, BVT.Edottraps/sumrulezetaint/BVT.Etotal, '--',color=color, label=label)
-# 		ax_EdotS.plot(BVT.nus/BVT.EF, BVT.EdottrapsS2/BVT.Etotal, '--',color=color,label=label)
+# 		sumrulezetaint = sumrule_zetaint(BVT.nus, BVT.zetatraps)
+# 		ax_EdotS.plot(BVT.nus/BVT.EF, BVT.Edottraps/sumrulezetaint/BVT.Etotal, '--',color=color, label=label)
+		ax_EdotS.plot(BVT.nus/BVT.EF, BVT.EdottrapsS2/BVT.Etotal, '-.',color=color,label=label)
 		ax_EdotC.plot(BVT.nus[nu_small:]/BVT.EF, BVT.EdottrapsNormC[nu_small:]/BVT.Etotal, '--',color=color,label=label)
 		
 		ax_zeta.plot(BVT.nus/BVT.EF, BVT.zetatraps, ':', label=label_Drude, color=color)

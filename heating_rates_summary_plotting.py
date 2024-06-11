@@ -45,12 +45,15 @@ removed_names = ["2024-03-21_B_f=75_Vpp=0.25",
 				 "2024-04-03_F_f=2_Vpp=1.80",
 				 "2024-04-08_G_f=20_Vpp=1.80"]
 
-data_folder = 'data//heating'
-pkl_filename = 'heating_rate_fit_results.pkl'
+# data_folder = 'data//heating'
+data_folder='data//heating//reanalyzed'
+# pkl_filename = 'heating_rate_fit_results.pkl'
+pkl_filename = 'heating_rate_fit_reanalyzed_results.pkl'
 pkl_file = os.path.join(data_folder, pkl_filename)
 
 BVT_pkl_filename = 'BVT.pkl'
-BVT_pkl_file = os.path.join(data_folder, BVT_pkl_filename)
+BVT_folder = 'data//heating'
+BVT_pkl_file = os.path.join(BVT_folder, BVT_pkl_filename)
 
 TilmanPRL0p58ToTF_filename = "zetaomega_T0.58.txt"
 
@@ -211,6 +214,9 @@ for param_set, color, marker, i in zip(param_sets, colors, markers, range(loops)
 	EFmean = float(mean_df.EF.mean())
 	ToTFmean = float(mean_df.ToTF.mean())
 	Tmean = ToTFmean*EFmean
+	kFmean = float(mean_df.kF.mean())
+	lambdaTmean = np.sqrt(hbar/(mK*Tmean*1000))
+	
 	
 	used_colors.append(color)
 	Tmeans.append(Tmean)
@@ -243,7 +249,7 @@ for param_set, color, marker, i in zip(param_sets, colors, markers, range(loops)
 	scalesushigh = dCdkFainvhigh/(18*pi)
 	dCdkFainv = 1.56
 	scalesus = dCdkFainv/(18*pi)
-	ax_EdotSus.errorbar(xx/EF, yy/scalesus, yerr=yerr/scalesus, capsize=0, fmt=marker, 
+	ax_EdotSus.errorbar(xx/EF, yy/scalesus, yerr=yerr/scalesuslow, capsize=0, fmt=marker, 
 						color=dark_color, mfc=light_color, 
 						mec=dark_color, mew=2)
 	# Edot over Contact
@@ -252,7 +258,8 @@ for param_set, color, marker, i in zip(param_sets, colors, markers, range(loops)
 						color=dark_color, mfc=light_color, 
 						mec=dark_color, mew=2)
 	# phase shifts
-	ax_ps.errorbar(xx/T, np.arctan(yy/scalesus/xx*EF), capsize=0, fmt=marker, color=dark_color, mfc=light_color, mec=dark_color, mew=2)
+	ax_ps.errorbar(xx/T, pi/2*np.arctan(yy/scalesus/xx*EF / (9*pi) * kFmean **2 * lambdaTmean**2), capsize=0, fmt=marker, color=dark_color, mfc=light_color, mec=dark_color, mew=2)
+# 	ax_ps.errorbar(xx/T, np.arctan(yy/scalesuslow/xx*EF ), capsize=0, fmt=marker, color=dark_color, mfc=light_color, mec=dark_color, mew=2)	
 	ax_ps2.errorbar(xx/T, np.arcsin(adbsinphi), capsize=0, fmt=marker, color=dark_color, mfc=light_color, mec=dark_color, mew=2)
 
 ### Heating rate theory line(s)
@@ -269,7 +276,7 @@ for param_set, color, marker, i in zip(param_sets, colors, markers, range(loops)
 	if load_theory == False: print('find nus')
 	nu_small = 0
 	for nu in nus:
-		if nu < (3*BVT.T):
+		if nu < (2*BVT.T):
 			nu_small += 1
 	
 	nusoEF = BVT.nus/BVT.EF
@@ -286,7 +293,8 @@ for param_set, color, marker, i in zip(param_sets, colors, markers, range(loops)
 		ax_zeta.fill_between(nusoEF[:nu_small], BVT.zetatraps[:nu_small]*(1 - error_band), 
 			  BVT.zetatraps[:nu_small]*(1 + error_band), alpha=band_alpha, color=color)
 		
-		ax_EdotSus.plot(nusoEF[:nu_small], BVT.EdottrapsS[:nu_small]/BVT.Etotal, ':', color=color, label=label_Drude)
+		ax_EdotSus.plot(nusoEF[:nu_small], BVT.EdottrapsS[:nu_small]/BVT.Etotal, ':', color=color, label='Not Drude')
+		ax_EdotSus.plot(nusoEF[:nu_small], BVT.EdottrapsS2[:nu_small]/BVT.Etotal, '-.', color=color, label=label_Drude)
 
 	# plot contact determined lines if large frequencies exist
 	if load_theory == False: print('plot contact')
