@@ -416,6 +416,7 @@ class BulkViscTrap:
 		self.betabaromega = betabaromega
 		self.betamutrap = betamutrap
 		
+		
 		self.Edottraposcalesus = np.array([np.tan(phi)*betaomega*T/self.EF * \
 								 9*pi/self.kF**2/self.lambda_T**2 for phi, 
 								 betaomega in zip(self.phaseshiftsQcrit, betaomegas)])
