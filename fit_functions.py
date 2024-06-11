@@ -251,7 +251,7 @@ def MinFixedSinc2(data):
 	return fixedsinc2, guess, param_names
 
 
-def TrapFreq(data):
+def TrapFreq(data,guess=None):
 	"""
 	Returns:  A*np.exp(-x/b)*(np.sin(l * x - x0)) +  C + D*x
 	"""
@@ -261,7 +261,7 @@ def TrapFreq(data):
 	mean_y = data[:,1].mean()
 	max_y = data[:,1].max()
 	
-	param_names = ['Amplitude','fc','omega','Center','Offset','Linear Slope']
+	param_names = ['Amplitude','tau','omega','Center','Offset','Linear Slope']
 	guess = [10000, 0.05, 20  ,-2 , 100, -0.1]
 	
 	def TrapFreq(x, A, b, l, x0, C, D):

@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 import os
 import pickle
 
-ARBITRARY_RESCALING = 1
+#ARBITRARY_RESCALING = 1
 error_band = 0.14
 band_alpha = 0.2
 
@@ -140,7 +140,9 @@ label_C = 'Contact'
 ax = axs[0,1]
 ylabel = "Heating Rate $h \\langle\dot{E}\\rangle/(E_F\\,A)^2$"
 xlabel = "Drive Frequency $\hbar\omega/E_F$"
-ax.set(ylabel=ylabel, xlabel=xlabel)
+ylims=[0,0.1]
+ax.set(ylabel=ylabel, xlabel=xlabel, ylim=ylims)
+
 
 ax_res = axs[1,0]
 ylabel = "Measurement/Theory"
@@ -220,8 +222,7 @@ for param_set, color, marker, i in zip(param_sets, colors, markers, range(loops)
 	
 	used_colors.append(color)
 	Tmeans.append(Tmean)
-	
-# 	print(ToTF, EF, barnu)
+	print(ToTF, EF, barnu)
 	
 # 	label = r'[{}_{}]  $E_F={:.1f}$kHz, $T/T_F={:.2f}$, $\bar \nu={:.0f}$Hz'.format(df.date.values[0], 
 # 								  df.run.values[0], EFmean, ToTFmean, barnu)
@@ -280,7 +281,13 @@ for param_set, color, marker, i in zip(param_sets, colors, markers, range(loops)
 			nu_small += 1
 	
 	nusoEF = BVT.nus/BVT.EF
+	C = 0.78
+	dCdkFainv = 1.69
+	sumrule = dCdkFainv/(18*pi)
+	print(sumrule)
+	
 	Edotnorm = (2*BVT.Ns) * (BVT.EF**2)
+
 	# plot Drude form if small frequencies exist
 	if load_theory == False: print('plot Drude')
 	if xx.min() < 2*Tmean:
@@ -423,7 +430,7 @@ if plot_legend:
 
 	
 fig.tight_layout()
-fig.savefig("figures/summary.pdf")
+#fig.savefig("figures/summary.pdf")
 plt.show()
 
 ########### SAVE THEORY ###########

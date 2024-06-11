@@ -23,6 +23,8 @@ there are any empty DataFrame entries in the new "update" DataFrame. I'm not
 sure how to get around this. Currently, this analysis file does not produce
 any DataFrame rows that have empty cells, so this shouldn't be an issue.
 """
+
+
 from data_class import Data
 from library import *
 from scipy.optimize import curve_fit
@@ -427,6 +429,7 @@ if plotting == True:
 	ax.set(xlabel=xlabel, ylabel=ylabel, ylim=[-1, 3])
 	
 	# zero line
+
 # 	ax.plot(xlist, np.zeros(num), color='k', linestyle='--')
 	
 	# residuals
@@ -531,7 +534,7 @@ if plotting == True:
 	
 	fig.tight_layout()
 	plt.show()
-	fig.savefig('figures/heating_fits.pdf')
+	#fig.savefig('figures/heating_fits.pdf')
 
 ############ SAVE RESULTS ############	
 if save == True:
