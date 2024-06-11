@@ -25,8 +25,13 @@ pi = np.pi
 # print results
 print_results = True
 trap_plot = True
-bulk_plot = True
+bulk_plot = False
 show_data = True
+
+# print_results = False
+# trap_plot = False
+# bulk_plot = False
+# show_data = False
 
 hbar = 1.05e-34
 m = 40*1.67e-27 # potassium
@@ -328,15 +333,14 @@ def find_betamu(T, ToTF, betabaromega, weight_func, guess=None):
 
 def sumrule_trap(betamu, betabaromega, weight_func):
     """sumrule in temperature units"""
-    sumruleT, sumruleTerr = quad(lambda v: weight_func(v, betabaromega)*np.where(betamu-v<-4.8,0.36*np.exp(betamu-v)**(5/3),
-					sumrat(np.exp(betamu-v))),0,np.inf,epsrel=eps) # area under viscosity peak in units of T
+    sumruleT, sumruleTerr = quad(lambda v: weight_func(v, betabaromega)*sumrule(betamu-v),
+								 0,np.inf,epsrel=eps)
     return sumruleT
 
 def C_trap(betamu, betabaromega,weight_func):
     """compute Contact Density averaged over the trap"""
     Ctrap,Ctraperr = quad(lambda v: weight_func(v,
 			   betabaromega)*eos_ufg(betamu-v)**(4/3)*ContactInterpolation(Theta(betamu-v)),0,np.inf,epsrel=eps)
-	### FLAG the above is wrong, Theta should depend on betamu-v
     return Ctrap
 
 
@@ -393,13 +397,14 @@ class BulkViscTrap:
 		self.Ctrap =  C_trap(betamutrap, betabaromega,weight_func)/(self.kF*self.lambda_T)*(3*pi**2)**(1/3)/self.Ns/2
 		self.EdottrapsC = self.A**2*np.array([heating_C(self.T,betaomega,
 				   C_trap(betamutrap, betabaromega,weight_func)) for betaomega in betaomegas])
-		self.EdottrapsNormC = self.A**2*np.array([heating_C(self.T,betaomega, 1) for betaomega in betaomegas])
+		self.EdottrapsNormC = self.A**2*np.array([heating_C(self.T,betaomega, (self.kF*self.lambda_T)/(3*pi**2)**(1/3)) for betaomega in betaomegas])
 		
 		# these were divided by A**4 for some reason when I first saw this code. Why?
 		self.zetatraps = self.Edottraps/self.A**2 * (self.lambda_T**2*self.kF**2)/(9*pi*nus**2*2*self.Ns)
 		self.zetatrapsC = self.EdottrapsC/self.A**2 * (self.lambda_T**2*self.kF**2)/(9*pi*nus**2*2*self.Ns)
 		
 		self.sumruletrap = sumrule_trap(betamutrap, betabaromega,weight_func) * self.T/self.EF
+		
 		self.EdottrapsS = self.Edottraps / self.sumruletrap
 		
 		# was trying to calculate Edot over S in alternate ways but there are some weird factor problems with these versions
@@ -410,6 +415,10 @@ class BulkViscTrap:
 		
 		self.betabaromega = betabaromega
 		self.betamutrap = betamutrap
+		
+		self.Edottraposcalesus = np.array([np.tan(phi)*betaomega*T/self.EF * \
+								 9*pi/self.kF**2/self.lambda_T**2 for phi, 
+								 betaomega in zip(self.phaseshiftsQcrit, betaomegas)])
 		
 		#
 		# labels for plots
@@ -636,13 +645,13 @@ if bulk_plot == True:
 if trap_plot == True:
 	title = 'Harmonically Trapped Gas'
 	
-	Thetas = [0.25, 0.58]
-	Ts = [4.8e3, 11e3] # Hz
-	barnus = [306, 306] # mean trap freq in Hz
-	mubulks = [7520, 1500] # uniform trap chemical potential
-	mutraps = [9825, -3800] # harmonic trap chemical potential
-	colors = ['teal', 'r']
-	theta_indices = [0,1]
+	Thetas = [0.25, 0.37, 0.5]
+	Ts = [4.8e3, 5.18e3, 9.5e3] # Hz
+	barnus = [306, 306, 306] # mean trap freq in Hz
+	mubulks = [7520, 4000, 1500] # uniform trap chemical potential
+	mutraps = [9825, 3000, -3800] # harmonic trap chemical potential
+	colors = ['teal', 'b', 'r']
+	theta_indices = [0,1,2]
 	params_trap = list(zip(Ts, barnus, mutraps))
 	params_bulk = list(zip(Ts, mubulks)) # for comparison
 	
@@ -682,7 +691,7 @@ if trap_plot == True:
 	ax_EdotS = axs[2,0]
 	ylabel = r'Heating Rate $\dot{E}/E/S$'
 # 	ylims = [-0.01,0.03]
-	xlims=[0,2]
+	xlims=[0,10]
 	ax_EdotS.set(xlabel=xlabel, ylabel=ylabel,xlim=xlims)
 	
 	ax_EdotC = axs[2,1]
@@ -718,8 +727,8 @@ if trap_plot == True:
 		# plot "normalized" heating rates
 		ax_EdotS.plot(BVT.nus/BVT.EF, BVT.EdottrapsS/BVT.Etotal, ':', color=color,label=label)
 				
-		sumrulezetaint = sumrule_zetaint(BVT.nus, BVT.zetatraps)
-		ax_EdotS.plot(BVT.nus/BVT.EF, BVT.Edottraps/sumrulezetaint/BVT.Etotal, '--',color=color, label=label)
+# 		sumrulezetaint = sumrule_zetaint(BVT.nus, BVT.zetatraps)
+# 		ax_EdotS.plot(BVT.nus/BVT.EF, BVT.Edottraps/sumrulezetaint/BVT.Etotal, '--',color=color, label=label)
 # 		ax_EdotS.plot(BVT.nus/BVT.EF, BVT.EdottrapsS2/BVT.Etotal, '--',color=color,label=label)
 		ax_EdotC.plot(BVT.nus[nu_small:]/BVT.EF, BVT.EdottrapsNormC[nu_small:]/BVT.Etotal, '--',color=color,label=label)
 		
