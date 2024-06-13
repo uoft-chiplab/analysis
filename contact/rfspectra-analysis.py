@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # %% 
 # 2024-06-10 
 # rf spectra and scaled loss analysis, 
