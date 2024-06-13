@@ -1,3 +1,4 @@
+# %%
 # compute trap averaged bulk viscosity of unitary Fermi gas
 # given \mu/T, trap \bar\omega/T and the drive frequency \omega/T
 # (all quantities E/h in units of Hz or lengths in units of the thermal length lambda_T)
@@ -452,9 +453,11 @@ load_data = True
 
 if load_data == True:
 	files = ["2024-03-21_B_UHfit.dat", "2024-04-03_E_UHfit.dat"]
-	data_folder = 'data\\heating'
+	data_folder = 'data/heating'
+	#kp needed / instead of \\ on their computer for some reason?? 
 	pkl_filename = 'heating_rate_fit_results.pkl'
 	pkl_file = os.path.join(data_folder, pkl_filename)
+	# print(pkl_file)
 	try: # open pkl file if it's there
 		with open(pkl_file, 'rb') as f:
 			lr = pickle.load(f) # load all results in file
@@ -767,3 +770,4 @@ if trap_plot == True:
 	
 	plt.tight_layout()
 	plt.show()
+# %%

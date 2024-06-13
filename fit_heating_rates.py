@@ -1,3 +1,4 @@
+# %%
 # -*- coding: utf-8 -*-
 """
 @author: Chip Lab
@@ -570,3 +571,4 @@ if save == True:
 		with open(pkl_file, 'wb') as f:
 			pickle.dump(save_results, f)
 			save_results.to_excel(xlsx_results_file)
+# %%
