@@ -231,9 +231,11 @@ Cscaled = GammaTilde(transfer)*np.abs(scaledtransfer)**(3/2)*np.pi**2*2**(3/2)
 
 # %%
 ### plotting contact 
-plt.ylabel(r'$2\sqrt{2}\pi^2\tilde{\Gamma}\Delta^{-3/2}$')
-plt.xlabel('rf frequency $\Delta$ (EF)')
-plt.plot(scaledtransfer,Cscaled,linestyle='',marker='.')
+fig, ax = plt.subplots()
+
+ax.set_ylabel(r'$2\sqrt{2}\pi^2\tilde{\Gamma}\Delta^{-3/2}$')
+ax.set_xlabel('rf frequency $\Delta$ (EF)')
+ax.plot(scaledtransfer,Cscaled,linestyle='',marker='.')
 # %% 
 ### plotting scaled loss (?)
 fig, ax = plt.subplots()
