@@ -44,6 +44,7 @@ from field_wiggle_calibration import Bamp_from_Vpp
 
 ### files and paths
 data_folder = 'data//heating'
+# data_folder = 'data//heating//reanalysed'
 pkl_filename = 'heating_rate_fit_results.pkl'
 pkl_file = os.path.join(data_folder, pkl_filename)
 xlsx_results_filename = 'heating_data_results.xlsx'
@@ -57,7 +58,7 @@ metadata = pd.read_excel(metadata_file)
 ### script options
 plotting = True
 save = True
-select_plotting = False
+select_plotting = True
 
 # only fit data up to max time in ms
 max_time = 120
