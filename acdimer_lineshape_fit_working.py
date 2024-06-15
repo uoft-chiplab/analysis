@@ -6,6 +6,8 @@ Created on Thu Jun  6 20:12:51 2024
 """
 
 from data_class import *
+from scipy.optimize import curve_fit
+
 pi=np.pi
 uatom = 1.66054e-27
 mK = 39.96399848*uatom
@@ -18,10 +20,14 @@ hbar = h/(2*pi)
 
 def dimerlineshape(omega, Eb, TMHz, fudge=0, arb_scale=1):
 	# everything in MHz
-	print(TMHz)
 	Gamma = (np.sqrt(-omega-Eb-fudge) * np.exp((omega+Eb+fudge)/TMHz)* np.heaviside(-omega - Eb-fudge, 1))* arb_scale
 # 	Gamma = np.nan_to_num(Gamma)
 	return Gamma
+
+def lineshapefit(x, A, x0, sigma):
+	ls = A*np.sqrt(-x-x0) * np.exp((x + x0)/sigma) * np.heaviside(-x-x0,1)
+	ls = np.nan_to_num(ls)
+	return ls
 
 # data = Data('2023-10-02_H_e.dat', path='E:\\Data\\2023\\10 October2023\\02October2023\\H_202p1G_acdimer_1p8VVA320us', average_by='freq')
 # data = Data('2023-10-02_I_e.dat', path='E:\\Data\\2023\\10 October2023\\02October2023\\I_202p1G_acdimer_1p5VVA640us', average_by='freq')
@@ -39,36 +45,39 @@ yfudge = 200
 df['transfer'] = (-df.sum95 + np.max(df.sum95) - yfudge) / np.max(df.sum95)
 df['em_transfer'] = df.em_sum95 / np.max(df.sum95)
 
-fig, ax = plt.subplots()
-ax.errorbar(df.detuning, df.transfer, yerr=df.em_transfer, marker='o', ls='',  capsize=2, mew=2, color='b')
 
+guess = [5, 3.975, 0.006]
+popt,pcov = curve_fit(lineshapefit, df.detuning, df.transfer, sigma=df.em_transfer, p0=guess)
+print(popt)
 xlow = -4.1
 xhigh = -3.9
 xx = np.linspace(xlow, xhigh, 500)
-Ebpred= 4.04 #MHz but for 202.14 G...
-# Ebpred = 4.01749 # MHz for 202.1 G using JT's Eq. (26)
-# Ebpred = 4.027 # 202 G
+yy = lineshapefit(xx, *popt)
+
+fig, ax = plt.subplots()
+ax.errorbar(df.detuning, df.transfer, yerr=df.em_transfer, marker='o', ls='',  capsize=2, mew=2, color='b')
+ax.plot(xx, yy, ls='--', color='r', label='fit')
 
 # arbscale=0.0008
-arbscale=5
-yy = dimerlineshape(xx, Ebpred, T/10e6, arb_scale=arbscale)
-ax.plot(xx, yy, '--',  color='r',label='Lineshape, Eb=-{:.2f} MHz @ {:.2f} G, T={:.1f} T_F, arb. scale'.format(Ebpred, field, ToTF))
+# arbscale=5
+# yy = dimerlineshape(xx, Ebpred, T/10e6, arb_scale=arbscale)
+# ax.plot(xx, yy, '--',  color='r',label='Lineshape, Eb=-{:.2f} MHz @ {:.2f} G, T={:.1f} T_F, arb. scale'.format(Ebpred, field, ToTF))
 
-ToTFfudge = 4
-Tfudge = ToTFfudge*EF
-Ebfudge = -0.065
-# arbscale = 0.0028
-arbscale=2
-yyfudge = dimerlineshape(xx, Ebpred, Tfudge/10e6, fudge = Ebfudge, arb_scale=arbscale)
-ax.plot(xx, yyfudge, '--',  color='g',label='Fudged Lineshape, Eb={:.2f} MHz, T={:.1f} T_F, arb. scale'.format(-Ebpred - Ebfudge, ToTFfudge))
+# ToTFfudge = 4
+# Tfudge = ToTFfudge*EF
+# Ebfudge = -0.056
+# # arbscale = 0.0028
+# arbscale=2
+# yyfudge = dimerlineshape(xx, Ebpred, Tfudge/10e6, fudge = Ebfudge, arb_scale=arbscale)
+# ax.plot(xx, yyfudge, '--',  color='g',label='Fudged Lineshape, Eb={:.2f} MHz, T={:.1f} T_F, arb. scale'.format(-Ebpred - Ebfudge, ToTFfudge))
 
-ToTFfudge = 2
-Tfudge = ToTFfudge*EF
-Ebfudge = -0.065
-# arbscale = 0.0028
-arbscale=3
-yyfudge = dimerlineshape(xx, Ebpred, Tfudge/10e6, fudge = Ebfudge, arb_scale=arbscale)
-ax.plot(xx, yyfudge, '--',  color='y',label='Fudged Lineshape, Eb={:.2f} MHz, T={:.1f} T_F, arb. scale'.format(-Ebpred - Ebfudge, ToTFfudge))
+# ToTFfudge = 2
+# Tfudge = ToTFfudge*EF
+# Ebfudge = -0.056
+# # arbscale = 0.0028
+# arbscale=3
+# yyfudge = dimerlineshape(xx, Ebpred, Tfudge/10e6, fudge = Ebfudge, arb_scale=arbscale)
+# ax.plot(xx, yyfudge, '--',  color='y',label='Fudged Lineshape, Eb={:.2f} MHz, T={:.1f} T_F, arb. scale'.format(-Ebpred - Ebfudge, ToTFfudge))
 
 
 ax.set_xlim([xlow, xhigh])
