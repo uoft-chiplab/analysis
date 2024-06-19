@@ -1,3 +1,4 @@
+# %%
 # -*- coding: utf-8 -*-
 """
 @author: Chip Lab
@@ -43,13 +44,11 @@ from fit_functions import Linear
 from field_wiggle_calibration import Bamp_from_Vpp 
 
 ### files and paths
-# data_folder = 'data//heating'
-data_folder = 'data//heating//reanalyzed'
-pkl_filename = 'heating_rate_fit_reanalyzed_results.pkl'
-# pkl_filename='heating_rate_fit_results.pkl'
+data_folder = 'data//heating'
+# data_folder = 'data//heating//reanalysed'
+pkl_filename = 'heating_rate_fit_results.pkl'
 pkl_file = os.path.join(data_folder, pkl_filename)
-xlsx_results_filename = 'heating_data_reanalyzed_results.xlsx'
-# xlsx_results_filename = 'heating_data_results.xlsx'
+xlsx_results_filename = 'heating_data_results.xlsx'
 xlsx_results_file = os.path.join(data_folder, xlsx_results_filename)
 metadata_filename = 'heating_metadata.xlsx'
 metadata_file = os.path.join(data_folder, metadata_filename)
@@ -60,7 +59,7 @@ metadata = pd.read_excel(metadata_file)
 ### script options
 plotting = True
 save = True
-select_plotting = False
+select_plotting = True
 
 # only fit data up to max time in ms
 max_time = 120
@@ -97,8 +96,7 @@ metadata = metadata.to_dict(orient='index')
 
 # analysis options
 settings = {'param':'time',
- 			'temp_param':'meanEtot_kHz',
-# 			'temp_param':'smomEkHz',
+			'temp_param':'meanEtot_kHz',
 			'xlabel':'Time (ms)',
 			'files':files}
 
@@ -140,7 +138,7 @@ def fit_analysis(run):
 	""" takes Data class run, fits and computes some stuff"""
 	# fit energy to fit function
 	run.fit_func, guess, param_names = Linear([]) # need to pass empty set... LOL
-	print('run.param:' + run.param)
+	
 	run.popt, run.pcov = curve_fit(run.fit_func, run.avg_data[run.param], 
 						run.avg_data[settings['temp_param']], 
 						sigma = run.avg_data['em_'+settings['temp_param']])
@@ -323,9 +321,8 @@ for file in files:
 		# FILL
 		
 		# calculate correct energy from Will's code output in kHz
-# 		run.data[settings['temp_param']] = run.data['ENoEF'] * run.data['EF']/1000/h
-		run.data[settings['temp_param']] = run.data['smomEkHz']
-# 		
+		run.data[settings['temp_param']] = run.data['ENoEF'] * run.data['EF']/1000/h
+		
 		# average data
 		run.group_by_mean(run.param)
 		
@@ -396,7 +393,8 @@ if plotting == True:
 	ax = axs[0,0]
 	xlabel = settings['xlabel']
 	ylabel = r"Energy per particle $E_\mathrm{tot}/N$ (kHz)"
-	ax.set(xlabel=xlabel, ylabel=ylabel, ylim=[22.5, 32.5])
+	ax.set(xlabel=xlabel, ylabel=ylabel)
+	
 	### loop over runs, plotting fits
 	max_plots = len(colors)
 	if len(runs) > max_plots: # check if we are ignoring some fits when plotting
@@ -428,7 +426,7 @@ if plotting == True:
 	ax = axs[1,0]
 	xlabel = settings['xlabel']
 	ylabel = "Residual Energy (kHz)"
-	ax.set(xlabel=xlabel, ylabel=ylabel, ylim=[-1, 3])
+	ax.set(xlabel=xlabel, ylabel=ylabel)
 	
 	# zero line
 
@@ -454,7 +452,7 @@ if plotting == True:
 	ax = axs[0,1]
 	xlabel = settings['xlabel']
 	ylabel = r"$T/T_F$"
-	ax.set(xlabel=xlabel, ylabel=ylabel, ylim=[0.4, 0.7])
+	ax.set(xlabel=xlabel, ylabel=ylabel)
 	
 	# loop over runs, plotting fits
 	for run, color, marker in zip(runs, colors, markers):
@@ -480,7 +478,7 @@ if plotting == True:
 	ax = axs[1,1]
 	xlabel = settings['xlabel']
 	ylabel = r"$E_F$ (kHz)"
-	ax.set(xlabel=xlabel, ylabel=ylabel, ylim=[13, 17])
+	ax.set(xlabel=xlabel, ylabel=ylabel)
 	
 	# loop over runs, plotting fits
 	for run, color, marker in zip(runs, colors, markers):
@@ -506,7 +504,7 @@ if plotting == True:
 	ax = axs[0,2]
 	xlabel = settings['xlabel']
 	ylabel = r"$N$ (atom no.)"
-	ax.set(xlabel=xlabel, ylabel=ylabel, ylim=[25000, 42000])
+	ax.set(xlabel=xlabel, ylabel=ylabel)
 	
 	# loop over runs, plotting fits
 	for run, color, marker in zip(runs, colors, markers):
@@ -573,3 +571,4 @@ if save == True:
 		with open(pkl_file, 'wb') as f:
 			pickle.dump(save_results, f)
 			save_results.to_excel(xlsx_results_file)
+# %%
