@@ -10,10 +10,11 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
+import ast
 
 ### name and xlsx file # 
-name = '2023-08-03_B.dat'
-indexnum =10
+name = '2023-08-08_F.dat'
+indexnum = 12
 upperlim = 47.2
 kHz = 10**3
 
@@ -42,32 +43,43 @@ ff = index.loc['ff']
 rightbg = index.loc['right_bg']
 pulse = index.loc['pulse']
 trf = index.loc['time']
-VVA = index.loc['VVA']
 TShotsN = index.loc['TShotsN']
-trapfreqsx = float(index.loc['trapfreqs'][1:6])/1000
-trapfreqsy = float(index.loc['trapfreqs'][7:10])/1000
-trapfreqsz = float(index.loc['trapfreqs'][11:14])/1000
+trapfreqsx = float(index['trapfreqs'].strip('{}').split(',')[0])/1000
+trapfreqsy = float(index['trapfreqs'].strip('{}').split(',')[1])/1000
+trapfreqsz = float(index['trapfreqs'].strip('{}').split(',')[2])/1000
 trapfreqs = [trapfreqsx,trapfreqsy,trapfreqsz]
-OmegaR = index.loc['Omega_R']
 
-### finding the bg value of the loss 
-bg =  np.average(c5, weights=freq<upperlim)
-
-transfer = (c5 - bg )/ ((c5 - bg) + c9*ff)
-
+### pulse area Blackman or square 
 if index.loc['pulse'] == 'blackman':
     pulsearea = np.sqrt(0.3)
 else:
     pulsearea = 1
 
+### varying vva or not
+if index.loc['VVA'] == 'varying':
+    VVArule = index['VVArule'].strip('{}').strip('.').split(',') 
+    VVAdata = np.array(metadata['vva'])
+    OmegaR = dict(zip(VVArule[::2], VVArule[1::2]))
+    OmegaR_cleaned = {key.strip() + '.0' if key.strip() in ['2', '3', '4', '5', '8', '10'] else key.strip(): float(value.strip()) for key, value in OmegaR.items()}
+    OmegaRlist = []
+    for x in VVAdata:
+        OmegaRlist.append(2*np.pi*pulsearea*OmegaR_cleaned[str(x)])
+        OmegaRmax = (OmegaRlist)
+else:
+    VVA = index.loc['VVA']
+    OmegaR = index.loc['Omega_R']
+    OmegaRmax = 2*np.pi*pulsearea*OmegaR
+
+### finding the bg value of the loss 
+bg =  np.average(c5, weights=freq<upperlim)
+bgloss = np.average(c9, weights=freq<upperlim)
+
+### transfer fraction 
+transfer = (c5 - bg )/ ((c5 - bg) + c9*ff)
+
 res= FreqMHz(field, 9/2,-5/2,9/2,-7/2)
 EF = (trapfreqsy*trapfreqsx*trapfreqsz*6*TShotsN/2)**(1/3)
-
 resfreq = (freq-res)*kHz
-
-### constant VVA OmegaR
-scale=10**3
-OmegaRmax = 2*np.pi*pulsearea*OmegaR
 # %%
 ### plotting transfer vs freq
 fig, ax = plt.subplots(2,2, figsize=(18,12))
@@ -87,12 +99,14 @@ ax[0,1].plot(resfreq,c9,linestyle='',marker='.')
 ax[1,0].set_xlabel('rf freqeuncy (kHz)')
 ax[1,0].set_ylabel('Transfer')
 ax[1,0].plot(resfreq,transfer,linestyle='',marker='.')
+
+ax[1,1].text(0.5,0.5,name,fontsize=18)
 # %%
 ### fitting power law
 
 ### max and min where we want to fit  
-minf = 30.0215 #1.5*EF
-maxf = 110.022 #6*EF 
+minf = 1.5*EF
+maxf = 6*EF 
 yvals = transfer
 
 ### filter mask, i.e. truncating the freq list to fit only 
@@ -128,7 +142,7 @@ xlist = np.linspace(truncatedresfreq.min(),truncatedresfreq.max(),len(truncatedy
 residuals = truncatedyvals - fitPowerLaw(xlist,*popt)
 
 ### large plot 
-fig, ax1 = plt.subplots()
+fig, (ax1,ax3) = plt.subplots(1,2,figsize=(20,10))
 
 ax1.plot(resfreq,yvals, linestyle='',marker='.')
 ax1.plot(xlist,fitPowerLaw(xlist,*popt),linestyle='-', label='Fit Power Law: '+fitpowerlawresult+'pm'+fitpowerlawerror)
@@ -137,42 +151,41 @@ ax1.set_xlabel('rf spectra (kHz)')
 ax1.set_ylabel('transfer fraction')
 ax1.legend()
 
+ax3.plot(resfreq,yvals,linestyle='',marker='.')
+ax3.set_xlabel('log')
+ax3.set_ylabel('log')
+ax3.set_yscale('log')
+ax3.set_xscale('log')
+ax3.set_xlim(20,150)
+ax3.set_ylim(.0015,.15)
+ax3.plot(xlist,fixedPowerLaw(xlist,*poptfixed),linestyle='-',label='Fixed Power Law: -1.5')
+ax3.plot(xlist,fitPowerLaw(xlist,*popt),linestyle='-',label='Fit Power Law: '+fitpowerlawresult+'pm'+fitpowerlawerror)
+plt.legend()
+
 ### insert 
 ###size and place of inset
 #left 0 is on y axis, bottom 0 is on x axis
 #width, height is size of inset 
-left, bottom, width, height = [0.6, 0.5, 0.3, 0.2]
+left, bottom, width, height = [0.31, 0.6, 0.15, 0.2]
 ax2 = fig.add_axes([left, bottom, width, height])
 ax2.set_ylabel('residuals')
 ax2.plot(xlist,residuals,linestyle='',marker='.')
 
 print(f'A: {popt[0]}')
 print(f'range fit over: {minf,maxf}')
-# %% 
-### plotting the data on a loglog plot
-fig, ax = plt.subplots()
-
-ax.set_xlabel('log(rf frequency)')
-ax.set_ylabel('log(transfer fraction)')
-
-ax.set_yscale('log')
-ax.set_xscale('log')
-ax.set_xlim(20,150)
-ax.set_ylim(.0015,.15)
-ax.plot(resfreq,yvals,linestyle='',marker='.')
-ax.plot(xlist,fixedPowerLaw(xlist,*poptfixed),linestyle='-',label='Fixed Power Law: -1.5')
-ax.plot(xlist,fitPowerLaw(xlist,*popt),linestyle='-',label='Fit Power Law: '+fitpowerlawresult+'pm'+fitpowerlawerror)
-
-plt.legend()
 # %%
 ### scale data to GammaTilde
 def GammaTilde(x):
-    return (EF*h*scale)/(hbar*np.pi*OmegaRmax**2*trf)*x
+        if index.loc['VVA'] == 'varying':
+            return (EF*h*kHz)/(hbar*np.pi*np.array(OmegaRmax)[:,]**2*trf)*x
+        else:
+            return (EF*h*kHz)/(hbar*np.pi*OmegaRmax**2*trf)*x
 
 scaledtransfer = resfreq/EF
-
+#%%
 ### max and min where we want to fit  
 minfscaled = 1.5
+
 maxfscaled = 5.7
 yvalsscaled = GammaTilde(transfer)
 
@@ -183,7 +196,7 @@ newresfreqscaled, newyvalsscaled = scaledtransfer[freqfiltermaskscaled], yvalssc
 freqfiltermaskscaled = newresfreqscaled < maxfscaled
 truncatedresfreqscaled, truncatedyvalsscaled = newresfreqscaled[freqfiltermaskscaled], newyvalsscaled[freqfiltermaskscaled]
 
-### fit power law for scaled transfer
+# ### fit power law for scaled transfer
 guess = [100,-1.5]
 poptscaled, pcovscaled = curve_fit(fitPowerLaw,truncatedresfreqscaled,truncatedyvalsscaled,p0=guess)
 perrscaled = np.sqrt(np.diag(pcovscaled))
@@ -193,7 +206,7 @@ guess = [100]
 poptfixedscaled, pcovfixedscaled = curve_fit(fixedPowerLaw,truncatedresfreqscaled,truncatedyvalsscaled,p0=guess)
 
 fitpowerlawresultscaled = str(float("{:.2f}".format(poptscaled[1])))
-fitpowerlawerrorscaled = str(np.round(np.sqrt(np.diag(pcovscaled))[1],3))
+fitpowerlawerrorscaled = str(np.round(perrscaled[1],3))
 
 ### finding residuals for the area we chose to fit 
 xlistscaled = np.linspace(truncatedresfreqscaled.min(),truncatedresfreqscaled.max(),len(truncatedyvalsscaled))
@@ -201,14 +214,24 @@ residualsscaled = truncatedyvalsscaled - fitPowerLaw(xlistscaled,*poptscaled)
 
 # %%
 ### plot GammaTilde
-fig, ax = plt.subplots()
+fig, (ax1,ax3) = plt.subplots(1,2,figsize=(20,10))
 
-ax.set_xlabel('rf frequency $\Delta$ (EF)')
-plt.ylabel('Scaled Transfer 'r'$\tilde{\Gamma}$/N')
-ax.plot(scaledtransfer,GammaTilde(transfer),marker='.',linestyle='')
-ax.plot(xlistscaled,fitPowerLaw(xlistscaled,*poptscaled),label='Fixed Power Law: -1.5')
-ax.plot(xlistscaled,fixedPowerLaw(xlistscaled,*poptfixedscaled),label='Fit Power Law: '+fitpowerlawresultscaled+'pm'+fitpowerlawerrorscaled)
+ax1.set_xlabel('rf frequency $\Delta$ (EF)')
+ax1.set_ylabel('Scaled Transfer 'r'$\tilde{\Gamma}$/N')
+ax1.plot(scaledtransfer,GammaTilde(transfer),marker='.',linestyle='')
+ax1.plot(xlistscaled,fitPowerLaw(xlistscaled,*poptscaled),label='Fixed Power Law: -1.5')
+ax1.plot(xlistscaled,fixedPowerLaw(xlistscaled,*poptfixedscaled),label='Fit Power Law: '+fitpowerlawresultscaled+'pm'+fitpowerlawerrorscaled)
+ax1.legend()
 
+ax3.set_xlabel('log')
+ax3.set_ylabel('log')
+ax3.set_yscale('log')
+ax3.set_xscale('log')
+ax3.set_xlim(min((xlistscaled)),max((xlistscaled)))
+ax3.set_ylim(min((fitPowerLaw(xlistscaled,*poptscaled))),max((fitPowerLaw(xlistscaled,*poptscaled))))
+ax3.plot(scaledtransfer,GammaTilde(transfer),marker='.',linestyle='')
+ax3.plot(xlistscaled,fitPowerLaw(xlistscaled,*poptscaled),label='Fixed Power Law: -1.5')
+ax3.plot(xlistscaled,fixedPowerLaw(xlistscaled,*poptfixedscaled),label='Fit Power Law: '+fitpowerlawresultscaled+'pm'+fitpowerlawerrorscaled)
 plt.legend()
 
 ### insert 
@@ -216,7 +239,7 @@ plt.legend()
 ###size and place of inset
 #left 0 is on y axis, bottom 0 is on x axis
 #width, height is size of inset 
-left, bottom, width, height = [0.58, 0.5, 0.3, 0.2]
+left, bottom, width, height = [0.31, 0.6, 0.15, 0.2]
 ax2 = fig.add_axes([left, bottom, width, height])
 
 ax2.set_ylabel('residuals')
@@ -230,52 +253,149 @@ print(f'Range: {minfscaled,maxfscaled}')
 Cscaled = GammaTilde(transfer)*np.abs(scaledtransfer)**(3/2)*np.pi**2*2**(3/2)
 
 # %%
+### fitting contact 
+### max and min where we want to fit  
+minfC = 1.5
+maxfC = 5.7
+yvalsC = Cscaled
+
+### filter mask
+freqfiltermaskscaled = scaledtransfer > minfscaled 
+newresfreqscaled, newyvalsC = scaledtransfer[freqfiltermaskscaled], yvalsC[freqfiltermaskscaled]
+freqfiltermaskscaled = newresfreqscaled < maxfscaled
+truncatedresfreqscaled, truncatedyvalsC = newresfreqscaled[freqfiltermaskscaled], newyvalsC[freqfiltermaskscaled]
+
+### fit Contact
+def Contactfit(x,B,A):
+    return B*x**A/(x**(-3/2))
+
+guess = [1,1]
+poptC, pcovC = curve_fit(Contactfit,truncatedresfreqscaled,truncatedyvalsC,p0=guess)
+perrC = np.sqrt(np.diag(pcovC))
+fitContact = str(float("{:.2f}".format(poptC[1])))
+fitContacterror = str(np.round(perrC[1],3))
+
+### fixed contact
+xlistfixedC = np.linspace(poptC[0],poptC[0],len(truncatedyvalsC))
+
+
+### finding residuals for the area we chose to fit 
+xlistC = np.linspace(truncatedresfreqscaled.min(),truncatedresfreqscaled.max(),len(truncatedyvalsC))
+residualsscaled = truncatedyvalsscaled - fitPowerLaw(xlistscaled,*poptscaled)
+
+# %%
 ### plotting contact 
 fig, ax = plt.subplots()
 
 ax.set_ylabel(r'$2\sqrt{2}\pi^2\tilde{\Gamma}\Delta^{-3/2}$')
 ax.set_xlabel('rf frequency $\Delta$ (EF)')
 ax.plot(scaledtransfer,Cscaled,linestyle='',marker='.')
+ax.plot(xlistC,Contactfit(xlistC,*poptC),label='fit A: '+fitContact+'pm'+fitContacterror)
+ax.plot(xlistC,xlistfixedC,label='fixed A')
+plt.legend()
+# %%
+### max and min scaled loss 
+minf = 2*EF
+maxf = 110.022 #6*EF 
+yvals1 = (-c9+bgloss)
+
+### filter mask
+freqfiltermask = resfreq > minf 
+newresfreq1, newyvals1 = resfreq[freqfiltermask], yvals1[freqfiltermask]
+freqfiltermask = newresfreq1 < maxf
+truncatedresfreq1, truncatedyvals1 = newresfreq1[freqfiltermask], newyvals1[freqfiltermask]
+
+yvals2 = c5
+
+### filter mask
+freqfiltermask = resfreq > minf 
+newresfreq2, newyvals2 = resfreq[freqfiltermask], yvals2[freqfiltermask]
+freqfiltermask = newresfreq2 < maxf
+truncatedresfreq2, truncatedyvals2 = newresfreq2[freqfiltermask], newyvals2[freqfiltermask]
+
+### popt, pcov, perr of power law
+guess = [100,-1.5]
+popt1, pcov1 = curve_fit(fitPowerLaw,truncatedresfreq1,truncatedyvals1,p0=guess)
+perr1 = np.sqrt(np.diag(pcov1))
+
+popt2, pcov2 = curve_fit(fitPowerLaw,truncatedresfreq2,truncatedyvals2,p0=guess)
+perr2 = np.sqrt(np.diag(pcov2))
+
+
+xlist1 = np.linspace(truncatedresfreq1.min(),truncatedresfreq1.max(),len(truncatedyvals2))
+xlist2 = np.linspace(truncatedresfreq2.min(),truncatedresfreq2.max(),len(truncatedyvals2))
+
 # %% 
 ### plotting scaled loss (?)
 fig, ax = plt.subplots()
 
-plt.xlabel('rf freqeuncy (kHz)')
+transfernew = 1 - (c9 )/(c5 + ff*(c9))
+
+ax.set_xlabel('rf freqeuncy (kHz)')
 # plt.ylabel('Scaled Loss')
-plt.plot(resfreq,-c9+bg,linestyle='',marker='.',label='-loss+offset')
-plt.plot(resfreq,c5,linestyle='',marker='.',label='Transfer')
+ax.set_ylim(-1000,3000)
+ax.set_xlim(EF,110)
+ax.plot(resfreq,(-c9+bgloss),linestyle='',marker='.',label='-c9+offset')
+ax.plot(xlist1,fitPowerLaw(xlist1,*popt1),linestyle='-',label='-c9+offset')
+
+ax.plot(resfreq,c5,linestyle='',marker='.',label='c5')
+ax.plot(xlist2,fitPowerLaw(xlist2,*popt2),linestyle='-',label='c5')
+
+# ax.plot(resfreq,transfernew,linestyle='',marker='.',label='')
+
+# plt.plot([],[],linestyle='',label='2EF to 110')
+
 plt.legend()
+
+print(f'Power law for -c9+offset is {popt1[1]:.4f}\pm{perr1[1]:.3}')
+print(f'Power law for c5 is {popt2[1]:.4f}\pm{perr2[1]:.3}')
 # %%
-### putting a fit on the scaled loss 
+### max and min where we want to fit  
+minf = 2*EF
+maxf = 110.022 #6*EF 
+yvalsf95 = f95
+
+### filter mask
+freqfiltermask = resfreq > minf 
+newresfreqf95, newyvalsf95 = resfreq[freqfiltermask], yvalsf95[freqfiltermask]
+freqfiltermask = newresfreqf95 < maxf
+truncatedresfreqf95, truncatedyvalsf95 = newresfreqf95[freqfiltermask], newyvalsf95[freqfiltermask]
+
+yvals2 = c5
+
+### filter mask
+freqfiltermask = resfreq > minf 
+newresfreq2, newyvals2 = resfreq[freqfiltermask], yvals2[freqfiltermask]
+freqfiltermask = newresfreq2 < maxf
+truncatedresfreq2, truncatedyvals2 = newresfreq2[freqfiltermask], newyvals2[freqfiltermask]
+
+### popt, pcov, perr of power law
+guess = [100,-1.5]
+poptf95, pcovf95 = curve_fit(fitPowerLaw,truncatedresfreqf95,truncatedyvalsf95,p0=guess)
+perrf95 = np.sqrt(np.diag(pcovf95))
+
+popt2, pcov2 = curve_fit(fitPowerLaw,truncatedresfreq,truncatedyvals2,p0=guess)
+perr2 = np.sqrt(np.diag(pcov2))
+
+
+xlistf95 = np.linspace(truncatedresfreqf95.min(),truncatedresfreqf95.max(),len(truncatedyvalsf95))
+xlist2 = np.linspace(truncatedresfreq2.min(),truncatedresfreq2.max(),len(truncatedyvals2))
+
+# %%
+### f95 
 fig, ax = plt.subplots()
 
-plt.xlabel('rf frequency (kHz)')
-plt.plot(resfreq,c5,linestyle='',marker='.',label='Transfer')
-ax.plot(xlist,fitPowerLaw(xlist,*popt),linestyle='',marker='.')
+ax.set_ylim(0,.15)
+ax.set_xlim(EF,110)
+ax.plot(resfreq,f95,linestyle='',marker='.',label='f95')
+ax.plot(xlistf95,fitPowerLaw(xlistf95,*poptf95),linestyle='-',label='f95')
 
-### fitting scaled loss
-minf = 1.5*EF
-maxf = 6*EF  
-scaledloss = -c9+bg
+ax.legend()
 
-freqfiltermask = resfreq > minf 
-newresfreq, newscaledloss = resfreq[freqfiltermask], scaledloss[freqfiltermask]
-freqfiltermask = newresfreq < maxf
-truncatedresfreq, truncatedscaledloss = newresfreq[freqfiltermask], newscaledloss[freqfiltermask]
+print(f'Power law for f95 is {poptf95[1]:.4f}\pm{perrf95[1]:.3}')
+# %%
+fig, ax = plt.subplots()
+ax.plot(resfreq,transfernew,linestyle='',marker='.',label='')
 
-plt.plot(resfreq,scaledloss,linestyle='',marker='.',label='-loss+offset')
 
-guess = [100,-1.5]
-poptscaledloss, pcovscaledloss = curve_fit(fitPowerLaw,truncatedresfreq,truncatedscaledloss,p0=guess)
-perrscaledloss = np.sqrt(np.diag(pcovscaledloss))
-
-xlist = np.linspace(truncatedresfreq.min(),truncatedresfreq.max(),1000)
-ax.plot(xlist,fitPowerLaw(xlist,*poptscaledloss),linestyle='',marker='.')
-
-plt.plot([],[],linestyle='',label='1.5EF to 6EF')
-
-plt.legend()
-
-print(f'Power law for transfer is {popt[1]:.4f}\pm{perr[1]:.3}')
-print(f'Power law for scaled loss is {poptscaledloss[1]:.4f}\pm{perrscaledloss[1]:.3}')
 # %%
