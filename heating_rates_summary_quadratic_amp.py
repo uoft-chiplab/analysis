@@ -20,8 +20,9 @@ import matplotlib.pyplot as plt
 import os
 import pickle
 
-data_folder = 'data\\heating'
-pkl_filename = 'heating_rate_fit_results.pkl'
+# data_folder = 'data\\heating'
+data_folder = 'data//heating//reanalyzed'
+pkl_filename = 'heating_rate_fit_reanalyzed_results.pkl'
 pkl_file = os.path.join(data_folder, pkl_filename)
 
 plotting = True

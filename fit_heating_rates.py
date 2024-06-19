@@ -46,8 +46,10 @@ from field_wiggle_calibration import Bamp_from_Vpp
 # data_folder = 'data//heating'
 data_folder = 'data//heating//reanalyzed'
 pkl_filename = 'heating_rate_fit_reanalyzed_results.pkl'
+# pkl_filename='heating_rate_fit_results.pkl'
 pkl_file = os.path.join(data_folder, pkl_filename)
 xlsx_results_filename = 'heating_data_reanalyzed_results.xlsx'
+# xlsx_results_filename = 'heating_data_results.xlsx'
 xlsx_results_file = os.path.join(data_folder, xlsx_results_filename)
 metadata_filename = 'heating_metadata.xlsx'
 metadata_file = os.path.join(data_folder, metadata_filename)
@@ -323,7 +325,7 @@ for file in files:
 		# calculate correct energy from Will's code output in kHz
 # 		run.data[settings['temp_param']] = run.data['ENoEF'] * run.data['EF']/1000/h
 		run.data[settings['temp_param']] = run.data['smomEkHz']
-		
+# 		
 		# average data
 		run.group_by_mean(run.param)
 		

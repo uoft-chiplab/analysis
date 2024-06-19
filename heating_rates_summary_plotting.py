@@ -45,12 +45,13 @@ removed_names = ["2024-03-21_B_f=75_Vpp=0.25",
 				 "2024-04-03_F_f=2_Vpp=1.80",
 				 "2024-04-08_G_f=20_Vpp=1.80"]
 
-data_folder = 'data//heating'
-pkl_filename = 'heating_rate_fit_results.pkl'
+data_folder = 'data//heating//reanalyzed'
+pkl_filename = 'heating_rate_fit_reanalyzed_results.pkl'
 pkl_file = os.path.join(data_folder, pkl_filename)
 
+BVT_folder = 'data//heating'
 BVT_pkl_filename = 'BVT.pkl'
-BVT_pkl_file = os.path.join(data_folder, BVT_pkl_filename)
+BVT_pkl_file = os.path.join(BVT_folder, BVT_pkl_filename)
 
 TilmanPRL0p58ToTF_filename = "zetaomega_T0.58.txt"
 
@@ -445,7 +446,7 @@ if plot_legend:
 
 	
 fig.tight_layout()
-#fig.savefig("figures/summary.pdf")
+fig.savefig("figures/summary.pdf")
 plt.show()
 
 ########### SAVE THEORY ###########
