@@ -14,8 +14,8 @@ import matplotlib.pyplot as plt
 import os
 
 # filename = "2024-06-12_K_e.dat"
-# filename = "2024-06-18_G_e.dat"
-filename = "2024-06-20_C_e.dat" # reminder; had to kill 0 detuning because of scatter
+filename = "2024-06-18_G_e.dat"
+# filename = "2024-06-20_C_e.dat" # reminder; had to kill 0 detuning because of scatter
 # filename = "2024-06-20_D_e.dat" # reminder; had to kill 0 detuning because of scatter
 # filename = "2024-06-21_F_e.dat"
 VVAtoVppfile = "VVAtoVpp.txt" # calibration file
@@ -37,15 +37,16 @@ trf = 200e-6  # 200 or 400 us
 EF = 16e-3 #MHz
 bg_freq = 47  # chosen freq for bg, large negative detuning
 res_freq = 47.2159 # for 202.1G
+pulsetype = 'Kaiser'
 pulse_area = 0.3 # Blackman
 pulse_area = np.sqrt(0.3*0.92) # maybe? for first 4
 # pulse_area=np.sqrt(0.3) # if using real Blackman
-gain = 0.05 # scales the VVA to Vpp tabulation
+gain = 0.1 # scales the VVA to Vpp tabulation
 
 ### create data structure
 run = Data(filename)
 # kill a point
-# run.data.drop([77], inplace=True)
+run.data.drop([77], inplace=True)
 num = len(run.data[xname])
 
 ### compute bg c5, transfer, Rabi freq, etc.
@@ -108,10 +109,10 @@ xs = np.linspace(xlims[0], xlims[-1], len(y))
 
 ax.set(xlabel=xlabel, ylabel=ylabel, xlim=axxlims, ylim=ylims)
 ax.errorbar(x, y, yerr=yerr, fmt='o')
-ax.plot(xs, TransferInterpFunc(xs), '-')
+ax.plot(x, y, '-')
 
-sumrule = np.trapz(TransferInterpFunc(xs), x=xs)
-# sumrule = np.trapz(fp, x=xs)
+# sumrule = np.trapz(TransferInterpFunc(xs), x=xs)
+sumrule = np.trapz(y, x=x)
 print("sumrule = {:.3f}".format(sumrule))
 
 ### plot contact
@@ -152,8 +153,10 @@ the_table.scale(1,1.5)
 
 plt.show()
 
-datatosave = {'SumRule': [sumrule], 'Gain':[gain], 'Run':[filename], 'Max Scaled Transfer':[maxfp], 'Blackman Time':[trf],
-			  'Pulse Area':[pulse_area]}
+datatosave = {'SumRule': [sumrule], 'Gain':[gain], 'Run':[filename], 
+			  'C/N':[Cmean],
+			  'Max Scaled Transfer':[maxfp], 'Pulse Time (us)':[trf*1e6],
+			  'Pulse Area':[pulse_area], 'Pulse Type':[pulsetype]}
 datatosavedf = pd.DataFrame(datatosave)
 
 datatosave_folder = 'SavedSumRule'
@@ -169,7 +172,9 @@ xlsxsavedfile = 'Saved_Sum_Rules.xlsx'
 
 filepath = os.path.join(datatosave_folder,xlsxsavedfile)
 
-datatosavedf.to_excel(filepath,index=False)
+### if you want to change the headers you need this on then it makes 2 lines so delete the duplicate
+# and turn off after
+# datatosavedf.to_excel(filepath,index=False)
 
 try:
     existing_data = pd.read_excel(filepath, sheet_name='Sheet1')
