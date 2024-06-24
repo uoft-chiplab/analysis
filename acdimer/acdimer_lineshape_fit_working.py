@@ -5,7 +5,7 @@ Created on Thu Jun  6 20:12:51 2024
 @author: coldatoms
 """
 import sys
-data_class_dir = 'E:\\Analysis Scripts\\analysis'
+data_class_dir = '//Users//kevinxie//Documents//GitHub//analysis'
 if data_class_dir not in sys.path:
 	sys.path.append(data_class_dir)
 	print(sys.path)
@@ -17,14 +17,12 @@ from scipy.integrate import quad
 pi=np.pi
 uatom = 1.66054e-27
 mK = 39.96399848*uatom
-ToTF = 0.31
 kB =1.3806488e-23
-EF = 16000 # Hz
-T = ToTF*EF # Hz
+
 h=6.62606957e-34
 hbar = h/(2*pi)
 
-VVAtoVppfile = data_class_dir + "\\VVAtoVpp.txt" # calibration file
+VVAtoVppfile = data_class_dir + "//VVAtoVpp.txt" # calibration file
 VVAs, Vpps = np.loadtxt(VVAtoVppfile, unpack=True)
 VpptoOmegaR = 27.5833 # kHz
 def VVAtoVpp(VVA):
@@ -48,7 +46,12 @@ def dimerlineshape(omega, Eb, TMHz, fudge=0, arb_scale=1):
 	return Gamma
 
 def dimerlineshape2(omega, Eb, TMHz, arb_scale=1):
-	Gamma = arb_scale* mK/2 * (np.exp(omega + Eb)/TMHz) / np.sqrt(mK*(-omega-Eb))
+	Gamma = arb_scale*(np.exp((omega - Eb)/TMHz)) / np.sqrt((-omega+Eb)) * np.heaviside(-omega+Eb, 1)
+	Gamma = np.nan_to_num(Gamma)
+	return Gamma
+
+def dimerls2exp(omega, Eb, TMHz, arb_scale=1):
+	Gamma = arb_scale*(np.exp((omega - Eb)/TMHz))
 	return Gamma
 
 def lineshapefit(x, A, x0, sigma):
@@ -56,10 +59,10 @@ def lineshapefit(x, A, x0, sigma):
 	ls = np.nan_to_num(ls)
 	return ls
 # Ebfix = 3.97493557
-Ebfix = 3.97
+Ebfix = -3.97
 def lineshapefit_fixedEb(x, A, sigma):
 	x0 = Ebfix
-	ls = A*np.sqrt(-x-x0) * np.exp((x + x0)/sigma) * np.heaviside(-x-x0,1)
+	ls = A*np.sqrt(-x+x0) * np.exp((x - x0)/sigma) * np.heaviside(-x+x0,1)
 	ls = np.nan_to_num(ls)
 	return ls
 
@@ -72,11 +75,12 @@ def lineshape_zeroT(x, A, x0,C):
 # data = Data('2023-10-02_H_e.dat', path='E:\\Data\\2023\\10 October2023\\02October2023\\H_202p1G_acdimer_1p8VVA320us', average_by='freq')
 # data = Data('2023-10-02_I_e.dat', path='E:\\Data\\2023\\10 October2023\\02October2023\\I_202p1G_acdimer_1p5VVA640us', average_by='freq')
 # data = Data('2024-06-12_R_e.dat', average_by='freq')
-data = Data(filename='2024-06-12_S_e.dat',path = 'E:\\Analysis Scripts\\analysis\\acdimer\\data', average_by='freq')
+data = Data(filename='2024-06-12_S_e.dat',path = data_class_dir+'//acdimer//data', average_by='freq')
 # data =Data('2024-06-12_T_e.dat', average_by='freq')
 # field=202.1
 ToTF=0.31
 EF=15.2 # kHz
+T = ToTF * (EF*1000)
 field = 202.14
 df = data.avg_data
 
@@ -100,35 +104,32 @@ guess = [2, 0.004]
 popt,pcov = curve_fit(lineshapefit_fixedEb, fitdf.detuning, fitdf.transfer, sigma=fitdf.em_transfer, p0=guess)
 perr = np.sqrt(np.diag(pcov))
 print(popt)
-xlow = -4.30
-xhigh = -3.9
+xrange=0.05
+xlow = Ebfix-xrange
+xhigh = Ebfix + xrange
 xx = np.linspace(xlow, xhigh, 500)
 yy = lineshapefit_fixedEb(xx, *popt)
 
 guessT0 = [4e-25,Ebfix,0]
 yyT0 = lineshape_zeroT(xx, *guessT0)
 
-fig, axs = plt.subplots(2)
+fig, ax_ls = plt.subplots()
 fig.suptitle('ac dimer spectrum at 202.14G, EF={:.1f} kHz, T/TF={:.2f}, T={:.1f} kHz'.format(EF, ToTF, ToTF*EF))
-ax_loss = axs[0]
-ax_loss.errorbar(df[df['filter']==1]['detuning'],df[df['filter']==1]['sum95'], yerr=df[df['filter']==1]['em_sum95'], marker='o', ls='', markersize = 10, capsize=2, mew=2, color='b')
-ax_loss.errorbar(df[df['filter']==0]['detuning'],df[df['filter']==0]['sum95'], yerr=df[df['filter']==0]['em_sum95'], marker='o', ls='', markersize = 10, capsize=2, mew=2, mfc='none',color='b')
-ax_loss.set_ylabel('Counts [arb.]')
-ax_loss.hlines(bgmean, bgrange[0], bgrange[1], label='background')
-ax_loss.set_xlim([xlow, xhigh])
-ax_loss.legend()
+# ax_loss = axs[0]
+# ax_loss.errorbar(df[df['filter']==1]['detuning'],df[df['filter']==1]['sum95'], yerr=df[df['filter']==1]['em_sum95'], marker='o', ls='', markersize = 10, capsize=2, mew=2, color='b')
+# ax_loss.errorbar(df[df['filter']==0]['detuning'],df[df['filter']==0]['sum95'], yerr=df[df['filter']==0]['em_sum95'], marker='o', ls='', markersize = 10, capsize=2, mew=2, mfc='none',color='b')
+# ax_loss.set_ylabel('Counts [arb.]')
+# ax_loss.hlines(bgmean, bgrange[0], bgrange[1], label='background')
+# ax_loss.set_xlim([xlow, xhigh])
+# ax_loss.legend()
 
-ax_ls = axs[1]
-ax_ls.errorbar(df[df['filter']==1].detuning, df[df['filter']==1].transfer, yerr=df[df['filter']==1].em_transfer, marker='o', ls='', markersize = 10, capsize=2, mew=2, color='b', label='data')
-ax_ls.errorbar(df[df['filter']==0].detuning, df[df['filter']==0].transfer, yerr=df[df['filter']==0].em_transfer, marker='o', ls='', markersize = 10, capsize=2, mew=2, mfc='none', color='b', label='excluded from fit')
+ax_ls.errorbar(df[df['filter']==1].detuning, df[df['filter']==1].transfer, yerr=df[df['filter']==1].em_transfer, marker='o', ls='', markersize = 10, capsize=2, mew=2, color='b')
+ax_ls.errorbar(df[df['filter']==0].detuning, df[df['filter']==0].transfer, yerr=df[df['filter']==0].em_transfer, marker='o', ls='', markersize = 10, capsize=2, mew=2, mfc='none', color='b')
 fitstr = r'$A\sqrt{-\omega-E_b}*exp(\frac{\omega+E_b}{T}) *\Theta(-\omega-E_b)$'
 ax_ls.plot(xx, yy, ls='--', color='r', label='High-T fit: ' + fitstr)
 T0str = r'$A(2k_F^3 - 3k_F^2 *\sqrt{-\omega - E_b} + \sqrt{-\omega - E_b}^3)\frac{\sqrt{-\omega-E_b}}{-\omega-E_b}$'
 # ax_ls.plot(xx, yyT0, ls =':', color='g',label='T=0: ' + T0str)
-ax_ls.set_xlim([xlow, xhigh])
-ax_ls.set_ylabel(r'$\Gamma$ [arb.]')
-ax_ls.set_xlabel(r'Detuning from 12-resonance [MHz]')
-# ax_ls.legend()
+
 
 # textstr = '\n'.join((
 #  	r'High-T fit params:',
@@ -138,6 +139,20 @@ ax_ls.set_xlabel(r'Detuning from 12-resonance [MHz]')
 #  	))
 # ax_ls.text(xlow + 0.005, 0.045, textstr)
 
+Ebfix = -3.97
+arbscale=0.25e-2
+epsilon = 0.001 # small value to avoid divergence
+xxZY = np.linspace(xlow, xhigh, 400)
+yyZY = dimerlineshape2(xxZY, Ebfix, T/1e6, arb_scale=arbscale)
+yyZY2 = dimerlineshape2(xxZY, Ebfix, 5*T/1e6, arb_scale=arbscale)
+ax_ls.plot(xxZY, yyZY, ls='--', color='m', label='ZY high-T lineshape, arb scale')
+# ax_ls.plot(xxZY, yyZY2, ls=':', color='m', label='ZY high-T lineshape')
+
+ax_ls.legend()
+ax_ls.set_xlim([xlow, xhigh])
+ax_ls.set_ylim([-0.025, 0.125])
+ax_ls.set_ylabel(r'$\Gamma$ [arb.]')
+ax_ls.set_xlabel(r'Detuning from 12-resonance [MHz]')
 plt.tight_layout()
 
 # fig.savefig('figures/acdimerspectrum_fit.pdf')
@@ -151,10 +166,26 @@ plt.tight_layout()
 
 # q = quad(f_interp, fitdf.detuning.min(), fitdf.detuning.max(), points = fitdf.detuning)
 # print('q: ' + str(q))
+# fig, ax = plt.subplots()
+# ax.errorbar(df.detuning, df.transfer, yerr=df.em_transfer, marker='o', ls='', markersize = 10, capsize=2, mew=2, color='b', label='data')
+# arbscale=0.5e-2
+# Ebfix = -3.98
+# epsilon = 0.001 # small value to avoid divergence
+# xx = np.linspace(xlow, Ebfix-epsilon, 300)
+# yy = dimerlineshape2(xx, Ebfix, T/1e6, arb_scale=arbscale)
+# yy2 = dimerlineshape2(xx, Ebfix, 2*T/1e6, arb_scale=arbscale)
+# # arbscale=1
+# # Ebfix=-3.97
+# # xxtest = np.linspace(Ebfix-2, Ebfix+1, 300)
+# # T = 1*10e6
+# # yy3 = dimerls2exp(xxtest, Ebfix, T/1e6, arb_scale=arbscale)
+# # yy4 = dimerls2exp(xxtest, Ebfix, 0.5*T/1e6, arb_scale=arbscale)
+# # yy5 = dimerls2exp(xxtest, Ebfix, 2*T/1e6, arb_scale=arbscale)
 
-
-xx = np.linspace(xlow, -Ebfix, 100)
-yy = dimerlineshape2(xx, Ebfix, T/10e6, arb_scale=10e6)
-ax_ls.plot(xx, yy, 'm--')
+# ax.plot(xx, yy, 'm--')
+# ax.plot(xx, yy2, 'c--')
+# # ax.plot(xxtest, yy3,'k--')
+# ax.plot(xxtest, yy4, 'b--')
+# ax.plot(xxtest, yy5, 'y--')
 
 
