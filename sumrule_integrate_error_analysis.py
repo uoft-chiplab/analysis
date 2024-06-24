@@ -49,7 +49,6 @@ def trapz_interp_w_error(xs, ys, yserr, num_iter=1000):
 	""" Computes trapz for interpolated list of data points (xs, ys+-yserr),
 	and estimates std dev of result by sampling ys and yserr from 
 	Gaussian distributions, num_iter (default 1000) times."""
-	num_iter = 10
 # 	value = np.trapz(ys, x=xs)
 	def rand_y(y, yerr, size):
 		generator = np.random.default_rng()
@@ -57,16 +56,14 @@ def trapz_interp_w_error(xs, ys, yserr, num_iter=1000):
 	# array of lists of y values, sampled from Gaussians with centres y and widths yerr
 	ys_iter = np.array([rand_y(y, yerr, num_iter) for y, yerr in zip(ys, yserr)])
 	
-	num = 1000
-	xs_interp = np.linspace(min(xs), max(xs), num)
+	# interpolation array for x, num_iter in size
+	xs_interp = np.linspace(min(xs), max(xs), num_iter)
 	
+	# compute interpolation array for y, num_iter by num_iter in size
 	ys_interp_iter = np.array([[np.interp(xi, xs, ys_iter[:,i]) for xi in xs_interp]
 					  for i in range(num_iter)])
-
 	
-	print(ys_interp_iter[:10,:10])
-	
-	# integrals using each interpolation function
+	# integrals using each interpolation set
 	values = np.array([np.trapz(ys_interp_iter[i], x=xs_interp) for i in range(num_iter)])
 	
 	distr_mean, distr_stdev = (np.mean(values), np.std(values))

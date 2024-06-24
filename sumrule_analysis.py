@@ -14,12 +14,13 @@ import matplotlib.pyplot as plt
 import os
 import seaborn as sns
 
+### This turns on (True) and off (False) saving the data/plots 
 Saveon = False 
 # filename = "2024-06-12_K_e.dat"
 # filename = "2024-06-18_G_e.dat"
 # filename = "2024-06-20_C_e.dat" # reminder; had to kill 0 detuning because of scatter
 # filename = "2024-06-20_D_e.dat" # reminder; had to kill 0 detuning because of scatter
-filename = "2024-06-21_F_e.dat"
+filename = "2024-06-21_F_e.dat" #first real BM pulse 
 VVAtoVppfile = "VVAtoVpp.txt" # calibration file
 VVAs, Vpps = np.loadtxt(VVAtoVppfile, unpack=True)
 VpptoOmegaR = 27.5833 # kHz
@@ -115,8 +116,9 @@ ax.plot(x, y, '-')
 
 ### sum rule 
 fig,ax3 = plt.subplots()
-ax3.plot(TransferInterpFunc(xs),xs,linestyle='',marker='.')
-ax3.plot(y,x,linestyle='',marker='.')
+ax3.plot(TransferInterpFunc(xs),xs,linestyle='',marker='.',label='Interp Func')
+ax3.plot(y,x,linestyle='',marker='.',label='Raw')
+ax3.legend()
 
 sumrulefunc = np.trapz(TransferInterpFunc(xs), x=xs)
 sumrule = np.trapz(y, x=x)
@@ -226,19 +228,19 @@ if Saveon == True:
 fig, ax2 = plt.subplots()
 
 sumruleexceldf = pd.read_excel(filepath, index_col=0, engine='openpyxl').reset_index()
-# sumrules = np.array([.353,.336,.373,.443])
+
 sumrules = sumruleexceldf['SumRule from Interpolation Function']
-
-# gain = np.array([.3,.2,.1,.05])
 gain = sumruleexceldf['Gain']
-
-# CoN = np.array([.85,.98,1.08,1.44])
 CoN = sumruleexceldf['C/N']
-
 C = CoN/(sumrules/0.5)
 
-marker_dict  = {'Kaiser': 'd', 'Blackman': '.'}
-colors = {'Kaiser': 'blue', 'Blackman': 'red'}
+# marker_dict  = {'Kaiser': 'd', 'Blackman': '.'}
+# colors = {'Kaiser': 'blue', 'Blackman': 'red'}
 
-ax2 = sns.scatterplot(data=sumruleexceldf, x=gain, y=CoN, hue=sumruleexceldf['Pulse Type'], style=sumruleexceldf['Pulse Type'], s=100)
-ax2.plot(gain,CoN,linestyle='')
+xval = gain
+yval = sumruleexceldf['Max Scaled Transfer']
+
+ax2 = sns.scatterplot(data=sumruleexceldf, x=xval, y=yval, hue=sumruleexceldf['Pulse Type'], style=sumruleexceldf['Pulse Type'], s=100)
+# ax2.set_ylabel('Peak Scaled Transfer')
+# ax2.set_xlabel('gain')
+ax2.plot(xval,yval,linestyle='')
