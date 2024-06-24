@@ -11,9 +11,13 @@ from data_class import Data
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
 
-filename = "2024-06-12_K_e.dat"
-
+# filename = "2024-06-12_K_e.dat"
+# filename = "2024-06-18_G_e.dat"
+filename = "2024-06-20_C_e.dat" # reminder; had to kill 0 detuning because of scatter
+# filename = "2024-06-20_D_e.dat" # reminder; had to kill 0 detuning because of scatter
+# filename = "2024-06-21_F_e.dat"
 VVAtoVppfile = "VVAtoVpp.txt" # calibration file
 VVAs, Vpps = np.loadtxt(VVAtoVppfile, unpack=True)
 VpptoOmegaR = 27.5833 # kHz
@@ -29,16 +33,19 @@ def VVAtoVpp(VVA):
 ### run params
 xname = 'freq'
 ff = 1.03
-trf = 200e-6  # 200 us
+trf = 200e-6  # 200 or 400 us
 EF = 16e-3 #MHz
 bg_freq = 47  # chosen freq for bg, large negative detuning
 res_freq = 47.2159 # for 202.1G
 pulse_area = 0.3 # Blackman
-pulse_area = np.sqrt(0.3) # maybe?
-gain = 0.2 # scales the VVA to Vpp tabulation
+pulse_area = np.sqrt(0.3*0.92) # maybe? for first 4
+# pulse_area=np.sqrt(0.3) # if using real Blackman
+gain = 0.05 # scales the VVA to Vpp tabulation
 
 ### create data structure
 run = Data(filename)
+# kill a point
+# run.data.drop([77], inplace=True)
 num = len(run.data[xname])
 
 ### compute bg c5, transfer, Rabi freq, etc.
@@ -46,20 +53,23 @@ bgc5 = run.data[run.data[xname]==bg_freq]['c5'].mean()
 run.data['N'] = run.data['c5']-bgc5*np.ones(num)+run.data['c9']*ff
 run.data['transfer'] = (run.data['c5'] - bgc5*np.ones(num))/run.data['N']
 run.data['detuning'] = run.data[xname] - res_freq*np.ones(num) # MHz
-run.data['Vpp'] = run.data['VVA'].apply(VVAtoVpp)
+run.data['Vpp'] = run.data['vva'].apply(VVAtoVpp)
 run.data['OmegaR'] = 2*pi*pulse_area*gain*VpptoOmegaR*run.data['Vpp']
 
 run.data['ScaledTransfer'] = run.data.apply(lambda x: GammaTilde(x['transfer'],
 								h*EF*1e6, x['OmegaR']*1e3, trf), axis=1)
 run.data['C'] = run.data.apply(lambda x: 2*np.sqrt(2)*pi**2*x['ScaledTransfer'] * \
 								   (x['detuning']/EF)**(3/2), axis=1)
+# run.data = run.data[run.data.detuning != 0]
 
+	
 ### now group by freq to get mean and stddev of mean
 run.group_by_mean(xname)
 
 ### interpolate scaled transfer for sumrule integration
 xp = np.array(run.avg_data['detuning'])/EF
 fp = np.array(run.avg_data['ScaledTransfer'])
+maxfp = max(fp)
 TransferInterpFunc = lambda x: np.interp(x, xp, fp)
 
 ### PLOTTING
@@ -92,14 +102,16 @@ xlabel = r"Detuning $\Delta$"
 ylabel = r"Scaled Transfer $\tilde\Gamma$"
 
 xlims = [-2,16]
+axxlims = [-2,16]
+ylims = [-0.5,1]
+xs = np.linspace(xlims[0], xlims[-1], len(y))
 
-xs = np.linspace(xlims[0], xlims[-1], num*100)
-
-ax.set(xlabel=xlabel, ylabel=ylabel, xlim=xlims)
+ax.set(xlabel=xlabel, ylabel=ylabel, xlim=axxlims, ylim=ylims)
 ax.errorbar(x, y, yerr=yerr, fmt='o')
 ax.plot(xs, TransferInterpFunc(xs), '-')
 
 sumrule = np.trapz(TransferInterpFunc(xs), x=xs)
+# sumrule = np.trapz(fp, x=xs)
 print("sumrule = {:.3f}".format(sumrule))
 
 ### plot contact
@@ -111,6 +123,7 @@ xlabel = r"Detuning $\Delta$"
 ylabel = r"Contact $C/N$ [$k_F$]"
 
 xlims = [-2,16]
+ylims = [-2, 5]
 Cdetmin = 3
 Cdetmax = 8
 xs = np.linspace(Cdetmin, Cdetmax, num)
@@ -118,7 +131,7 @@ xs = np.linspace(Cdetmin, Cdetmax, num)
 df = run.data[run.data.detuning/EF>Cdetmin]
 Cmean = df[df.detuning/EF<Cdetmax].C.mean()
 
-ax.set(xlabel=xlabel, ylabel=ylabel, xlim=xlims)
+ax.set(xlabel=xlabel, ylabel=ylabel, xlim=xlims, ylim=ylims)
 ax.errorbar(x, y, yerr=yerr, fmt='o')
 ax.plot(xs, Cmean*np.ones(num), "--")
 
@@ -138,3 +151,54 @@ the_table.set_fontsize(12)
 the_table.scale(1,1.5)
 
 plt.show()
+
+datatosave = {'SumRule': [sumrule], 'Gain':[gain], 'Run':[filename], 'Max Scaled Transfer':[maxfp], 'Blackman Time':[trf],
+			  'Pulse Area':[pulse_area]}
+datatosavedf = pd.DataFrame(datatosave)
+
+datatosave_folder = 'SavedSumRule'
+runfolder = filename 
+figpath = os.path.join(datatosave_folder,runfolder)
+os.makedirs(figpath, exist_ok=True)
+
+sumrulefig_name = 'SumRule.png'
+sumrulefig_path = os.path.join(figpath,sumrulefig_name)
+fig.savefig(sumrulefig_path)
+
+xlsxsavedfile = 'Saved_Sum_Rules.xlsx'
+
+filepath = os.path.join(datatosave_folder,xlsxsavedfile)
+
+datatosavedf.to_excel(filepath,index=False)
+
+try:
+    existing_data = pd.read_excel(filepath, sheet_name='Sheet1')
+except FileNotFoundError:
+    existing_data = None
+new_data = datatosavedf
+
+with pd.ExcelWriter(filepath, mode='a', if_sheet_exists='overlay', engine='openpyxl') as writer:
+    if existing_data is not None:
+        # Calculate the starting row for writing new_data
+        start_row = existing_data.shape[0] + 1  # Start after existing_data
+        new_data.to_excel(writer, index=False, header=False, sheet_name='Sheet1', startrow=start_row)
+    else:
+        # Write new_data starting from the first row if no existing data
+        new_data.to_excel(writer, index=False, sheet_name='Sheet1')
+
+fig, ax2 = plt.subplots()
+
+sumruleexceldf = pd.read_excel(filepath, index_col=0, engine='openpyxl').reset_index()
+sumrules = np.array([.353,.336,.373,.443])
+# sumrules = sumruleexceldf['SumRule']
+
+gain = np.array([.3,.2,.1,.05])
+# gain = sumruleexceldf['Gain']
+
+CoN = np.array([.85,.98,1.08,1.44])
+
+C = CoN/(sumrules/0.5)
+
+ax2.set_xlabel('gain')
+ax2.set_ylabel('C')
+ax2.plot(gain, C,linestyle='',marker='.')
