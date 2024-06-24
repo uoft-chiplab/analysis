@@ -12,15 +12,12 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
-import seaborn as sns
 
-### This turns on (True) and off (False) saving the data/plots 
-Saveon = False 
-# filename = "2024-06-12_K_e.dat"
+filename = "2024-06-12_K_e.dat"
 # filename = "2024-06-18_G_e.dat"
 # filename = "2024-06-20_C_e.dat" # reminder; had to kill 0 detuning because of scatter
 # filename = "2024-06-20_D_e.dat" # reminder; had to kill 0 detuning because of scatter
-filename = "2024-06-21_F_e.dat" #first real BM pulse 
+# filename = "2024-06-21_F_e.dat"
 VVAtoVppfile = "VVAtoVpp.txt" # calibration file
 VVAs, Vpps = np.loadtxt(VVAtoVppfile, unpack=True)
 VpptoOmegaR = 27.5833 # kHz
@@ -33,18 +30,57 @@ def VVAtoVpp(VVA):
 			Vpp = Vpps[i]
 	return Vpp
 
+def trapz_w_error(xs, ys, yserr, num_iter=1000):
+	""" Computes trapz for list of data points (xs, ys+-yserr),
+	and estimates std dev of result by sampling ys and yserr from 
+	Gaussian distributions, num_iter (default 1000) times."""
+# 	value = np.trapz(ys, x=xs)
+	def rand_y(y, yerr, size):
+		generator = np.random.default_rng()
+		return generator.normal(loc=y, scale=yerr, size=num_iter)
+	# array of lists of y values, sampled from Gaussians with centres y and widths yerr
+	ys_iter = np.array([rand_y(y, yerr, num_iter) for y, yerr in zip(ys, yserr)])
+	values = np.array([np.trapz(ys_iter[:,i], x=xs) for i in range(num_iter)])
+	distr_mean, distr_stdev = (np.mean(values), np.std(values))
+	return values, distr_mean, distr_stdev
+
+
+def trapz_interp_w_error(xs, ys, yserr, num_iter=1000):
+	""" Computes trapz for interpolated list of data points (xs, ys+-yserr),
+	and estimates std dev of result by sampling ys and yserr from 
+	Gaussian distributions, num_iter (default 1000) times."""
+# 	value = np.trapz(ys, x=xs)
+	def rand_y(y, yerr, size):
+		generator = np.random.default_rng()
+		return generator.normal(loc=y, scale=yerr, size=num_iter)
+	# array of lists of y values, sampled from Gaussians with centres y and widths yerr
+	ys_iter = np.array([rand_y(y, yerr, num_iter) for y, yerr in zip(ys, yserr)])
+	
+	# interpolation array for x, num_iter in size
+	xs_interp = np.linspace(min(xs), max(xs), num_iter)
+	
+	# compute interpolation array for y, num_iter by num_iter in size
+	ys_interp_iter = np.array([[np.interp(xi, xs, ys_iter[:,i]) for xi in xs_interp]
+					  for i in range(num_iter)])
+	
+	# integrals using each interpolation set
+	values = np.array([np.trapz(ys_interp_iter[i], x=xs_interp) for i in range(num_iter)])
+	
+	distr_mean, distr_stdev = (np.mean(values), np.std(values))
+	return values, distr_mean, distr_stdev
+
 ### run params
 xname = 'freq'
 ff = 1.03
-trf = 400e-6  # 200 or 400 us
+trf = 200e-6  # 200 or 400 us
 EF = 16e-3 #MHz
 bg_freq = 47  # chosen freq for bg, large negative detuning
 res_freq = 47.2159 # for 202.1G
-pulsetype = 'Blackman'
-# pulse_area = 0.3 # Blackman
-# pulse_area = np.sqrt(0.3*0.92) # for kaiser - maybe? for first 4
-pulse_area=np.sqrt(0.3) # if using real Blackman
-gain = 0.05 # scales the VVA to Vpp tabulation
+pulsetype = 'Kaiser'
+pulse_area = 0.3 # Blackman
+pulse_area = np.sqrt(0.3*0.92) # maybe? for first 4
+# pulse_area=np.sqrt(0.3) # if using real Blackman
+gain = 0.2 # scales the VVA to Vpp tabulation
 
 ### create data structure
 run = Data(filename)
@@ -57,13 +93,16 @@ bgc5 = run.data[run.data[xname]==bg_freq]['c5'].mean()
 run.data['N'] = run.data['c5']-bgc5*np.ones(num)+run.data['c9']*ff
 run.data['transfer'] = (run.data['c5'] - bgc5*np.ones(num))/run.data['N']
 run.data['detuning'] = run.data[xname] - res_freq*np.ones(num) # MHz
-run.data['Vpp'] = run.data['vva'].apply(VVAtoVpp)
+try:
+	run.data['Vpp'] = run.data['vva'].apply(VVAtoVpp)
+except KeyError:
+	run.data['Vpp'] = run.data['VVA'].apply(VVAtoVpp)
 run.data['OmegaR'] = 2*pi*pulse_area*gain*VpptoOmegaR*run.data['Vpp']
 
 run.data['ScaledTransfer'] = run.data.apply(lambda x: GammaTilde(x['transfer'],
 								h*EF*1e6, x['OmegaR']*1e3, trf), axis=1)
 run.data['C'] = run.data.apply(lambda x: 2*np.sqrt(2)*pi**2*x['ScaledTransfer'] * \
-								   (x['detuning']/EF)**(3/2), axis=1)
+								   (np.abs(x['detuning'])/EF)**(3/2), axis=1)
 # run.data = run.data[run.data.detuning != 0]
 
 	
@@ -107,22 +146,23 @@ ylabel = r"Scaled Transfer $\tilde\Gamma$"
 
 xlims = [-2,16]
 axxlims = [-2,16]
-ylims = [-0.5,1]
-xs = np.linspace(xlims[0], xlims[-1], len(y))
+ylims = [run.data['ScaledTransfer'].min()*10, run.data['ScaledTransfer'].max()]
+num = len(y)
+num = 10000
+xs = np.linspace(xlims[0], xlims[-1], num)
 
 ax.set(xlabel=xlabel, ylabel=ylabel, xlim=axxlims, ylim=ylims)
 ax.errorbar(x, y, yerr=yerr, fmt='o')
-ax.plot(x, y, '-')
+ax.plot(xs, TransferInterpFunc(xs), '-')
 
-### sum rule 
-fig,ax3 = plt.subplots()
-ax3.plot(TransferInterpFunc(xs),xs,linestyle='',marker='.',label='Interp Func')
-ax3.plot(y,x,linestyle='',marker='.',label='Raw')
-ax3.legend()
-
-sumrulefunc = np.trapz(TransferInterpFunc(xs), x=xs)
+sumrule_interp = np.trapz(TransferInterpFunc(xs), x=xs)
+sumrule_distr, sumrule_mean, sumrule_std = trapz_w_error(x, y, yerr, num)
+sumrule_distr_interp, sumrule_mean_interp, sumrule_std_interp = trapz_interp_w_error(x, y, yerr, num)
 sumrule = np.trapz(y, x=x)
-print("sumrule = {:.3f}".format(sumrule))
+print("interpolated sumrule = {:.3f}".format(sumrule_interp))
+print("raw data sumrule = {:.3f}".format(sumrule))
+print("sumrule mean = {:.3f}\pm {:.3f}".format(sumrule_mean, sumrule_std))
+print("sumrule interp mean = {:.3f}\pm {:.3f}".format(sumrule_mean_interp, sumrule_std_interp))
 
 ### plot contact
 ax = axs[0,1]
@@ -133,7 +173,7 @@ xlabel = r"Detuning $\Delta$"
 ylabel = r"Contact $C/N$ [$k_F$]"
 
 xlims = [-2,16]
-ylims = [-2, 5]
+ylims = [run.data['C'].min(), run.data['C'].max()]
 Cdetmin = 3
 Cdetmax = 8
 xs = np.linspace(Cdetmin, Cdetmax, num)
@@ -149,10 +189,9 @@ ax.plot(xs, Cmean*np.ones(num), "--")
 ax = axs[1,1]
 ax.axis('off')
 ax.axis('tight')
-quantities = ["$E_F$", "Contact $C/N$", "sumrule func", "sumrule raw"]
+quantities = ["$E_F$", "Contact $C/N$", "sumrule"]
 values = ["{:.1f} kHz".format(EF*1e3), 
 		  "{:.2f} kF".format(Cmean), 
-		  "{:.3f}".format(sumrulefunc),
 		  "{:.3f}".format(sumrule)]
 table = list(zip(quantities, values))
 
@@ -162,85 +201,3 @@ the_table.set_fontsize(12)
 the_table.scale(1,1.5)
 
 plt.show()
-
-
-datatosave = {'SumRule from Interpolation Function': [sumrulefunc], 
-			  'Sumrule from raw data': [sumrule],
-			  'Gain':[gain], 'Run':[filename], 
-			  'C/N':[Cmean],
-			  'Max Scaled Transfer':[maxfp], 'Pulse Time (us)':[trf*1e6],
-			  'Pulse Area':[pulse_area], 'Pulse Type':[pulsetype]}
-datatosavedf = pd.DataFrame(datatosave)
-
-datatosave_folder = 'SavedSumRule'
-runfolder = filename 
-figpath = os.path.join(datatosave_folder,runfolder)
-os.makedirs(figpath, exist_ok=True)
-
-sumrulefig_name = 'SumRule.png'
-sumrulefig_path = os.path.join(figpath,sumrulefig_name)
-fig.savefig(sumrulefig_path)
-	
-xlsxsavedfile = 'Saved_Sum_Rules.xlsx'
-
-filepath = os.path.join(datatosave_folder,xlsxsavedfile)
-
-### if you want to change the headers you need this on then it makes 2 lines so delete the duplicate
-# and comment out after
-# datatosavedf.to_excel(filepath,index=False)
-
-if Saveon == True:
- 	
- 	datatosave = {'SumRule from Interpolation Function': [sumrulefunc], 
- 			  'Sumrule from raw data': [sumrule],
- 			  'Gain':[gain], 'Run':[filename], 
- 			  'C/N':[Cmean],
- 			  'Max Scaled Transfer':[maxfp], 'Pulse Time (us)':[trf*1e6],
- 			  'Pulse Area':[pulse_area], 'Pulse Type':[pulsetype]}
- 	datatosavedf = pd.DataFrame(datatosave)
-
- 	datatosave_folder = 'SavedSumRule'
- 	runfolder = filename 
- 	figpath = os.path.join(datatosave_folder,runfolder)
- 	os.makedirs(figpath, exist_ok=True)
-
- 	sumrulefig_name = 'SumRule.png'
- 	sumrulefig_path = os.path.join(figpath,sumrulefig_name)
- 	fig.savefig(sumrulefig_path)
- 	
- 	xlsxsavedfile = 'Saved_Sum_Rules.xlsx'
- 	
- 	filepath = os.path.join(datatosave_folder,xlsxsavedfile)
- 	try:
-		 existing_data = pd.read_excel(filepath, sheet_name='Sheet1')
- 	except FileNotFoundError:
-		 existing_data = None
- 	new_data = datatosavedf
-		
- 	with pd.ExcelWriter(filepath, mode='a', if_sheet_exists='overlay', engine='openpyxl') as writer:
-		 if existing_data is not None:
- 			start_row = existing_data.shape[0] + 1
- 			new_data.to_excel(writer, index=False, header=False, sheet_name='Sheet1', startrow=start_row)
-		 else: 
- 			new_data.to_excel(writer, index=False, sheet_name='Sheet1')
-
- 	
-fig, ax2 = plt.subplots()
-
-sumruleexceldf = pd.read_excel(filepath, index_col=0, engine='openpyxl').reset_index()
-
-sumrules = sumruleexceldf['SumRule from Interpolation Function']
-gain = sumruleexceldf['Gain']
-CoN = sumruleexceldf['C/N']
-C = CoN/(sumrules/0.5)
-
-# marker_dict  = {'Kaiser': 'd', 'Blackman': '.'}
-# colors = {'Kaiser': 'blue', 'Blackman': 'red'}
-
-xval = gain
-yval = sumruleexceldf['Max Scaled Transfer']
-
-ax2 = sns.scatterplot(data=sumruleexceldf, x=xval, y=yval, hue=sumruleexceldf['Pulse Type'], style=sumruleexceldf['Pulse Type'], s=100)
-# ax2.set_ylabel('Peak Scaled Transfer')
-# ax2.set_xlabel('gain')
-ax2.plot(xval,yval,linestyle='')
