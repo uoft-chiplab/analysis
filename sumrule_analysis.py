@@ -1,11 +1,9 @@
-# -*- coding: utf-8 -*-
 """
 Created by Chip lab 2024-06-12
 
 Loads .dat with contact HFT scan and computes scaled transfer. Plots. Also
 computes the sumrule.
 """
-# %%
 from library import pi, h, hbar, mK, a0, plt_settings, GammaTilde, tintshade, \
 			MonteCarlo_trapz, MonteCarlo_interp_trapz, tint_shade_color
 from data_class import Data
@@ -30,6 +28,16 @@ def a13(B):
 	return abg*(1 - DeltaB/(B-B0))
 
 xstar = Eb/EF * (1-re/a13(Bfield))**(-1)
+
+def ChipBlackman(x, a_n=[0.42659, 0.49656, 0.076849]):
+	"""The ChipLab Blackman that exists in the pulse generation 
+	MatLab script. Coefficients slightly differ from conventional.
+	Defined as a pulse with length 1 starting at 0."""
+	zero_func = lambda y: 0
+	pulse_func = lambda y: a_n[0] - a_n[1]*np.cos(2*np.pi*y) \
+		+ a_n[2]*np.cos(4*np.pi*y)
+	return np.piecewise(x, [x<0, x>1, (x>=0) & (x<=1)], 
+					 [zero_func, zero_func, pulse_func])
 
 def FixedPowerLaw(x, A):
 	return A*x**(-3/2)
@@ -165,18 +173,6 @@ for dataset in HFT_datasets:
 	pulsetype = dataset['pulsetype']
 	remove_indices = dataset['remove_indices']
 	
-	# determine pulse area
-	if pulsetype == 'Blackman':
-		pulse_area = lambda x: np.sqrt(0.31)
-	elif pulsetype == 'Kaiser':
-		pulse_area = lambda x: np.sqrt(0.3*0.92)
-	elif pulsetype == 'square':
-		pulse_area = lambda x: 1
-	elif pulsetype == 'BlackmanOffset':
-		pulse_area = lambda x: np.sqrt(0.31) * (x - 0.0252) + (1) * (0.0252)
-	else:
-		ValueError("pulsetype not a known type")
-	
 	# create data structure
 	run = Data(filename, path=data_folder)
 	# remove indices if requested
@@ -188,10 +184,37 @@ for dataset in HFT_datasets:
 	run.data['N'] = run.data['c5']-bgc5*np.ones(num)+run.data['c9']*ff
 	run.data['transfer'] = (run.data['c5'] - bgc5*np.ones(num))/run.data['N']
 	run.data['detuning'] = run.data[xname] - res_freq*np.ones(num) # MHz
-	run.data['Vpp'] = run.data['vva'].apply(VVAtoVpp)
-	run.data['OmegaR'] = 2*pi*pulse_area(gain*VpptoOmegaR*run.data['Vpp']) \
-								*gain*VpptoOmegaR*run.data['Vpp']
 	
+	# map VVA to Vpp
+	if pulsetype != 'BlackmanOffset':
+		run.data['Vpp'] = run.data['vva'].apply(VVAtoVpp)
+	else:
+		# split pulse into offset and amplitude
+		# scale offset by VVA
+		run.data['offset'] = 0.0252/VVAtoVpp(10)*run.data['vva']
+		# calculate amplitude ignoring offset
+		# gain only effects this amplitude, not the offset
+		run.data['Vpp'] = gain * (run.data['vva'].apply(VVAtoVpp) 
+					 - run.data['offset'])
+	
+	# determine pulse area
+	if pulsetype == 'Blackman':
+		run.data['sqrt_pulse_area'] = np.sqrt(0.31) 
+	elif pulsetype == 'Kaiser':
+		run.data['sqrt_pulse_area'] = np.sqrt(0.3*0.92)
+	elif pulsetype == 'square':
+		run.data['sqrt_pulse_area'] = 1
+	elif pulsetype == 'BlackmanOffset':
+		xx = np.linspace(0,1,1000)
+		# integrate the square, and sqrt it
+		run.data['sqrt_pulse_area'] = np.sqrt(run.data.apply(lambda x: 
+		   np.trapz((x['Vpp']*ChipBlackman(xx)+x['offset'])**2, x=xx), axis=1))
+	else:
+		ValueError("pulsetype not a known type")
+
+	# compute Rabi frequency, scaled transfer, and contact
+	run.data['OmegaR'] = 2*pi*run.data['sqrt_pulse_area'] \
+							* VpptoOmegaR * run.data['Vpp']
 	run.data['ScaledTransfer'] = run.data.apply(lambda x: GammaTilde(x['transfer'],
 									h*EF*1e6, x['OmegaR']*1e3, trf), axis=1)
 	run.data['C'] = run.data.apply(lambda x: 2*np.sqrt(2)*pi**2*x['ScaledTransfer'] * \

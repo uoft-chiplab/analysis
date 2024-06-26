@@ -5,7 +5,7 @@
 
 Functions to call in analysis scripts
 """
-# %%
+
 import os
 current_dir = os.path.dirname(__file__)
 
@@ -148,6 +148,8 @@ def MonteCarlo_interp_extrap_trapz(xs, ys, yserr, xmax,
 	distr_mean, distr_stdev = (np.mean(values), np.std(values))
 	return values, distr_mean, distr_stdev, popts, pcovs
 
+# def ChipBlackman(x coeff=[0.42659, 0.49656, 0.076849])
+
 def chi_sq(y, yfit, yerr, dof):
 	return 1/dof * np.sum((np.array(y) - np.array(yfit))**2/(yerr**2))
 
@@ -229,4 +231,4 @@ def a97(B, B0=202.14, B0zero=209.07, abg=167.6*a0):
 	return abg * (1 - (B0zero - B0)/(B - B0));
 
 
-# %%
+

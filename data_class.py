@@ -8,7 +8,7 @@ Matlab output files
 
 Relies on functions.py
 """
-# %%
+
 import os 
 from glob import glob
 import sys
@@ -330,4 +330,3 @@ class Data:
 # plt.ylabel('Slope')
 # plt.plot(odtratio,mvals,'.')
 		
-# %%
