@@ -13,8 +13,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 
-filename = "2024-06-12_K_e.dat"
-# filename = "2024-06-18_G_e.dat"
+# filename = "2024-06-12_K_e.dat"
+filename = "2024-06-18_G_e.dat"
 # filename = "2024-06-20_C_e.dat" # reminder; had to kill 0 detuning because of scatter
 # filename = "2024-06-20_D_e.dat" # reminder; had to kill 0 detuning because of scatter
 # filename = "2024-06-21_F_e.dat"
