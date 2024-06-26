@@ -8,10 +8,10 @@ Matlab output files
 
 Relies on functions.py
 """
+# %%
 import os 
 from glob import glob
 import sys
-sys.path.insert(0, 'E:\Analysis Scripts\analysis')
 from library import *
 from fit_functions import *
 from scipy.optimize import curve_fit
@@ -330,3 +330,4 @@ class Data:
 # plt.ylabel('Slope')
 # plt.plot(odtratio,mvals,'.')
 		
+# %%

@@ -5,7 +5,7 @@ Created by Chip lab 2024-06-12
 Loads .dat with contact HFT scan and computes scaled transfer. Plots. Also
 computes the sumrule.
 """
-
+# %%
 from library import pi, h, hbar, mK, a0, plt_settings, GammaTilde, tintshade, \
 			MonteCarlo_trapz, MonteCarlo_interp_trapz, tint_shade_color
 from data_class import Data
@@ -473,3 +473,4 @@ if Summaryplots == True:
 	
 	fig.tight_layout()
 	plt.show()
+# %%

@@ -5,6 +5,7 @@
 
 Fitting functions for general analysis scripts 
 """
+# %%
 import numpy as np
 import math
 
@@ -412,3 +413,4 @@ def FixedSin2kHz(data):
 		return A*np.sin(omega*t - p) + C
 	
 	return FixedSin2kHz, guess, param_names
+# %%
