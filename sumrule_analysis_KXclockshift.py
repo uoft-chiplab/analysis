@@ -42,7 +42,6 @@ def VVAtoVpp(VVA):
 		if VVA == VVA_val:
 			Vpp = Vpps[i]
 	return Vpp
-
 hbar = h/(2*pi)
 uatom = 1.66054e-27
 mK = 39.96399848*uatom
@@ -50,7 +49,6 @@ kF = np.sqrt(2*mK*EF*1e6*h)/hbar
 Bfield = 202.1 # G
 a0 = 5.2917721092e-11 # m
 re = 107 * a0
-
 def a13(B):
 	abg = 167.6*a0
 	DeltaB = 7.2
@@ -62,10 +60,13 @@ def FixedPowerLaw(x, A):
 
 def FullPowerLaw(x, A):
 	Eb = 3.98 # MHz # I guesstimated this from recent ac dimer spectra
-	xstar = Eb/EF * (1+re/a13(Bfield))**(-1)
+	xstar = Eb/EF * (1-re/a13(Bfield))**(-1)
+# 	xstar = Eb/EF
 # 	print('xstar = {:.3f}'.format(xstar))
 	return A*x**(-3/2) / (1+x/xstar)
 	
+
+
 ### create data structure
 run = Data(filename, path='SavedSumRule//data' )
 # kill a point
@@ -83,10 +84,10 @@ run.data['OmegaR'] = 2*pi*pulse_area*gain*VpptoOmegaR*run.data['Vpp']
 run.data['ScaledTransfer'] = run.data.apply(lambda x: GammaTilde(x['transfer'],
 								h*EF*1e6, x['OmegaR']*1e3, trf), axis=1)
 
-# double just for comparison to JT note
-run.data['ScaledTransfer'] = run.data['ScaledTransfer']*2
 run.data['C'] = run.data.apply(lambda x: 2*np.sqrt(2)*pi**2*x['ScaledTransfer'] * \
-								   (x['detuning']/EF)**(3/2), axis=1)
+								   (x['detuning']/EF)**(3/2), axis=1) 
+	
+run.data['ScaledTransfer'] = run.data['ScaledTransfer']*2 # horrible
 # run.data = run.data[run.data.detuning != 0]
 
 	
@@ -139,8 +140,8 @@ ax.errorbar(x, y, yerr=yerr, fmt='o')
 ax.plot(x, y, '-')
 
 ### fit and plot -3/2 power law tail
-xlow = 2
-xhigh=10
+xlow = 3
+xhigh=8
 mask= x.between(xlow, xhigh)
 xfit = x[mask]
 yfit = y[mask]
@@ -172,11 +173,11 @@ axfit2.errorbar(x, y, yerr=yerr, fmt='o')
 axfit2.plot(xxfit, yyfit, 'r--', label=r'$A\frac{\Delta^{-3/2}}{1+\Delta/\Delta_*}$')
 axfit2.set(yscale='log',xscale='log', xlabel=xlabel, ylabel=ylabel)
 axfit2.legend()
-
+fig.tight_layout()
 # calculate sum rule (should be normalized to 1 to match JT note)
 # two methods: integrate interpolated data or integrate interpolated data + extrapolated power law fit 
 sumrule = np.trapz(TransferInterpFunc(xs), x=xs)
-xinterp = np.linspace(-2, xlow, 100)
+xinterp = np.linspace(-2, xlow, 1000)
 sumrule2 = np.trapz(TransferInterpFunc(xinterp), x=xinterp) + \
 	np.trapz(FullPowerLaw(xxfit, *popt), x=xxfit)
 # sumrule = np.trapz(y, x=x)
@@ -185,22 +186,22 @@ sumrule2 = np.trapz(TransferInterpFunc(xinterp), x=xinterp) + \
 
 # first moments
 firstmoment = np.trapz(TransferInterpFunc(xs) * xs, x=xs)
-
-firstmoment2 = np.trapz(TransferInterpFunc(xinterp) * xinterp, x=xinterp) + \
+firstmoment2 = np.trapz(TransferInterpFunc(xinterp)*xinterp, x=xinterp) + \
 	np.trapz(FullPowerLaw(xxfit, *popt)*xxfit, x=xxfit)
 # print("first moment = {:.3f}".format(firstmoment))
 # print("first moment 2 = {:.3f}".format(firstmoment2))
 
 # clock shifts
-clockshift = firstmoment/sumrule
-clockshift2 = firstmoment2/sumrule2
+dimerSR = 0.035
+clockshift = firstmoment/(sumrule+dimerSR)
+clockshift2 = firstmoment2/(sumrule2+dimerSR)
 # print("Clock shift = {:.3f}".format(clockshift))
 # print("Clock shift2 = {:.3f}".format(clockshift2))
 
 # contact from clock shift
-C_clockshift = clockshift * pi * kF * a13(Bfield) 
+C_clockshift = clockshift * pi * kF * np.abs(a13(Bfield))
 # print("Contact from clock shift = {:.3f}".format(C_clockshift))
-C_clockshift2 = clockshift2 * pi * kF * a13(Bfield) 
+C_clockshift2 = clockshift2 * pi * kF * np.abs(a13(Bfield)) 
 # print("Contact from clock shift 2 = {:.3f}".format(C_clockshift2))
 
 
@@ -251,8 +252,9 @@ the_table.scale(1,1.5)
 ax=axfits[2]
 ax.axis('off')
 ax.axis('tight')
-quantities = ["sumrule", "1st moment", "Clock shift", "Predicted shift from Cmean", "C/NkF from clock shift", "Cmean [NkF]"]
+quantities = ["HFT sumrule", "dimer sumrule","1st moment", "Clock shift", "Predicted shift from Cmean", "C/NkF from clock shift", "Cmean [NkF]"]
 values = ["{:.3f}".format(sumrule2),
+		  "{:.3f}".format(dimerSR),
 		  "{:.3f}".format(firstmoment2),
 		  "{:.3f}".format(clockshift2),
 		  "{:.3f}".format(clockshift_pred),
