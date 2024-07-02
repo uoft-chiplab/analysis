@@ -23,3 +23,7 @@ Chip lab people to get this repo and edit it:
   -Finish merging with main
 
 -Open pull request
+
+### Other Info
+
+If you go to merge a pull request/etc and the conflict file is .DS_Store, then you need to untrack the file 

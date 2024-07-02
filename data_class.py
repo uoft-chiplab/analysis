@@ -8,10 +8,10 @@ Matlab output files
 
 Relies on functions.py
 """
+
 import os 
 from glob import glob
 import sys
-sys.path.insert(0, 'E:\Analysis Scripts\analysis')
 from library import *
 from fit_functions import *
 from scipy.optimize import curve_fit
@@ -34,19 +34,6 @@ plt.rcParams.update(plt_settings)
 # plt.style.use('plottingstyle')
 # plt.style.use('C:/Users/coldatoms/anaconda3/pkgs/matplotlib-base-3.2.2-py38h64f37c6_0/Lib/site-packages/matplotlib/mpl-data/stylelib/plottingstype.mplstyle')
 # plt.style.use('./plottingstype.mplstyle')
-
-# def data1(filename):
-# 	return  Data("2023-10-19_C_e.dat",column_names=['ToTFcalc']).data -  Data("2023-10-19_E_e.dat",column_names=['ToTFcalc']).data
-
-# def subtract(filename):
-# 	data1 = pd.DataFrame({'Field': Data("2023-10-19_E_e.dat",column_names=['Field']).data, 'ToTFcalc' : Data("2023-10-19_E_e.dat",column_names=['ToTFcalc']).data }, index=([0])).groupby(['Field'])['ToTFcalc'].mean()
-# 	data2 = Data("2023-10-19_C_e.dat",column_names=['ToTFcalc','Field']).data.groupby(['Field'])['ToTFcalc'].mean()
-# 	data3 = Data("2023-10-19_C_e.dat",column_names=['ToTFcalc']).data
-# 	data4 = Data("2023-10-19_E_e.dat",column_names=['ToTFcalc']).data
-# 	subtracted_data = data1 - data2
-# 	field = Data("2023-10-19_E_e.dat",column_names=['Field']).data
-# 	#return pd.concat([field,data1, data3, data4], axis=1)
-# 	return data2
 
 class Data:
 	def __init__(self, filename, path=None, column_names=None, 
@@ -208,12 +195,20 @@ class Data:
 
 		
 # fit data to fit_func and plot if Data has a figure
-	def fit(self, fit_func, names, guess=None, label=None):
-		fit_data = np.array(self.data[names])
+	def fit(self, fit_func, names, guess=None, label=None, exclude_list=None):
+#included an exclusion list here just for the fit so you can plot the whole data set but just fit a portion 
+		if exclude_list is None:
+			fit_data = np.array(self.data[names])
+			self.plot(names, label=label, axes_labels=None)
+		else:
+			fit_data = np.array(self.data[names])
+			self.plot(names, label=label, axes_labels=None)
+			
+			self.data = self.data.drop(index=exclude_list)
+			fit_data = np.array(self.data[names])
+		
 		func, default_guess, param_names = fit_func(fit_data)
-# 		print(default_guess)
-# 		print(func(201.5, *default_guess))
-# 		
+		
 		if guess is None:	
 			guess = default_guess
 			
@@ -236,8 +231,8 @@ class Data:
 			ot = self.popt[1]*self.popt[2]
 			print('The trap frequency is {:.6f} +/-{:.2}'.format(freq,er))
 			print('omega*tau is',ot)
-				
-		self.plot(names, label=label, axes_labels=None)
+					
+# 		self.plot(names, label=label, axes_labels=None)
 		
 		if hasattr(self, 'ax'): # check for plot
 			num = 500

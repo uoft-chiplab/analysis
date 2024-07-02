@@ -42,6 +42,7 @@ def VVAtoVpp(VVA):
 		if VVA == VVA_val:
 			Vpp = Vpps[i]
 	return Vpp
+
 hbar = h/(2*pi)
 uatom = 1.66054e-27
 mK = 39.96399848*uatom
@@ -49,6 +50,7 @@ kF = np.sqrt(2*mK*EF*1e6*h)/hbar
 Bfield = 202.1 # G
 a0 = 5.2917721092e-11 # m
 re = 107 * a0
+
 def a13(B):
 	abg = 167.6*a0
 	DeltaB = 7.2
@@ -64,8 +66,6 @@ def FullPowerLaw(x, A):
 # 	print('xstar = {:.3f}'.format(xstar))
 	return A*x**(-3/2) / (1+x/xstar)
 	
-
-
 ### create data structure
 run = Data(filename, path='SavedSumRule//data' )
 # kill a point
@@ -185,7 +185,8 @@ sumrule2 = np.trapz(TransferInterpFunc(xinterp), x=xinterp) + \
 
 # first moments
 firstmoment = np.trapz(TransferInterpFunc(xs) * xs, x=xs)
-firstmoment2 = np.trapz(TransferInterpFunc(xinterp * xinterp), x=xinterp) + \
+
+firstmoment2 = np.trapz(TransferInterpFunc(xinterp) * xinterp, x=xinterp) + \
 	np.trapz(FullPowerLaw(xxfit, *popt)*xxfit, x=xxfit)
 # print("first moment = {:.3f}".format(firstmoment))
 # print("first moment 2 = {:.3f}".format(firstmoment2))
