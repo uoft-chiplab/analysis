@@ -25,8 +25,8 @@ pi = np.pi
 
 # print results
 print_results = True
-trap_plot = True
-bulk_plot = False
+trap_plot = False
+bulk_plot = True
 show_data = True
 
 # print_results = False
@@ -449,7 +449,7 @@ def phaseshift_from_zeta(nus, EF, zetas):
 	return phi
 
 ############ LOAD DATA ############
-load_data = True
+load_data = False
 
 if load_data == True:
 	files = ["2024-03-21_B_UHfit.dat", "2024-04-03_E_UHfit.dat"]
@@ -493,12 +493,12 @@ plt.rcParams.update(plt_settings)
 if bulk_plot == True:
 	titlebulk = 'Uniform Density Gas'
 	
-	Thetas = [0.25, 0.58, 1.00]
-	Ts = [4.8e3, 11e3, 19e3] # Hz
-	barnus = [306, 306, 306] # mean trap freq in Hz
-	mubulks = [7520, 1500, -11680] # uniform trap chemical potential
-	colors = ['teal', 'r', 'orange']
-	theta_indices = [0, 1]
+	Thetas = [0.25, 0.37, 0.58, 1.00]
+	Ts = [4.8e3,  5.18e3, 11e3, 19e3] # Hz
+	barnus = [306, 306, 306, 306] # mean trap freq in Hz
+	mubulks = [7520,  4000, 1500, -11680] # uniform trap chemical potential
+	colors = ['teal', 'blue', 'r', 'orange']
+	theta_indices = [0, 1, 2]
 	params_bulk = list(zip(Ts, mubulks))
 	
 	# load LW L-W data from PRL
@@ -536,8 +536,8 @@ if bulk_plot == True:
 	
 	ax_phase = axs[0,1]
 	ylabel = r'Phase Shift  (rad)'
-	ylims = [-0.1,0.6]
-	xlims=[0.001,10]
+	ylims = [-0.1,0.65]
+	xlims=[0.01,10]
 	ax_phase.set(xlabel=xlabel, ylabel=ylabel, xscale='log', ylim=ylims,xlim=xlims)
 	
 	ax_table = axs[1,1]
@@ -555,6 +555,7 @@ if bulk_plot == True:
 	BVUs = []
 	table_rows = []
 	for i in theta_indices:
+		print(i)
 		color = colors[i]
 		BVU = BulkViscUniform(*params_bulk[i], nus)
 		label = "$T/T_F=${:.2f}".format(Thetas[i])
@@ -588,34 +589,62 @@ if bulk_plot == True:
 # 		ax_phase.plot(BVU.nus[nu_small:]/BVU.T, BVU.phaseshiftsC[nu_small:], '--', 
 # 				label=label_C, color=color)
 # 		ax_phase.plot(BVU.nus/BVU.T, BVU.phaseshiftsQcrit, '-.', label=label_Qcrit,color=color)
-		if i <= 1:
+		if (i == 0) or (i == 2):
+			
+			LW_i = 0 if i==0 else 1
 			LW_Edotbulks = BVU.A**2*np.array([heating_from_zeta(BVU.T, BVU.betamubulk, 
-				betaomega, zeta) for betaomega, zeta in zip(LW_nus[i]/BVU.Theta, LW_zetas[i])])
-			LW_sumrule = sumrule_zetaint(LW_nus[i], LW_zetas[i])
+				betaomega, zeta) for betaomega, zeta in zip(LW_nus[LW_i]/BVU.Theta, LW_zetas[LW_i])])
+			LW_sumrule = sumrule_zetaint(LW_nus[LW_i], LW_zetas[LW_i])
 			LW_phaseshifts = np.array([phaseshift_zeta(LW_nu, LW_zeta, LW_sumrule) \
-							  for LW_nu, LW_zeta in zip(LW_nus[i], LW_zetas[i])])
-			ax_Edot.plot(LW_nus[i], LW_Edotbulks/BVU.Ebulk, '-', color=color)
-			ax_zeta.plot(LW_nus[i], LW_zetas[i], '-', label=label_LW, color=color)
-			ax_phase.plot(LW_nus[i]*BVU.EF/BVU.T, LW_phaseshifts, '-', label=label_LW, color=color)
-		else:
-			continue
+							  for LW_nu, LW_zeta in zip(LW_nus[LW_i], LW_zetas[LW_i])])
+			ax_Edot.plot(LW_nus[LW_i], LW_Edotbulks/BVU.Ebulk, '-', color=color)
+			ax_zeta.plot(LW_nus[LW_i], LW_zetas[LW_i], '-', label=label_LW, color=color)
+			ax_phase.plot(LW_nus[LW_i]*BVU.EF/BVU.T, LW_phaseshifts, '-', label=label_LW, color=color)
+		
 		
 		if i == 1:
+			if show_data == True:
+				EF = 13
+				freqs = np.array([5,8,10])/EF # 8 kHz is more like 0.31 ToTF
+				phases = np.array([0.33, 0.37, 0.57])
+				phases_err = np.array([0.17, 0.12, 0.14])
+				label = r"Measurements @ $T/T_F={:.2f}$".format(Thetas[i])
+				light_color = tint_shade_color(color, amount=1+tintshade)
+				dark_color = tint_shade_color(color, amount=1-tintshade)
+				ax_phase.errorbar(freqs, phases, yerr=phases_err, capsize=0, 
+					  fmt="^", color=dark_color, markerfacecolor=light_color, 
+					    markeredgecolor=dark_color, markeredgewidth=2, label=label)
+		
+		if i == 2:
 			if show_data == True:
 				EF = 19
 				freqs = np.array([2, 5])/EF
 # 				freqs = np.array([2000,5000])/BVU.T # for plotting against omega/T
 				phases = np.array([-0.06, 0.30])
 				phases_err = np.array([0.09, 0.09])
-				label = r"Measurements"
+				label = r"Measurements @ $T/T_F={:.2f}$".format(Thetas[i])
 				light_color = tint_shade_color(color, amount=1+tintshade)
 				dark_color = tint_shade_color(color, amount=1-tintshade)
 				ax_phase.errorbar(freqs, phases, yerr=phases_err, capsize=0, 
 					  fmt="^", color=dark_color, markerfacecolor=light_color, 
 					    markeredgecolor=dark_color, markeredgewidth=2, label=label)
 				
-			ax_zeta.legend()
-			ax_phase.legend()
+				EF = 21
+				freqs = np.array([10])/EF
+# 				freqs = np.array([2000,5000])/BVU.T # for plotting against omega/T
+# 				phases = np.array([0.20])
+# 				phases_err = np.array([0.20])
+				phases = np.array([0.25])
+				phases_err = np.array([0.13])
+				label = r"Measurements @ $T/T_F={:.2f}$".format(Thetas[i])
+				light_color = tint_shade_color(color, amount=1+tintshade)
+				dark_color = tint_shade_color(color, amount=1-tintshade)
+				ax_phase.errorbar(freqs, phases, yerr=phases_err, capsize=0, 
+					  fmt="^", color=dark_color, markerfacecolor=light_color, 
+					    markeredgecolor=dark_color, markeredgewidth=2, label=label)
+					
+		ax_zeta.legend()
+# 		ax_phase.legend()
 		
 		
 		table_row = ["{:.2f}".format(Thetas[i]),
@@ -649,7 +678,7 @@ if bulk_plot == True:
 if trap_plot == True:
 	title = 'Harmonically Trapped Gas'
 	
-	Thetas = [0.25, 0.37, 0.5]
+	Thetas = [0.25, 0.37, 0.5] # 0.58 -> 11e3
 	Ts = [4.8e3, 5.18e3, 9.5e3] # Hz
 	barnus = [306, 306, 306] # mean trap freq in Hz
 	mubulks = [7520, 4000, 1500] # uniform trap chemical potential

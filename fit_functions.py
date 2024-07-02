@@ -86,6 +86,42 @@ def Gaussian(data, guess=None):
 		return A * np.exp(-(x-x0)**2/(2*sigma**2)) + C
 	return gaussian, guess, param_names
 
+def Dimerlineshape(data, guess=None):
+	x_ofmin = data[np.abs(data[:,1]).argmin(),0]
+	x_ofmax = data[np.abs(data[:,1]).argmax(),0]
+	max_x = data[:,0].max()
+	min_x = data[:,0].min()
+	mean_y = data[:,1].mean()
+	max_y = data[:,1].max()
+	
+	param_names = ["A", "x0", "sigma", "C"]
+	guess = [-(max_y-mean_y), x_ofmin, (max_x-min_x)/2, mean_y]
+
+	def dimerlineshape(x, A, x0, sigma, C):
+		# everything in MHz
+		Gamma = A*np.sqrt(x-x0) * np.exp((-x+x0)/sigma)* np.heaviside(x - x0, 1) + C
+		Gamma = np.nan_to_num(Gamma)
+		return Gamma
+	return dimerlineshape, guess, param_names
+
+def DimerlineshapeZero(data, guess=None):
+	x_ofmin = data[np.abs(data[:,1]).argmin(),0]
+	x_ofmax = data[np.abs(data[:,1]).argmax(),0]
+	max_x = data[:,0].max()
+	min_x = data[:,0].min()
+	mean_y = data[:,1].mean()
+	max_y = data[:,1].max()
+	
+	param_names = ["A", "x0", "sigma"]
+	guess = [-(max_y-mean_y), x_ofmin, (max_x-min_x)/2]
+
+	def dimerlineshapezero(x, A, x0, sigma):
+		# everything in MHz
+		Gamma = A*np.sqrt(x-x0) * np.exp((-x+x0)/sigma)* np.heaviside(x - x0, 1) 
+		Gamma = np.nan_to_num(Gamma)
+		return Gamma
+	return dimerlineshapezero, guess, param_names
+
 def NegGaussian(data, guess=None):
 	"""
 	Returns:  A * np.exp(-(x-x0)**2/(2*sigma**2)) + C
