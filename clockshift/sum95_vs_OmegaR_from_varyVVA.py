@@ -4,15 +4,19 @@ Created on Wed Jun 26 10:03:54 2024
 
 @author: coldatoms
 """
-from library import *
 from data_class import Data
 from scipy.optimize import curve_fit
 import numpy as np
 import pandas as pd
+import os
 import matplotlib.pyplot as plt
-from fit_functions import *
 
-file_path = os.path.join(current_dir, 'VVAtoVpp_square_43p2MHz.txt')
+# paths
+proj_path = os.path.dirname(os.path.realpath(__file__))
+root = os.path.dirname(proj_path)
+data_path = os.path.join(proj_path, 'data')
+
+data_file = os.path.join(data_path, 'VVAtoVpp_square_43p2MHz.txt')
 
 # Vpp = {}
 # with open(file_path) as f:
@@ -23,7 +27,7 @@ file_path = os.path.join(current_dir, 'VVAtoVpp_square_43p2MHz.txt')
 
 # Vpp = {key : float(value) for key, value in Vpp.items()}
 
-cal = pd.read_csv(file_path, sep='\t', skiprows=1, names=['VVA','Vpp'])
+cal = pd.read_csv(data_file, sep='\t', skiprows=1, names=['VVA','Vpp'])
 calInterp = lambda x: np.interp(x, cal['VVA'], cal['Vpp'])
 fig, ax = plt.subplots()
 xx = np.linspace(cal.VVA.min(), cal.VVA.max(),100)

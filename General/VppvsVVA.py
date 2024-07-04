@@ -5,6 +5,7 @@ Created on Wed Jun 26 15:12:14 2024
 @author: coldatoms
 """
 from library import *
+import matplotlib.pyplot as plt
 
 file_path = os.path.join(current_dir, 'VVAtoVpp.txt')
 square = os.path.join(current_dir, 'VVAtoVpp_square_43p2MHz.txt')
@@ -67,7 +68,7 @@ fig, ax = plt.subplots()
 ax.set_xlabel('VVA')
 ax.set_ylabel('Vpp')
 ax.plot(BMVVA,BMVpp,label='BM 47MHz')
-ax.plot(sqVVA,sqVpp,marker='d',label='sq 43.2MHz')
-ax.plot([10],[3.6],color='red',marker='+',label='sq 47MHz')
+ax.scatter(sqVVA,sqVpp,marker='d',color='orange',edgecolor='black',label='sq 43.2MHz')
+ax.scatter([10],[3.6],color='green',marker='+',label='sq 47MHz')
 
 ax.legend()

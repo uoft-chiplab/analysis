@@ -28,6 +28,8 @@ frame_size = 1.5
 markers = ["o", "s", "^", "D", "h", "x", "o", "s", "^", "D", "h"]
 	
 plt_settings = {"axes.linewidth": frame_size,
+				"axes.edgecolor":'black',
+				"scatter.edgecolors":'black',
 				"lines.linewidth":2,
 					 "font.size": 12,
 					 "legend.fontsize": 10,
@@ -73,82 +75,24 @@ def tint_shade_color(color, amount=0.5):
     c = colorsys.rgb_to_hls(*mc.to_rgb(c))
     return colorsys.hls_to_rgb(c[0], max(0, min(1, amount * c[1])), c[2])
 
-def MonteCarlo_trapz(xs, ys, yserr, num_iter=1000):
-	""" Computes trapz for list of data points (xs, ys+-yserr),
-	and estimates std dev of result by sampling ys and yserr from 
-	Gaussian distributions, num_iter (default 1000) times."""
-# 	value = np.trapz(ys, x=xs)
-	def rand_y(y, yerr, size):
-		generator = np.random.default_rng()
-		return generator.normal(loc=y, scale=yerr, size=num_iter)
-	# array of lists of y values, sampled from Gaussians with centres y and widths yerr
-	ys_iter = np.array([rand_y(y, yerr, num_iter) for y, yerr in zip(ys, yserr)])
-	values = np.array([np.trapz(ys_iter[:,i], x=xs) for i in range(num_iter)])
-	distr_mean, distr_stdev = (np.mean(values), np.std(values))
-	return values, distr_mean, distr_stdev
+def ChipBlackman(x, a_n=[0.42659, 0.49656, 0.076849]):
+	"""The ChipLab Blackman that exists in the pulse generation 
+	MatLab script. Coefficients slightly differ from conventional.
+	Defined as a pulse with length 1 starting at 0."""
+	zero_func = lambda y: 0
+	pulse_func = lambda y: a_n[0] - a_n[1]*np.cos(2*np.pi*y) \
+		+ a_n[2]*np.cos(4*np.pi*y)
+	return np.piecewise(x, [x<0, x>1, (x>=0) & (x<=1)], 
+					 [zero_func, zero_func, pulse_func])
 
-
-def MonteCarlo_interp_trapz(xs, ys, yserr, num_iter=1000):
-	""" Computes trapz for interpolated list of data points (xs, ys+-yserr),
-	and estimates std dev of result by sampling ys and yserr from 
-	Gaussian distributions, num_iter (default 1000) times."""
-# 	value = np.trapz(ys, x=xs)
-	def rand_y(y, yerr, size):
-		generator = np.random.default_rng()
-		return generator.normal(loc=y, scale=yerr, size=num_iter)
-	# array of lists of y values, sampled from Gaussians with centres y and widths yerr
-	ys_iter = np.array([rand_y(y, yerr, num_iter) for y, yerr in zip(ys, yserr)])
-	
-	# interpolation array for x, num_iter in size
-	xs_interp = np.linspace(min(xs), max(xs), num_iter)
-	
-	# compute interpolation array for y, num_iter by num_iter in size
-	ys_interp_iter = np.array([[np.interp(xi, xs, ys_iter[:,i]) for xi in xs_interp]
-					  for i in range(num_iter)])
-	
-	# integrals using each interpolation set
-	values = np.array([np.trapz(ys_interp_iter[i], x=xs_interp) for i in range(num_iter)])
-	
-	distr_mean, distr_stdev = (np.mean(values), np.std(values))
-	return values, distr_mean, distr_stdev
-
-def MonteCarlo_interp_extrap_trapz(xs, ys, yserr, xmax, 
-								   fit_func, num_iter=1000):
-	""" Computes trapz for interpolated list of data points (xs, ys+-yserr),
-	which is extrapolated using fit_func out to xmax. Estimates std dev of 
-	result by sampling ys and yserr from Gaussian distributions, and fitting
-	to this sample, num_iter (default 1000) times."""
-	def rand_y(y, yerr, size):
-		generator = np.random.default_rng()
-		return generator.normal(loc=y, scale=yerr, size=num_iter)
-	# array of lists of y vals, from Gaussians with centres y and widths yerr
-	ys_iter = np.array([rand_y(y, yerr, num_iter) for y, 
-					 yerr in zip(ys, yserr)])
-	
-	fits = np.array([curve_fit(fit_func, xs, ys_iter[:,i]) \
-					for i in range(num_iter)])
-		
-	popts = fits[:,0]
-	pcovs = fits[:,1]
-	
-	# interpolation array for x, num_iter in size
-	xs_interp = np.linspace(min(xs), max(xs), num_iter)
-	# extrapolation array for x, num_iter in size
-	xs_extrap = np.linspace(max(xs), xmax, num_iter)
-	
-	# compute interpolation array for y, num_iter by num_iter in size
-	ys_interp_iter = np.array([[np.interp(xi, xs, ys_iter[:,i]) \
-							 for xi in xs_interp] for i in range(num_iter)])
-	
-	# integrals using each interpolation set
-	values = np.array([np.trapz(ys_interp_iter[i], x=xs_interp) \
-					+ np.trapz(fit_func(xs_extrap, *popts[i]), x=xs_extrap) \
-					for i in range(num_iter)])
-	
-	distr_mean, distr_stdev = (np.mean(values), np.std(values))
-	return values, distr_mean, distr_stdev, popts, pcovs
-
-# def ChipBlackman(x coeff=[0.42659, 0.49656, 0.076849])
+def ChipKaiser(x, a_n=[0.54]):
+	"""The ChipLab Kaiser that exists in the pulse generation 
+	MatLab script. Coefficients slightly differ from conventional.
+	Defined as a pulse with length 1 starting at 0."""
+	zero_func = lambda y: 0
+	pulse_func = lambda y: a_n[0] - (1-a_n[0])*np.cos(2*np.pi*y)
+	return np.piecewise(x, [x<0, x>1, (x>=0) & (x<=1)], 
+					 [zero_func, zero_func, pulse_func])
 
 def chi_sq(y, yfit, yerr, dof):
 	return 1/dof * np.sum((np.array(y) - np.array(yfit))**2/(yerr**2))

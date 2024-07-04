@@ -23,8 +23,15 @@ from tabulate import tabulate
 
 #to use fit example:
 	#Data("filename").fit(fit_func=One you want, names=['x','y'])
+	
+	
 #to use multiplot ex:
 	#Data(“filename”).multiplot(fit_func, names=[‘x’,’y’],avg=’x’)
+#to use avg data 
+	#Data("filename",average_by='x')
+#to exclude by a certain x value 	
+	# Data("filename",exclude_range=#,exclude_range_x='x')
+	
 #Holy moly thanks for writing this ^
 
 file = "2024-04-04_B_UHfit.dat"
@@ -37,7 +44,8 @@ plt.rcParams.update(plt_settings)
 
 class Data:
 	def __init__(self, filename, path=None, column_names=None, 
-			  exclude_list=None, average_by=None, metadata=None):
+			  exclude_list=None, average_by=None, metadata=None,
+			  exclude_range=None, exclude_range_x=None):
 		self.filename = filename
 		if metadata is not None:
 			self.__dict__.update(metadata)  # Store all the extra variables
@@ -54,12 +62,20 @@ class Data:
 			self.data = self.data[column_names]
 		if exclude_list is not None:
 			self.exclude(exclude_list)
+		if exclude_range is not None:
+			self.excluderange(filename, exclude_range, exclude_range_x)
 		if average_by:
 			self.group_by_mean(average_by)
 
 	# exclude list of points
 	def exclude(self, exclude_list):
 		self.data = self.data.drop(index=exclude_list)
+		
+	# exclude list of points based on x values 
+	def excluderange(self, filename, exclude_range, exclude_range_x):
+		data_values = np.array(Data(f"{filename}").data[exclude_range_x])
+		indices = np.where(data_values > exclude_range)[0]
+		self.data = self.data.drop(index=indices)
 		
 	# group by scan name, compute mean 
 	def group_by_mean(self, scan_name):
@@ -231,14 +247,12 @@ class Data:
 			ot = self.popt[1]*self.popt[2]
 			print('The trap frequency is {:.6f} +/-{:.2}'.format(freq,er))
 			print('omega*tau is',ot)
-					
-# 		self.plot(names, label=label, axes_labels=None)
-		
+							
 		if hasattr(self, 'ax'): # check for plot
 			num = 500
 			xlist = np.linspace(self.data[f"{names[0]}"].min(), 
 					   self.data[f"{names[0]}"].max(), num)
-			self.ax.plot(xlist, func(xlist, *self.popt))
+			self.ax.plot(xlist, func(xlist, *self.popt),linestyle='-',marker='')
 
 		
 # fit data to fit_func and plot if Data has a figure
