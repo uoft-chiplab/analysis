@@ -5,13 +5,22 @@ Loads .dat with contact HFT scan and computes scaled transfer. Plots. Also
 computes the sumrule.
 
 To do:
+	Calculate EF for each shot
+	Check pulse area calculations
+	More commenting
+	Filter results when summary plotting
+	Perhaps remove the MonteCarlo calculations, I think Bootstrapping is just
+better
+	....
 	
 """
 from library import pi, h, hbar, mK, a0, plt_settings, GammaTilde, tintshade, \
 				 tint_shade_color, ChipKaiser, ChipBlackman, markers, colors
 from data_class import Data
 from scipy.optimize import curve_fit
-from clockshift.MonteCarloSpectraIntegration import MonteCarlo_spectra_fit_trapz
+from scipy.stats import sem
+from clockshift.MonteCarloSpectraIntegration import MonteCarlo_spectra_fit_trapz, \
+												Bootstrap_spectra_fit_trapz
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -29,7 +38,9 @@ Saveon = True
 ### script options
 Analysis = True
 Summaryplots = True
-MonteCarlo = True
+MonteCarlo = False
+Bootstrap = True
+Bootstrapplots = True
 
 ### metadata
 metadata_filename = 'metadata_file.xlsx'
@@ -38,7 +49,7 @@ metadata = pd.read_excel(metadata_file)
 files =  metadata.loc[metadata['exclude'] == 0]['filename'].values
 
 # Manual file select, comment out if exclude column should be used instead
-# files = ["2024-07-03_E_e"]
+files = ["2024-07-04_M_e"]
 
 # save file path
 savefilename = 'sumrule_analysis_results.xlsx'
@@ -213,6 +224,7 @@ for filename in files:
 	
 	
 	### ANALYSIS and PLOTTING
+	plt.rcParams.update({"figure.figsize": [12,8]})
 	fig, axs = plt.subplots(2,3)
 	
 	xlabel = r"Detuning $\omega_{rf}-\omega_{res}$ (MHz)"
@@ -249,9 +261,8 @@ for filename in files:
 	ax.legend()
 	
 	### fit and plot -3/2 power law tail
-	xlowfit = 3
-	xhighfit = 8
-	fitmask = x.between(xlowfit, xhighfit)
+	xfitlims = [2, 10]
+	fitmask = x.between(*xfitlims)
 	
 	x_star = xstar(Bfield)
 	
@@ -262,7 +273,7 @@ for filename in files:
 	print('A = {:.3f} \pm {:.3f}'.format(popt[0], np.sqrt(np.diag(pcov))[0]))
 	
 	xmax = 1000000/EF
-	xxfit = np.linspace(xlowfit, xmax, int(xmax*EF*10))
+	xxfit = np.linspace(xfitlims[0], xmax, int(xmax*EF*10))
 	yyfit = fit_func(xxfit, *popt)
 	ax.plot(xxfit, yyfit, 'r--')
 	
@@ -297,6 +308,46 @@ for filename in files:
 		print(r"SR MC mean = {:.3f}$\pm$ {:.3f}".format(SR_MC, e_SR_MC))
 		print(r"FM MC mean = {:.3f}$\pm$ {:.3f}".format(FM_MC, e_FM_MC))
 		print(r"CS MC mean = {:.2f}$\pm$ {:.2f}".format(CS_MC, e_CS_MC))
+		
+	### Bootstrap resampling for integral uncertainty
+	if Bootstrap == True:
+		num_iter = 1000
+		conf = 68.2689  # confidence level for CI
+		
+		# non-averaged data
+		x = np.array(run.data['detuning']/EF)
+# 		print(x)
+		y = np.array(run.data['ScaledTransfer'])
+		
+		# sumrule, first moment and clockshift with analytic extension
+		SR_BS_dist, FM_BS_dist, CS_BS_dist, pFits = \
+			Bootstrap_spectra_fit_trapz(x, y, xfitlims, x_star, fit_func)
+		
+		SR_BS_mean, e_SR_BS = (np.mean(SR_BS_dist), sem(SR_BS_dist))
+		FM_BS_mean, e_FM_BS = (np.mean(FM_BS_dist), sem(FM_BS_dist))
+		CS_BS_mean, e_CS_BS = (np.mean(CS_BS_dist), sem(CS_BS_dist))
+		print(r"SR BS mean = {:.3f}$\pm$ {:.3f}".format(SR_BS_mean, e_SR_BS))
+		print(r"FM BS mean = {:.3f}$\pm$ {:.3f}".format(FM_BS_mean, e_FM_BS))
+		print(r"CS BS mean = {:.2f}$\pm$ {:.2f}".format(CS_BS_mean, e_CS_BS))
+		
+		median_SR = np.nanmedian(SR_BS_dist)
+		upper_SR = np.nanpercentile(SR_BS_dist, 100-(100.0-conf)/2.)
+		lower_SR = np.nanpercentile(SR_BS_dist, (100.0-conf)/2.)
+		
+		median_FM = np.nanmedian(FM_BS_dist)
+		upper_FM = np.nanpercentile(FM_BS_dist, 100-(100.0-conf)/2.)
+		lower_FM = np.nanpercentile(FM_BS_dist, (100.0-conf)/2.)
+		
+		median_CS = np.nanmedian(CS_BS_dist)
+		upper_CS = np.nanpercentile(CS_BS_dist, 100-(100.0-conf)/2.)
+		lower_CS = np.nanpercentile(CS_BS_dist, (100.0-conf)/2.)
+		print(r"SR BS median = {:.3f}+{:.3f}-{:.3f}".format(median_SR,
+													  upper_SR-SR, SR-lower_SR))
+		print(r"FM BS median = {:.3f}+{:.3f}-{:.3f}".format(median_FM, 
+													  upper_FM-FM, FM-lower_FM))
+		print(r"CS BS median = {:.2f}+{:.3f}-{:.3f}".format(median_CS, 
+													  upper_CS-CS, CS-lower_CS))
+		
 	
 	### plot contact
 	ax = axs[0,1]
@@ -308,18 +359,21 @@ for filename in files:
 	
 	xlims = [-2,max(x)]
 	ylims = [min(run.data['C']), max(run.data['C'])]
-	Cdetmin = 3
-	Cdetmax = 8
+	Cdetmin = 2
+	Cdetmax = 10
 	xs = np.linspace(Cdetmin, Cdetmax, num)
 	
 	df = run.data[run.data.detuning/EF>Cdetmin]
 	Cmean = df[df.detuning/EF<Cdetmax].C.mean()
 	Csem = df[df.detuning/EF<Cdetmax].C.sem()
 	
-	# choose sumrule for Contact normalizing as MC or raw
+	# choose sumrule for Contact normalizing as MC, BS or raw
 	if MonteCarlo:	
 		C_o_SR = Cmean/(2*SR_MC)
 		e_C_o_SR = C_o_SR*np.sqrt((Csem/Cmean)**2+(e_SR_MC/SR_MC)**2)
+	elif Bootstrap: 
+		C_o_SR = Cmean/(2*SR_BS_mean)
+		e_C_o_SR = C_o_SR*np.sqrt((Csem/Cmean)**2+(e_SR_BS/SR_BS_mean)**2)
 	else:
 		C_o_SR = Cmean/(2*SR)
 		e_C_o_SR = C_o_SR*Csem/Cmean
@@ -348,10 +402,9 @@ for filename in files:
 	
 	ax.set(xlabel=xlabel, ylabel=ylabel, xlim=axxlims, ylim=ylims)
 	ax.errorbar(x, y, yerr=yerr, fmt='o')
-	xxfit = np.linspace(xlowfit, xmax, int(xmax*EF*10))
+	xxfit = np.linspace(xfitlims[0], xmax, int(xmax*EF*10))
 	yyfit = fit_func(xxfit, *popt)
 	ax.plot(xxfit, xxfit*yyfit, 'r--')
-	
 	
 	### generate table
 	ax = axs[1,2]
@@ -371,6 +424,13 @@ for filename in files:
 				   r"{:.3f}$\pm${:.3f}".format(FM_MC, e_FM_MC),
 				   r"{:.2f}$\pm${:.2f}".format(CS_MC, e_CS_MC)]
 		values = values + MC_values
+		
+	if Bootstrap == True:
+		quantities += ["SR BS", "FM BS", "CS BS"]
+		BS_values = [r"{:.3f}$\pm${:.3f}".format(SR_BS_mean, e_SR_BS),
+				   r"{:.3f}$\pm${:.3f}".format(FM_BS_mean, e_FM_BS),
+				   r"{:.2f}$\pm${:.2f}".format(CS_BS_mean, e_CS_BS)]
+		values = values + BS_values
 		
 	table = list(zip(quantities, values))
 	
@@ -401,7 +461,7 @@ for filename in files:
 				  'e_Peak Scaled Transfer':[e_maxfp]}
 		 
 		if MonteCarlo == True:
-			datatosavePlus = {
+			datatosavePlusMC = {
 				  'SR MC': [SR_MC],
 				  'e_SR MC': [e_SR_MC],
 				  'FM MC': [FM_MC],
@@ -409,7 +469,28 @@ for filename in files:
 				  'CS MC': [CS_MC],
 				  'e_CS MC': [e_CS_MC]}
 			
-			datatosave.update(datatosavePlus)
+			datatosave.update(datatosavePlusMC)
+			
+		if Bootstrap == True:
+			datatosavePlusBS = {
+				  'SR BS mean': [SR_BS_mean],
+				  'e_SR BS': [e_SR_BS],
+				  'FM BS mean': [FM_BS_mean],
+				  'e_FM BS': [e_FM_BS],
+				  'CS BS mean': [CS_BS_mean],
+				  'e_CS BS': [e_CS_BS],
+				   'SR BS median': [median_SR],
+				  'SR m conf': [lower_SR],
+				  'SR p conf': [upper_SR],
+				  'FM BS median': [median_FM],
+				  'FM m conf': [lower_FM],
+				  'FM p conf': [upper_FM],
+				  'CS BS median': [median_CS],
+				  'CS m conf': [lower_CS],
+				  'CS p conf': [upper_CS],
+				  }
+			
+			datatosave.update(datatosavePlusBS)
 		 
 		datatosavedf = pd.DataFrame(datatosave)
 
@@ -439,29 +520,81 @@ for filename in files:
 			 print("Creating file and writing header")
 			 datatosavedf.to_excel(savefile, index=False, sheet_name='Sheet1')
 
+	if (Bootstrapplots == True and Bootstrap == True):
+		plt.rcParams.update({"figure.figsize": [10,8]})
+		fig, axs = plt.subplots(2,2)
+		fig.suptitle(filename)
+		
+		bins = 20
+		
+		# fits
+		ax = axs[0,0]
+		x = run.avg_data['detuning']/EF
+		y = run.avg_data['ScaledTransfer']
+		yerr = run.avg_data['em_ScaledTransfer']
+		xlabel = r"Detuning $\Delta$"
+		ylabel = r"Scaled Transfer $\tilde\Gamma$"
+		
+		xdata = run.data['detuning']/EF
+		datamask = xdata.between(*xfitlims)
+
+		ylims = [min(run.data.ScaledTransfer[datamask]),
+				 max(run.data.ScaledTransfer[datamask])]
+		
+		plotmask = x.between(*xfitlims)
+		xs = np.linspace(xlims[0], xlims[-1], len(y))
+		
+		ax.set(xlabel=xlabel, ylabel=ylabel, xlim=xfitlims, ylim=ylims)
+		ax.plot(xs, fit_func(xs, *popt), '--r')
+		ax.errorbar(x[plotmask], y[plotmask], yerr=yerr[plotmask], 
+			  fmt='o', label=label)
+		ax.legend()
+		
+		# sumrule distribution
+		ax = axs[0,1]
+		xlabel = "Sum Rule"
+		ylabel = "Occurances"
+		ax.set(xlabel=xlabel, ylabel=ylabel)
+		ax.hist(SR_BS_dist, bins=bins)
+		ax.axvline(x=lower_SR, color='red', alpha=0.5, linestyle='--', marker='')
+		ax.axvline(x=upper_SR, color='red', alpha=0.5, linestyle='--', marker='')
+		ax.axvline(x=median_SR, color='red', linestyle='--', marker='')
+		ax.axvline(x=SR_BS_mean, color='k', linestyle='--', marker='')
+		
+		# first moment distribution
+		ax = axs[1,0]
+		xlabel = "First Moment"
+		ax.set(xlabel=xlabel, ylabel=ylabel)
+		ax.hist(FM_BS_dist, bins=bins)
+		ax.axvline(x=lower_FM, color='red', alpha=0.5, linestyle='--', marker='')
+		ax.axvline(x=upper_FM, color='red', alpha=0.5, linestyle='--', marker='')
+		ax.axvline(x=median_FM, color='red', linestyle='--', marker='')
+		ax.axvline(x=FM_BS_mean, color='k', linestyle='--', marker='')
+		
+		# clock shift distribution
+		ax = axs[1,1]
+		xlabel = "Clock Shift"
+		ax.set(xlabel=xlabel, ylabel=ylabel)
+		ax.hist(CS_BS_dist, bins=bins)
+		ax.axvline(x=lower_CS, color='red', alpha=0.5, linestyle='--', marker='')
+		ax.axvline(x=upper_CS, color='red', alpha=0.5, linestyle='--', marker='')
+		ax.axvline(x=median_CS, color='red', linestyle='--', marker='')
+		ax.axvline(x=CS_BS_mean, color='k', linestyle='--', marker='')
+		
+		# make room for suptitle
+		fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+	
+
 if Summaryplots == True:
 	
 	### load analysis results
 	df = pd.read_excel(savefile, index_col=0, engine='openpyxl').reset_index()
-	
-	### if MonteCarlo, select correct columns
-	if MonteCarlo == True:
-		SR_col = 'SR MC'
-		FM_col = 'FM MC'
-		CS_col = 'CS MC'
-	
-	else: # select non-MC columns
-		SR_col = 'SR'
-		FM_col = 'FM'
-		CS_col = 'CS'
-		df['e_SR MC'] = 0
-		df['e_FM MC'] = 0
-		df['e_CS MC'] = 0
 		
 	# get list of rf pulse times to loop over
 	trflist = df['Pulse Time (us)'].unique()
 	
 	### plots
+	plt.rcParams.update({"figure.figsize": [12,8]})
 	fig, axes = plt.subplots(2,3)
 
 	xlabel = r"Gain"
@@ -473,7 +606,7 @@ if Summaryplots == True:
 	
 	# First Moment vs gain
 	ax_FM = axes[0,1]
-	ylabel = "Fist Moment"
+	ylabel = "First Moment"
 	ax_FM.set(xlabel=xlabel, ylabel=ylabel)
 		
 	# Clock Shift vs gain
@@ -512,13 +645,40 @@ if Summaryplots == True:
 					 "lines.color": dark_color,
 					 "legend.fontsize": 14})
 		
+		### if MonteCarlo, select correct columns
+		if MonteCarlo == True:
+			SR = sub_df['SR MC']
+			FM = sub_df['FM MC']
+			CS = sub_df['CS MC']
+			e_SR = sub_df['e_SR MC']
+			e_FM = sub_df['e_FM MC']
+			e_CS = sub_df['e_CS MC']
+			
+		elif Bootstrap == True:
+			SR = sub_df['SR BS median']
+			FM = sub_df['FM BS median']
+			CS = sub_df['CS BS median']
+			e_SR = np.array(list(zip(SR-sub_df['SR m conf'], sub_df['SR p conf']-SR))).T
+			e_FM = np.array(list(zip(FM-sub_df['FM m conf'], sub_df['FM p conf']-FM))).T
+			e_CS = np.array(list(zip(CS-sub_df['CS m conf'], sub_df['CS p conf']-CS))).T
+		
+		else: # select non-MC columns
+			SR = sub_df['SR']
+			FM = sub_df['FM']
+			CS = sub_df['CS']
+			e_SR = np.zeros(len(SR))
+			e_FM = np.zeros(len(FM))
+			e_CS = np.zeros(len(CS))
+		
 		ax_C.errorbar(sub_df['Gain'], sub_df['C'], yerr=sub_df['e_C'], fmt=marker)
-		ax_SR.errorbar(sub_df['Gain'], sub_df[SR_col], yerr=sub_df['e_SR MC'], fmt=marker)
 		ax_CoSR.errorbar(sub_df['Gain'], sub_df['C/SR'], yerr=sub_df['e_C/SR'], fmt=marker)
 		ax_pST.errorbar(sub_df['Gain'], sub_df['Peak Scaled Transfer'], 
-			 yerr=sub_df['e_Peak Scaled Transfer'], fmt=marker, label=label)
-		ax_FM.errorbar(sub_df['Gain'], sub_df[FM_col], yerr=sub_df['e_FM MC'], fmt=marker)
-		ax_CS.errorbar(sub_df['Gain'], sub_df[CS_col], yerr=sub_df['e_CS MC'], fmt=marker)
+				 yerr=sub_df['e_Peak Scaled Transfer'], fmt=marker, label=label)
+		
+		ax_SR.errorbar(sub_df['Gain'], SR, yerr=e_SR, fmt=marker)
+		ax_FM.errorbar(sub_df['Gain'], FM, yerr=e_FM, fmt=marker)
+		ax_CS.errorbar(sub_df['Gain'], CS, yerr=e_CS, fmt=marker)
+
 		
 	ax_pST.legend()
 	fig.tight_layout()

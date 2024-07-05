@@ -6,6 +6,7 @@ Created on Wed Jun 26 16:04:26 2024
 
 import numpy as np
 from scipy.optimize import curve_fit
+import time
 
 def MonteCarlo_spectra_fit_trapz(xs, ys, yserr, fitmask, xstar, fit_func, 
 									num_iter=1000):
@@ -72,6 +73,101 @@ def MonteCarlo_spectra_fit_trapz(xs, ys, yserr, fitmask, xstar, fit_func,
 	# return everything
 	return SR_distr, SR_mean, e_SR, FM_distr, FM_mean, e_FM, CS_distr, \
 		CS_mean, e_CS, popts, pcovs
+		
+		
+def Bootstrap_spectra_fit_trapz(xs, ys, xfitlims, xstar, fit_func, 
+									trialsB=1000, pGuess=[1]):
+	""" """
+	def dwSpectra(xi, x_star):
+		return 2*(1/np.sqrt(xi)-np.arctan(np.sqrt(x_star/xi))/np.sqrt(x_star))
+
+	def wdwSpectra(xi, x_star):	
+		return 2*np.sqrt(x_star)*np.arctan(np.sqrt(x_star/xi))
+	
+	num = 5000 # points to integrate over
+	
+	print("** Bootstrap resampling")
+	trialB = 0 # trials counter
+	fails = 0 # failed fits counter
+	nData = len(xs)
+	nChoose = nData # number of points to choose
+	pFitB = np.zeros([trialsB, len(pGuess)]) # array of fit params
+	SR_distr = []
+	FM_distr = []
+	CS_distr = []
+	
+	while (trialB < trialsB) and (fails < trialsB):
+		if (0 == trialB % (trialsB / 5)):
+ 			print('   %d of %d @ %s' % (trialB, trialsB, time.strftime("%H:%M:%S", time.localtime())))
+		inds = np.random.choice(np.arange(0, nData), nChoose, replace=True)
+# 		print(len(inds))
+		xTrial = np.random.normal(np.take(xs, inds), 0.0001)
+		# we need to make sure there are no duplicate x values or the fit
+		# will fail to converge
+# 		print(xTrial)
+		yTrial = np.take(ys, inds)
+# 		print(yTrial)
+		p = xTrial.argsort()
+# 		print(p)
+		xTrial = xTrial[p]
+		yTrial = yTrial[p]
+		
+		fitpoints = np.array([[xfit, yfit] for xfit, yfit in zip(xTrial, yTrial) \
+						if (xfit > xfitlims[0] and xfit < xfitlims[-1])])
+
+		try:
+			# pylint: disable=unbalanced-tuple-unpacking
+			pFit, cov = curve_fit(fit_func, fitpoints[:,0], 
+						 fitpoints[:,1], pGuess)
+		except Exception:
+			print("Failed to converge")
+			fails += 1
+			continue
+		
+		if np.sum(np.isinf(trialB)) or pFit[0]<0:
+			print('Fit params out of bounds')
+			print(pFit)
+			continue
+		else:
+			pFitB[trialB, :] = pFit
+			trialB += 1
+	
+		# extrapolation starting point
+		xi = max(xTrial)
+	
+		# interpolation array for x, num in size
+		x_interp = np.linspace(min(xTrial), xi, num)
+	
+		# compute interpolation array for y, num by num_iter in size
+		y_interp = np.array([np.interp(x, xTrial, yTrial) for x in x_interp])
+	
+		# integral from xi to infty
+		SR_extrapolation = pFit[0]*dwSpectra(xi, xstar)
+		FM_extrapolation = pFit[0]*wdwSpectra(xi, xstar)
+	
+		# for the integration, we first sum the interpolation, 
+		# then the extrapolation, then we add the analytic -5/2s portion
+		
+		# sumrule using each set
+		SR = np.trapz(y_interp, x=x_interp) + SR_extrapolation
+		
+		# first moment using each set	
+		FM = np.trapz(y_interp*x_interp, x=x_interp) + FM_extrapolation
+	
+		# clock shift
+		# we need to do this sample by sample so we have correlated SR and FM
+		CS = FM/SR
+		
+		if SR<0 or CS<0 or CS>100:
+			print("Integration out of bounds")
+			continue
+		
+		CS_distr.append(CS)
+		FM_distr.append(FM)
+		SR_distr.append(SR)
+	
+	# return everything
+	return SR_distr, FM_distr,CS_distr, pFitB
 
 # def MonteCarlo_trapz(xs, ys, yserr, num_iter=1000):
 # 	""" Computes trapz for list of data points (xs, ys+-yserr),
