@@ -14,8 +14,19 @@ better
 	....
 	
 """
+
+BOOTSRAP_TRAIL_NUM = 100
+
+# paths
+import os
+proj_path = os.path.dirname(os.path.realpath(__file__))
+root = os.path.dirname(proj_path)
+data_path = os.path.join(proj_path, 'data')
+figfolder_path = os.path.join(proj_path, 'figures')
+
 from library import pi, h, hbar, mK, a0, plt_settings, GammaTilde, tintshade, \
 				 tint_shade_color, ChipKaiser, ChipBlackman, markers, colors
+
 from data_class import Data
 from scipy.optimize import curve_fit
 from scipy.stats import sem
@@ -24,13 +35,8 @@ from clockshift.MonteCarloSpectraIntegration import MonteCarlo_spectra_fit_trapz
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import os
-import time
 
-# paths
-proj_path = os.path.dirname(os.path.realpath(__file__))
-root = os.path.dirname(proj_path)
-data_path = os.path.join(proj_path, 'data')
+import time
 
 ### This turns on (True) and off (False) saving the data/plots 
 Saveon = True 
@@ -41,6 +47,7 @@ Summaryplots = True
 MonteCarlo = False
 Bootstrap = True
 Bootstrapplots = True
+Correlations = True
 
 ### metadata
 metadata_filename = 'metadata_file.xlsx'
@@ -49,7 +56,7 @@ metadata = pd.read_excel(metadata_file)
 files =  metadata.loc[metadata['exclude'] == 0]['filename'].values
 
 # Manual file select, comment out if exclude column should be used instead
-files = ["2024-07-04_M_e"]
+files = ["2024-07-05_D_e"]
 
 # save file path
 savefilename = 'sumrule_analysis_results.xlsx'
@@ -85,7 +92,7 @@ def a13(B):
 	return abg*(1 - DeltaB/(B-B0))
 
 def xstar(B):
-	return Eb/EF * (1-re/a13(Bfield))**(-1)
+	return Eb/EF # hbar**2/mK/a13(B)**2 * (1-re/a13(Bfield))**(-1)
 
 def GenerateSpectraFit(xstar):
 	def fit_func(x, A):
@@ -320,16 +327,20 @@ for filename in files:
 		y = np.array(run.data['ScaledTransfer'])
 		
 		# sumrule, first moment and clockshift with analytic extension
-		SR_BS_dist, FM_BS_dist, CS_BS_dist, pFits = \
-			Bootstrap_spectra_fit_trapz(x, y, xfitlims, x_star, fit_func)
+		SR_BS_dist, FM_BS_dist, CS_BS_dist, pFits, SR_extrap_dist, FM_extrap_dist = \
+			Bootstrap_spectra_fit_trapz(x, y, xfitlims, x_star, fit_func, trialsB=BOOTSRAP_TRAIL_NUM)
 		
-		SR_BS_mean, e_SR_BS = (np.mean(SR_BS_dist), sem(SR_BS_dist))
-		FM_BS_mean, e_FM_BS = (np.mean(FM_BS_dist), sem(FM_BS_dist))
+		SR_BS_mean, e_SR_BS = (np.mean(SR_BS_dist), np.std(SR_BS_dist))
+		FM_BS_mean, e_FM_BS = (np.mean(FM_BS_dist), np.std(FM_BS_dist))
+		CS_BS_mean, e_CS_BS = (np.mean(CS_BS_dist), np.std(CS_BS_dist))
+		SR_extrap_mean, e_SR_extrap = (np.mean(SR_extrap_dist), np.std(SR_extrap_dist))
+		FM_extrap_mean, e_FM_extrap = (np.mean(FM_extrap_dist), np.std(FM_extrap_dist))
 		CS_BS_mean, e_CS_BS = (np.mean(CS_BS_dist), sem(CS_BS_dist))
 		print(r"SR BS mean = {:.3f}$\pm$ {:.3f}".format(SR_BS_mean, e_SR_BS))
 		print(r"FM BS mean = {:.3f}$\pm$ {:.3f}".format(FM_BS_mean, e_FM_BS))
 		print(r"CS BS mean = {:.2f}$\pm$ {:.2f}".format(CS_BS_mean, e_CS_BS))
-		
+		print(r'Extrapolation for SR = {:.4f}$\pm$ {:.4f}'.format(SR_extrap_mean, e_SR_extrap))
+		print(r'Extrapolation for FM = {:.2f}$\pm$ {:.2f}'.format(FM_extrap_mean, e_FM_extrap))
 		median_SR = np.nanmedian(SR_BS_dist)
 		upper_SR = np.nanpercentile(SR_BS_dist, 100-(100.0-conf)/2.)
 		lower_SR = np.nanpercentile(SR_BS_dist, (100.0-conf)/2.)
@@ -426,10 +437,12 @@ for filename in files:
 		values = values + MC_values
 		
 	if Bootstrap == True:
-		quantities += ["SR BS", "FM BS", "CS BS"]
+		quantities += ["SR BS", "FM BS", "CS BS", 'SR Extrap', 'FM Extrap']
 		BS_values = [r"{:.3f}$\pm${:.3f}".format(SR_BS_mean, e_SR_BS),
 				   r"{:.3f}$\pm${:.3f}".format(FM_BS_mean, e_FM_BS),
-				   r"{:.2f}$\pm${:.2f}".format(CS_BS_mean, e_CS_BS)]
+				   r"{:.2f}$\pm${:.2f}".format(CS_BS_mean, e_CS_BS),
+				  r"{:.4f}$\pm${:.4f}".format(SR_extrap_mean, e_SR_extrap),
+				  r"{:.2f}$\pm${:.2f}".format(FM_extrap_mean, e_FM_extrap)]
 		values = values + BS_values
 		
 	table = list(zip(quantities, values))
@@ -448,6 +461,7 @@ for filename in files:
 	 			  'Gain':[gain], 
 				   'Pulse Time (us)':[trf*1e6],
 				   'Pulse Type':[pulsetype],
+				   'EF':[EF],
 				   'SR': [SR],
 				  'FM': [FM],
 				  'CS':[CS],
@@ -488,6 +502,11 @@ for filename in files:
 				  'CS BS median': [median_CS],
 				  'CS m conf': [lower_CS],
 				  'CS p conf': [upper_CS],
+				  'SR extrapolation':[SR_extrap_mean],
+				  'FM extrapolation':[FM_extrap_mean],
+				  'e_SR extrapolation':[e_SR_extrap],
+				  'e_FM extrapolation':[e_FM_extrap]
+# 				  'test':'test'
 				  }
 			
 			datatosave.update(datatosavePlusBS)
@@ -496,25 +515,51 @@ for filename in files:
 
 		### save figure
 		runfolder = filename 
-		figpath = os.path.join(proj_path, runfolder)
+		figpath = os.path.join(figfolder_path, runfolder)
 		os.makedirs(figpath, exist_ok=True)
 	
 		sumrulefig_name = 'Analysis_Results.png'
 		sumrulefig_path = os.path.join(figpath, sumrulefig_name)
 		fig.savefig(sumrulefig_path)
-		 
-		### save analysis results in xlsx
+		
 		try: # to open save file, if it exists
-			 existing_data = pd.read_excel(savefile, sheet_name='Sheet1')
-			 print("There is saved data, so adding rows to file.")
-			 start_row = existing_data.shape[0] + 1
+			existing_data = pd.read_excel(savefile, sheet_name='Sheet1')
+			if len(datatosave) == len(existing_data.columns) and filename in existing_data['Run'].values:
+				print()
+				print(f'{filename} has already been analyized and put into the summary .xlsx file')
+				print('and columns of summary data are the same')
+				print()
+			elif len(datatosave) == len(existing_data.columns):
+				print('Columns of summary data are the same')
+# 				if filename in existing_data['Run'].values:
+#  					print(f'{filename} has already been analyized and put into the summary .xlsx file')
+#  					print()
+# 				else:
+				print("There is saved data, so adding rows to file.")
+				start_row = existing_data.shape[0] + 1
 			 
 			 # open file and write new results
-			 with pd.ExcelWriter(savefile, mode='a', if_sheet_exists='overlay', \
-					   engine='openpyxl') as writer:
-				  datatosavedf.to_excel(writer, index=False, header=False, 
+				with pd.ExcelWriter(savefile, mode='a', if_sheet_exists='overlay', \
+						engine='openpyxl') as writer:
+					datatosavedf.to_excel(writer, index=False, header=False, 
 					   sheet_name='Sheet1', startrow=start_row)
-				  
+			else:
+				print()
+				print('Columns of summary data are different')  
+				print("There is saved data, so adding rows to file.")
+				start_row = existing_data.shape[0] + 1
+				
+				datatosavedf.columns = datatosavedf.columns.to_list()
+			 # open file and write new results
+				with pd.ExcelWriter(savefile, mode='a', if_sheet_exists='overlay', \
+					   engine='openpyxl') as writer:
+					datatosavedf.to_excel(writer, index=False, 
+					   sheet_name='Sheet1', startrow=start_row)
+					
+		except PermissionError:
+			 print()
+			 print ('Is the .xlsx file open?')
+			 print()
 		except FileNotFoundError: # there is no save file
 			 print("Save file does not exist.")
 			 print("Creating file and writing header")
@@ -522,7 +567,7 @@ for filename in files:
 
 	if (Bootstrapplots == True and Bootstrap == True):
 		plt.rcParams.update({"figure.figsize": [10,8]})
-		fig, axs = plt.subplots(2,2)
+		fig, axs = plt.subplots(2,3)
 		fig.suptitle(filename)
 		
 		bins = 20
@@ -581,17 +626,81 @@ for filename in files:
 		ax.axvline(x=median_CS, color='red', linestyle='--', marker='')
 		ax.axvline(x=CS_BS_mean, color='k', linestyle='--', marker='')
 		
+		# SR extrapolation distribution
+		ax = axs[0,2]
+		xlabel = "SR Extrapolation"
+		ax.set(xlabel=xlabel, ylabel=ylabel)
+		ax.hist(SR_extrap_dist, bins=bins)
+		
+		# FM extrapolation distribution
+		ax = axs[1,2]
+		xlabel = "FM Extrapolation"
+		ax.set(xlabel=xlabel, ylabel=ylabel)
+		ax.hist(FM_extrap_dist, bins=bins)
+		
 		# make room for suptitle
-		fig.tight_layout(rect=[0, 0.03, 1, 0.95])
-	
+		fig.tight_layout(rect=[0, 0.03, 1, 0.95])	
+		
+	if Correlations == True: 
+		
+		# Example data
+		x_values = [SR_BS_dist,FM_BS_dist,CS_BS_dist]
+		x_values_names = ['Sum Rule','First Moment','Clock Shift']
+		y_values = [SR_extrap_dist,FM_extrap_dist]
+		y_values_names = ['SR Extrapolation','FM Extrapolation']
+		
+		# Determine number of combinations
+		num_plots = len(x_values) * len(y_values)
+		
+		# Create subplots grid
+		cols = 3  # Number of columns in the subplot grid
+		rows = (num_plots - 1) // cols + 1  # Number of rows calculated based on number of plots
+		
+		fig, axes = plt.subplots(rows, cols, figsize=(22, 15), sharex=False, sharey=False)
+		fig.suptitle(filename)
+		# Flatten axes in case there's only one row or column
+		axes = np.ravel(axes)
+		
+		# Loop over x and y values to plot each combination
+		for i, x_data in enumerate(x_values):
+		    for j, y_data in enumerate(y_values):
+		        index = i * len(y_values) + j
+		        ax = axes[index]
+		        
+		        ax.scatter(x_data, y_data)
+		        ax.set_xlabel(x_values_names[i], fontsize = 18)
+		        ax.set_ylabel(y_values_names[j], fontsize = 18)
+				
+		        x_min, x_max = np.min(x_data), np.max(x_data)
+		        y_min, y_max = np.min(y_data), np.max(y_data)
+		        ax.set_xlim(x_min,x_max)
+		        ax.set_ylim(y_min,y_max)
+				
+# 		        ax.legend()
+		
+		# Remove any extra subplots
+		for ax in axes[num_plots:]:
+		    ax.remove()
+			
+		# make room for suptitle
+		fig.tight_layout(rect=[0, 0.03, 1, 0.95])	
+		plt.show()
 
 if Summaryplots == True:
 	
+# 	df = datatosavedf
 	### load analysis results
-	df = pd.read_excel(savefile, index_col=0, engine='openpyxl').reset_index()
 		
+	df = pd.read_excel(savefile, index_col=0, engine='openpyxl').reset_index()
+	
+# 	numeric_cols = datatosavedf.columns
+# 	df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors='coerce')
+# 	df = df[~df['Pulse Time (us)'].isin(['Pulse Time (us)'])]
+
+	
 	# get list of rf pulse times to loop over
 	trflist = df['Pulse Time (us)'].unique()
+	EFlist = df['EF'].unique()
 	
 	### plots
 	plt.rcParams.update({"figure.figsize": [12,8]})
@@ -629,62 +738,86 @@ if Summaryplots == True:
 	ylabel = "Peak Scaled Transfer"
 	ax_pST.set(xlabel=xlabel, ylabel=ylabel)
 	
+
 	# loop over pulse times
-	for i, trf in enumerate(trflist):
-		sub_df = df.loc[df['Pulse Time (us)'] == trf]
-		marker = markers[i]
-		color = colors[i]
+	
+	unique_labelsEF = []
+	unique_handlesEF = []
+	unique_labelstrf = []
+	unique_handlestrf = []
+	
+	for l, EF in enumerate(EFlist):
 		
-		label = r"$t_{rf}$"+"={}us".format(trf)
-		
+		subdf = df.loc[df['EF'] == EF]
+		labelEF = r"EF"+"={}".format(EF)
+		color = colors[l]
 		light_color = tint_shade_color(color, amount=1+tintshade)
 		dark_color = tint_shade_color(color, amount=1-tintshade)
 		plt.rcParams.update({
-					 "lines.markeredgecolor": dark_color,
-					 "lines.markerfacecolor": light_color,
-					 "lines.color": dark_color,
-					 "legend.fontsize": 14})
+						 "lines.markeredgecolor": dark_color,
+						 "lines.markerfacecolor": light_color,
+						 "lines.color": dark_color,
+						 "legend.fontsize": 14})
 		
-		### if MonteCarlo, select correct columns
-		if MonteCarlo == True:
-			SR = sub_df['SR MC']
-			FM = sub_df['FM MC']
-			CS = sub_df['CS MC']
-			e_SR = sub_df['e_SR MC']
-			e_FM = sub_df['e_FM MC']
-			e_CS = sub_df['e_CS MC']
-			
-		elif Bootstrap == True:
-			SR = sub_df['SR BS median']
-			FM = sub_df['FM BS median']
-			CS = sub_df['CS BS median']
-			e_SR = np.array(list(zip(SR-sub_df['SR m conf'], sub_df['SR p conf']-SR))).T
-			e_FM = np.array(list(zip(FM-sub_df['FM m conf'], sub_df['FM p conf']-FM))).T
-			e_CS = np.array(list(zip(CS-sub_df['CS m conf'], sub_df['CS p conf']-CS))).T
+		for i, trf in enumerate(trflist):
+			sub_df = subdf.loc[subdf['Pulse Time (us)'] == trf]
+			labeltrf = r"$t_{rf}$"+"={}us".format(trf)
+			marker = markers[i]
 		
-		else: # select non-MC columns
-			SR = sub_df['SR']
-			FM = sub_df['FM']
-			CS = sub_df['CS']
-			e_SR = np.zeros(len(SR))
-			e_FM = np.zeros(len(FM))
-			e_CS = np.zeros(len(CS))
-		
-		ax_C.errorbar(sub_df['Gain'], sub_df['C'], yerr=sub_df['e_C'], fmt=marker)
-		ax_CoSR.errorbar(sub_df['Gain'], sub_df['C/SR'], yerr=sub_df['e_C/SR'], fmt=marker)
-		ax_pST.errorbar(sub_df['Gain'], sub_df['Peak Scaled Transfer'], 
-				 yerr=sub_df['e_Peak Scaled Transfer'], fmt=marker, label=label)
-		
-		ax_SR.errorbar(sub_df['Gain'], SR, yerr=e_SR, fmt=marker)
-		ax_FM.errorbar(sub_df['Gain'], FM, yerr=e_FM, fmt=marker)
-		ax_CS.errorbar(sub_df['Gain'], CS, yerr=e_CS, fmt=marker)
-
-		
-	ax_pST.legend()
+ 			
+			try:
+			### if MonteCarlo, select correct columns
+				if MonteCarlo == True:
+					SR = sub_df['SR MC']
+					FM = sub_df['FM MC']
+					CS = sub_df['CS MC']
+					e_SR = sub_df['e_SR MC']
+					e_FM = sub_df['e_FM MC']
+					e_CS = sub_df['e_CS MC']
+					
+				elif Bootstrap == True:
+					SR = sub_df['SR BS median']
+					FM = sub_df['FM BS median']
+					CS = sub_df['CS BS median']
+					e_SR = np.array(list(zip(SR-sub_df['SR m conf'], sub_df['SR p conf']-SR))).T
+					e_FM = np.array(list(zip(FM-sub_df['FM m conf'], sub_df['FM p conf']-FM))).T
+					e_CS = np.array(list(zip(CS-sub_df['CS m conf'], sub_df['CS p conf']-CS))).T
+				
+				else: # select non-MC columns
+					SR = sub_df['SR']
+					FM = sub_df['FM']
+					CS = sub_df['CS']
+					e_SR = np.zeros(len(SR))
+					e_FM = np.zeros(len(FM))
+					e_CS = np.zeros(len(CS))
+				
+				ax_C.errorbar(sub_df['Gain'], sub_df['C'], yerr=sub_df['e_C'], fmt=marker,ecolor = dark_color)
+				ax_CoSR.errorbar(sub_df['Gain'], sub_df['C/SR'], yerr=sub_df['e_C/SR'], fmt=marker,label=labeltrf,ecolor = dark_color)
+				plot_pST = ax_pST.errorbar(sub_df['Gain'], sub_df['Peak Scaled Transfer'], 
+						 yerr=sub_df['e_Peak Scaled Transfer'], fmt=marker, label=labelEF,ecolor = dark_color)
+				
+				ax_SR.errorbar(sub_df['Gain'], SR, yerr=e_SR, fmt=marker,ecolor = dark_color)
+				ax_FM.errorbar(sub_df['Gain'], FM, yerr=e_FM, fmt=marker,ecolor = dark_color)
+				ax_CS.errorbar(sub_df['Gain'], CS, yerr=e_CS, fmt=marker,ecolor = dark_color)
+			except TypeError:
+				print()
+				print('Missing a column in the .xlsx summary data file so the summary plots are being messed up')
+				print('or something is wrong with the headers')
+				
+			if labelEF not in unique_labelsEF:
+				unique_handlesEF.append(plot_pST)
+				unique_labelsEF.append(labelEF)
+			if labeltrf not in unique_labelstrf:
+				unique_handlestrf.append(plot_pST)
+				unique_labelstrf.append(labeltrf)
+				
+	ax_pST.legend(unique_handlesEF,unique_labelsEF)
+	ax_CoSR.legend(unique_handlestrf,unique_labelstrf)
 	fig.tight_layout()
 	plt.show()
 
 	### save figure
+	
 	timestr = time.strftime("%Y%m%d-%H%M%S")
 	summary_plots_folder = "summary_plots"
 	summaryfig_path = os.path.join(proj_path, summary_plots_folder)

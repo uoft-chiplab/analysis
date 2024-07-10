@@ -95,6 +95,8 @@ def Bootstrap_spectra_fit_trapz(xs, ys, xfitlims, xstar, fit_func,
 	SR_distr = []
 	FM_distr = []
 	CS_distr = []
+	SR_extrap_distr = []
+	FM_extrap_distr = []
 	
 	while (trialB < trialsB) and (fails < trialsB):
 		if (0 == trialB % (trialsB / 5)):
@@ -161,13 +163,121 @@ def Bootstrap_spectra_fit_trapz(xs, ys, xfitlims, xstar, fit_func,
 		if SR<0 or CS<0 or CS>100:
 			print("Integration out of bounds")
 			continue
+	
+		SR_extrap_distr.append(SR_extrapolation)
+		FM_extrap_distr.append(FM_extrapolation)
 		
 		CS_distr.append(CS)
 		FM_distr.append(FM)
 		SR_distr.append(SR)
 	
 	# return everything
-	return SR_distr, FM_distr,CS_distr, pFitB
+	return SR_distr, FM_distr, CS_distr, pFitB, SR_extrap_distr, FM_extrap_distr
+
+def DimerBootStrapFit(xs, ys, xfitlims, Ebfix, fit_func, 
+									trialsB=1000, pGuess=[0.04,0.7]):
+	
+	""" """
+	def lineshapefit_fixedEb(xi, Ebfix):
+		x0 = Ebfix
+# 		ls = A*np.sqrt(-x+x0) * np.exp((x - x0)/sigma) * np.heaviside(-x+x0,1)
+# 		ls = np.nan_to_num(ls)
+		return np.sqrt(-xi+x0) * np.exp((xi - x0)/0.7) * np.heaviside(-xi+x0,1)
+	
+	num = 5000 # points to integrate over
+	
+	print("** Bootstrap resampling")
+	trialB = 0 # trials counter
+	fails = 0 # failed fits counter
+	nData = len(xs)
+	nChoose = nData # number of points to choose
+	pFitB = np.zeros([trialsB, len(pGuess)]) # array of fit params
+	SR_distr = []
+	FM_distr = []
+	CS_distr = []
+	SR_extrap_distr = []
+	FM_extrap_distr = []
+	
+	while (trialB < trialsB) and (fails < trialsB):
+		if (0 == trialB % (trialsB / 5)):
+ 			print('   %d of %d @ %s' % (trialB, trialsB, time.strftime("%H:%M:%S", time.localtime())))
+		inds = np.random.choice(np.arange(0, nData), nChoose, replace=True)
+# 		print(len(inds))
+		xTrial = np.random.normal(np.take(xs, inds), 0.0001)
+		# we need to make sure there are no duplicate x values or the fit
+		# will fail to converge
+# 		print(xTrial)
+		yTrial = np.take(ys, inds)
+# 		print(yTrial)
+		p = xTrial.argsort()
+# 		print(p)
+		xTrial = xTrial[p]
+# 		print(xTrial)
+		yTrial = yTrial[p]
+		
+		fitpoints = np.array([[xfit, yfit] for xfit, yfit in zip(xTrial, yTrial) \
+						if (xfit > xfitlims[0] and xfit < xfitlims[-1])])
+# 		print(pGuess)
+
+		try:
+			# pylint: disable=unbalanced-tuple-unpacking
+			pFit, cov = curve_fit(fit_func, fitpoints[:,0], 
+						 fitpoints[:,1], pGuess)
+		except Exception:
+			print("Failed to converge")
+			fails += 1
+			continue
+		
+		if np.sum(np.isinf(trialB)) or pFit[0]<0:
+			print('Fit params out of bounds')
+			print(pFit)
+			continue
+		else:
+			pFitB[trialB, :] = pFit
+			trialB += 1
+	
+		# extrapolation starting point
+		xi = min(xTrial)
+	
+		# interpolation array for x, num in size
+		x_interp = np.linspace(xi, max(xTrial), num)
+	
+		# compute interpolation array for y, num by num_iter in size
+		y_interp = np.array([np.interp(x, xTrial, yTrial) for x in x_interp])
+# 		print(x_interp)
+	
+		# integral from xi to infty
+		SR_extrapolation = pFit[0]*lineshapefit_fixedEb(xi, Ebfix)
+# 		print(SR_extrapolation)
+		FM_extrapolation = pFit[0]*lineshapefit_fixedEb(xi, Ebfix)
+	
+		# for the integration, we first sum the interpolation, 
+		# then the extrapolation, then we add the analytic -5/2s portion
+		
+		# sumrule using each set
+		SR = np.trapz(y_interp, x=x_interp) + SR_extrapolation
+# 		print(np.trapz(y_interp, x=x_interp))
+		# first moment using each set	
+		FM = np.trapz(y_interp*x_interp, x=x_interp) + FM_extrapolation
+	
+		# clock shift
+		# we need to do this sample by sample so we have correlated SR and FM
+		CS = FM/SR
+		
+# 		if SR<0 or CS<0 or CS>100:
+# 			print("Integration out of bounds")
+# 			continue
+	
+		SR_extrap_distr.append(SR_extrapolation)
+		FM_extrap_distr.append(FM_extrapolation)
+		
+		CS_distr.append(CS)
+		FM_distr.append(FM)
+		SR_distr.append(SR)
+	
+	# return everything
+	return SR_distr, FM_distr, CS_distr, pFitB, SR_extrap_distr, FM_extrap_distr 
+
 
 # def MonteCarlo_trapz(xs, ys, yserr, num_iter=1000):
 # 	""" Computes trapz for list of data points (xs, ys+-yserr),

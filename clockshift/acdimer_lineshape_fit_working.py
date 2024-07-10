@@ -13,10 +13,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 from library import GammaTilde, pi, h
 
+from clockshift.MonteCarloSpectraIntegration import DimerBootStrapFit
+from scipy.stats import sem
+
 # paths
 proj_path = os.path.dirname(os.path.realpath(__file__))
 data_path = os.path.join(proj_path, "data")
 root = os.path.dirname(proj_path)
+
+Bootstrap = True
+Bootstrapplots = True
+
 
 # plotting things
 linewidth=5
@@ -100,11 +107,11 @@ def gaussian(x, A, x0, sigma):
 	return A * np.exp(-(x-x0)**2/(2*sigma**2))
 
 
-
+filename='2024-06-12_S_e.dat'
 # data = Data('2023-10-02_H_e.dat', path='E:\\Data\\2023\\10 October2023\\02October2023\\H_202p1G_acdimer_1p8VVA320us', average_by='freq')
 # data = Data('2023-10-02_I_e.dat', path='E:\\Data\\2023\\10 October2023\\02October2023\\I_202p1G_acdimer_1p5VVA640us', average_by='freq')
 # data = Data('2024-06-12_R_e.dat', average_by='freq')
-run = Data(filename='2024-06-12_S_e.dat',path=data_path)
+run = Data(filename,path=data_path)
 # data = Data(filename='2024-06-20_F_e.dat',path = data_class_dir+'//acdimer//data', average_by='freq')
 # data =Data('2024-06-12_T_e.dat', average_by='freq')
 # field=202.1
@@ -265,6 +272,167 @@ I_d = kF*Ctilde_est / (pi * kappa) * (1/1+re/a13(Bfield))
 print("Predicted dimer spectral weight [Eq. 6]: " + str(I_d))
 
 
+def GenerateSpectraFit(Ebfix):
+	def fit_func(x, A, sigma):
+		x0 = Ebfix
+	# 	print('xstar = {:.3f}'.format(xmax))
+		return A*np.sqrt(-x+x0) * np.exp((x - x0)/sigma) * np.heaviside(-x+x0,1)
+	return fit_func
+
+
+if Bootstrap == True:
+	BOOTSRAP_TRAIL_NUM = 10
+	xfitlims = [min(x), max(x)]
+	fit_func = GenerateSpectraFit(Ebfix)
+	
+	num_iter = 1000
+	conf = 68.2689  # confidence level for CI
+	
+	# non-averaged data
+	x = np.array(run.data['detuning'])
+	num = len(x)
+# 		print(x)
+	y = np.array(run.data['ScaledTransfer'])
+	
+	# sumrule, first moment and clockshift with analytic extension
+	SR_BS_dist, FM_BS_dist, CS_BS_dist, pFits, SR_extrap_dist, FM_extrap_dist = \
+		DimerBootStrapFit(x, y, xfitlims, Ebfix, fit_func, trialsB=BOOTSRAP_TRAIL_NUM)
+	
+	SR_BS_mean, e_SR_BS = (np.mean(SR_BS_dist), np.std(SR_BS_dist))
+	FM_BS_mean, e_FM_BS = (np.mean(FM_BS_dist), np.std(FM_BS_dist))
+	CS_BS_mean, e_CS_BS = (np.mean(CS_BS_dist), np.std(CS_BS_dist))
+	SR_extrap_mean, e_SR_extrap = (np.mean(SR_extrap_dist), np.std(SR_extrap_dist))
+	FM_extrap_mean, e_FM_extrap = (np.mean(FM_extrap_dist), np.std(FM_extrap_dist))
+	CS_BS_mean, e_CS_BS = (np.mean(CS_BS_dist), sem(CS_BS_dist))
+	print(r"SR BS mean = {:.3f}$\pm$ {:.3f}".format(SR_BS_mean, e_SR_BS))
+	print(r"FM BS mean = {:.3f}$\pm$ {:.3f}".format(FM_BS_mean, e_FM_BS))
+	print(r"CS BS mean = {:.2f}$\pm$ {:.2f}".format(CS_BS_mean, e_CS_BS))
+	print(r'Extrapolation for SR = {:.4f}$\pm$ {:.4f}'.format(SR_extrap_mean, e_SR_extrap))
+	print(r'Extrapolation for FM = {:.2f}$\pm$ {:.2f}'.format(FM_extrap_mean, e_FM_extrap))
+	median_SR = np.nanmedian(SR_BS_dist)
+	upper_SR = np.nanpercentile(SR_BS_dist, 100-(100.0-conf)/2.)
+	lower_SR = np.nanpercentile(SR_BS_dist, (100.0-conf)/2.)
+	
+	median_FM = np.nanmedian(FM_BS_dist)
+	upper_FM = np.nanpercentile(FM_BS_dist, 100-(100.0-conf)/2.)
+	lower_FM = np.nanpercentile(FM_BS_dist, (100.0-conf)/2.)
+	
+	median_CS = np.nanmedian(CS_BS_dist)
+	upper_CS = np.nanpercentile(CS_BS_dist, 100-(100.0-conf)/2.)
+	lower_CS = np.nanpercentile(CS_BS_dist, (100.0-conf)/2.)
+# 	print(r"SR BS median = {:.3f}+{:.3f}-{:.3f}".format(median_SR,
+# 												  upper_SR-SR, SR-lower_SR))
+# 	print(r"FM BS median = {:.3f}+{:.3f}-{:.3f}".format(median_FM, 
+# 												  upper_FM-FM, FM-lower_FM))
+# 	print(r"CS BS median = {:.2f}+{:.3f}-{:.3f}".format(median_CS, 
+# 												  upper_CS-CS, CS-lower_CS))
+
+### plot contact
+# 	fig, axs = plt.subplots(2,2)
+# 	ax = axs[0,1]
+# 	x = run.avg_data['detuning']/EF
+# 	y = run.avg_data['C']
+# 	yerr = run.avg_data['em_C']
+# 	xlabel = r"Detuning $\Delta$"
+# 	ylabel = r"Contact $C/N$ [$k_F$]"
+# 	
+# 	xlims = [-2,max(x)]
+# 	ylims = [min(run.data['C']), max(run.data['C'])]
+# 	Cdetmin = 2
+# 	Cdetmax = 10
+# 	xs = np.linspace(Cdetmin, Cdetmax, num)
+# 	
+# 	df = run.data[run.data.detuning/EF>Cdetmin]
+# 	Cmean = df[df.detuning/EF<Cdetmax].C.mean()
+# 	Csem = df[df.detuning/EF<Cdetmax].C.sem()
+# 	
+	# choose sumrule for Contact normalizing as MC, BS or raw
+# 	if MonteCarlo:	
+# 		C_o_SR = Cmean/(2*SR_MC)
+# 		e_C_o_SR = C_o_SR*np.sqrt((Csem/Cmean)**2+(e_SR_MC/SR_MC)**2)
+# 	elif Bootstrap: 
+# 		C_o_SR = Cmean/(2*SR_BS_mean)
+# 		e_C_o_SR = C_o_SR*np.sqrt((Csem/Cmean)**2+(e_SR_BS/SR_BS_mean)**2)
+# 	else:
+# 		C_o_SR = Cmean/(2*SR)
+# 		e_C_o_SR = C_o_SR*Csem/Cmean
+
+if (Bootstrapplots == True and Bootstrap == True):
+	plt.rcParams.update({"figure.figsize": [10,8]})
+	fig, axs = plt.subplots(2,3)
+	fig.suptitle(filename)
+	
+	bins = 20
+	
+	# fits
+# 	ax = axs[0,0]
+# 	x = run.avg_data['detuning']/EF
+# 	y = run.avg_data['ScaledTransfer']
+# 	yerr = run.avg_data['em_ScaledTransfer']
+# 	xlabel = r"Detuning $\Delta$"
+# 	ylabel = r"Scaled Transfer $\tilde\Gamma$"
+# 	
+# 	xdata = run.data['detuning']/EF
+# 	datamask = xdata.between(*xfitlims)
+
+# 	ylims = [min(run.data.ScaledTransfer[datamask]),
+# 			 max(run.data.ScaledTransfer[datamask])]
+# 	
+# 	plotmask = x.between(*xfitlims)
+# 	xs = np.linspace(xlims[0], xlims[-1], len(y))
+# 	
+# 	ax.set(xlabel=xlabel, ylabel=ylabel, xlim=xfitlims, ylim=ylims)
+# 	ax.plot(xs, fit_func(xs, *popt1), '--r')
+# 	ax.errorbar(x[plotmask], y[plotmask], yerr=yerr[plotmask], 
+# 		  fmt='o', label=label)
+# 	ax.legend()
+	
+	# sumrule distribution
+	ax = axs[0,1]
+	xlabel = "Sum Rule"
+	ylabel = "Occurances"
+	ax.set(xlabel=xlabel, ylabel=ylabel)
+	ax.hist(SR_BS_dist, bins=bins)
+	ax.axvline(x=lower_SR, color='red', alpha=0.5, linestyle='--', marker='')
+	ax.axvline(x=upper_SR, color='red', alpha=0.5, linestyle='--', marker='')
+	ax.axvline(x=median_SR, color='red', linestyle='--', marker='')
+	ax.axvline(x=SR_BS_mean, color='k', linestyle='--', marker='')
+	
+	# first moment distribution
+	ax = axs[1,0]
+	xlabel = "First Moment"
+	ax.set(xlabel=xlabel, ylabel=ylabel)
+	ax.hist(FM_BS_dist, bins=bins)
+	ax.axvline(x=lower_FM, color='red', alpha=0.5, linestyle='--', marker='')
+	ax.axvline(x=upper_FM, color='red', alpha=0.5, linestyle='--', marker='')
+	ax.axvline(x=median_FM, color='red', linestyle='--', marker='')
+	ax.axvline(x=FM_BS_mean, color='k', linestyle='--', marker='')
+	
+	# clock shift distribution
+	ax = axs[1,1]
+	xlabel = "Clock Shift"
+	ax.set(xlabel=xlabel, ylabel=ylabel)
+	ax.hist(CS_BS_dist, bins=bins)
+	ax.axvline(x=lower_CS, color='red', alpha=0.5, linestyle='--', marker='')
+	ax.axvline(x=upper_CS, color='red', alpha=0.5, linestyle='--', marker='')
+	ax.axvline(x=median_CS, color='red', linestyle='--', marker='')
+	ax.axvline(x=CS_BS_mean, color='k', linestyle='--', marker='')
+	
+	# SR extrapolation distribution
+	ax = axs[0,2]
+	xlabel = "SR Extrapolation"
+	ax.set(xlabel=xlabel, ylabel=ylabel)
+	ax.hist(SR_extrap_dist, bins=bins)
+	
+	# FM extrapolation distribution
+	ax = axs[1,2]
+	xlabel = "FM Extrapolation"
+	ax.set(xlabel=xlabel, ylabel=ylabel)
+	ax.hist(FM_extrap_dist, bins=bins)
+	
+	# make room for suptitle
+	fig.tight_layout(rect=[0, 0.03, 1, 0.95])	
+	
 ### generate table
 fig, ax = plt.subplots()
 ax.axis('off')
