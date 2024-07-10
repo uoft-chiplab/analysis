@@ -261,8 +261,9 @@ def DimerBootStrapFit(xs, ys, xfitlims, Ebfix, fit_func,
 		FM = np.trapz(y_interp*x_interp, x=x_interp) + FM_extrapolation
 	
 		# clock shift
-		# we need to do this sample by sample so we have correlated SR and FM
-		CS = FM/SR
+		# we need to do this sample by sample so we have correlated SR and F
+		HFTsumrule = 0.96
+		CS = FM/(SR+HFTsumrule)
 		
 # 		if SR<0 or CS<0 or CS>100:
 # 			print("Integration out of bounds")

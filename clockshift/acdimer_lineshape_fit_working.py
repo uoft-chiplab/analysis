@@ -281,7 +281,7 @@ def GenerateSpectraFit(Ebfix):
 
 
 if Bootstrap == True:
-	BOOTSRAP_TRAIL_NUM = 10
+	BOOTSRAP_TRAIL_NUM = 100
 	xfitlims = [min(x), max(x)]
 	fit_func = GenerateSpectraFit(Ebfix)
 	
@@ -327,35 +327,6 @@ if Bootstrap == True:
 # 	print(r"CS BS median = {:.2f}+{:.3f}-{:.3f}".format(median_CS, 
 # 												  upper_CS-CS, CS-lower_CS))
 
-### plot contact
-# 	fig, axs = plt.subplots(2,2)
-# 	ax = axs[0,1]
-# 	x = run.avg_data['detuning']/EF
-# 	y = run.avg_data['C']
-# 	yerr = run.avg_data['em_C']
-# 	xlabel = r"Detuning $\Delta$"
-# 	ylabel = r"Contact $C/N$ [$k_F$]"
-# 	
-# 	xlims = [-2,max(x)]
-# 	ylims = [min(run.data['C']), max(run.data['C'])]
-# 	Cdetmin = 2
-# 	Cdetmax = 10
-# 	xs = np.linspace(Cdetmin, Cdetmax, num)
-# 	
-# 	df = run.data[run.data.detuning/EF>Cdetmin]
-# 	Cmean = df[df.detuning/EF<Cdetmax].C.mean()
-# 	Csem = df[df.detuning/EF<Cdetmax].C.sem()
-# 	
-	# choose sumrule for Contact normalizing as MC, BS or raw
-# 	if MonteCarlo:	
-# 		C_o_SR = Cmean/(2*SR_MC)
-# 		e_C_o_SR = C_o_SR*np.sqrt((Csem/Cmean)**2+(e_SR_MC/SR_MC)**2)
-# 	elif Bootstrap: 
-# 		C_o_SR = Cmean/(2*SR_BS_mean)
-# 		e_C_o_SR = C_o_SR*np.sqrt((Csem/Cmean)**2+(e_SR_BS/SR_BS_mean)**2)
-# 	else:
-# 		C_o_SR = Cmean/(2*SR)
-# 		e_C_o_SR = C_o_SR*Csem/Cmean
 
 if (Bootstrapplots == True and Bootstrap == True):
 	plt.rcParams.update({"figure.figsize": [10,8]})
