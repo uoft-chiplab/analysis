@@ -295,7 +295,7 @@ if Bootstrap == True:
 	y = np.array(run.data['ScaledTransfer'])
 	
 	# sumrule, first moment and clockshift with analytic extension
-	SR_BS_dist, FM_BS_dist, CS_BS_dist, pFits, SR_extrap_dist, FM_extrap_dist = \
+	SR_BS_dist, FM_BS_dist, CS_BS_dist, pFits, SR_extrap_dist, FM_extrap_dist, SR, FM, CS  = \
 		DimerBootStrapFit(x, y, xfitlims, Ebfix, fit_func, trialsB=BOOTSRAP_TRAIL_NUM)
 	
 	SR_BS_mean, e_SR_BS = (np.mean(SR_BS_dist), np.std(SR_BS_dist))
@@ -320,12 +320,12 @@ if Bootstrap == True:
 	median_CS = np.nanmedian(CS_BS_dist)
 	upper_CS = np.nanpercentile(CS_BS_dist, 100-(100.0-conf)/2.)
 	lower_CS = np.nanpercentile(CS_BS_dist, (100.0-conf)/2.)
-# 	print(r"SR BS median = {:.3f}+{:.3f}-{:.3f}".format(median_SR,
-# 												  upper_SR-SR, SR-lower_SR))
-# 	print(r"FM BS median = {:.3f}+{:.3f}-{:.3f}".format(median_FM, 
-# 												  upper_FM-FM, FM-lower_FM))
-# 	print(r"CS BS median = {:.2f}+{:.3f}-{:.3f}".format(median_CS, 
-# 												  upper_CS-CS, CS-lower_CS))
+	print(r"SR BS median = {:.3f}+{:.3f}-{:.3f}".format(median_SR,
+												  upper_SR-SR, SR-lower_SR))
+	print(r"FM BS median = {:.3f}+{:.3f}-{:.3f}".format(median_FM, 
+												  upper_FM-FM, FM-lower_FM))
+	print(r"CS BS median = {:.2f}+{:.3f}-{:.3f}".format(median_CS, 
+												  upper_CS-CS, CS-lower_CS))
 
 
 if (Bootstrapplots == True and Bootstrap == True):

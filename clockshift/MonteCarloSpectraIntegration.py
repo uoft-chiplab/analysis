@@ -277,7 +277,7 @@ def DimerBootStrapFit(xs, ys, xfitlims, Ebfix, fit_func,
 		SR_distr.append(SR)
 	
 	# return everything
-	return SR_distr, FM_distr, CS_distr, pFitB, SR_extrap_distr, FM_extrap_distr 
+	return SR_distr, FM_distr, CS_distr, pFitB, SR_extrap_distr, FM_extrap_distr, SR, FM, CS
 
 
 # def MonteCarlo_trapz(xs, ys, yserr, num_iter=1000):
