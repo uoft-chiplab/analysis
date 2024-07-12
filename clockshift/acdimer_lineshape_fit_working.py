@@ -297,7 +297,7 @@ print("Predicted total clock shift w/ eff. range term [Eq. (1)]: "+ str(cstot_pr
 csHFT_pred_corr = 1/(pi*kF*a13(Bfield))* (1/(np.sqrt(1-re/a13(Bfield)))) *Ctilde_est
 print("Predicted HFT clock shift w/ eff. range term: " + str(csHFT_pred_corr))
 kappa = 1.2594*1e8
-I_d = kF*Ctilde_est / (pi * kappa) * (1/1+re/a13(Bfield))
+I_d = kF*Ctilde_est / (pi * kappa) * (1/(1+re/a13(Bfield)))
 print("Predicted dimer spectral weight [Eq. 6]: " + str(I_d))
 
 correctionfactor = 1/(kappa*a13(Bfield))*(1/(1+re/a13(Bfield)))
@@ -459,12 +459,12 @@ quantities = [r"$\Omega_d$ (zero range)",
 			  r"$\Omega_+$ (corr.)", 
 			  r"$\Omega_{tot}$ (corr.)", 
 			  r"$\Omega_d = \Omega_{tot} - \Omega_+$"]
-values = ["{:.3f}".format(cs_pred), 
-		  "{:.3f}".format(csHFT_pred),
-		  "{:.3f}".format(cstot_pred_zerorange),
-		  "{:.3f}".format(csHFT_pred_corr),
-		  "{:.3f}".format(cstot_pred), 
-		  "{:.3f}".format(cstot_pred - csHFT_pred_corr)]
+values = ["{:.1f}".format(cs_pred), 
+		  "{:.1f}".format(csHFT_pred),
+		  "{:.1f}".format(cstot_pred_zerorange),
+		  "{:.1f}".format(csHFT_pred_corr),
+		  "{:.1f}".format(cstot_pred), 
+		  "{:.1f}".format(cstot_pred - csHFT_pred_corr)]
 table = list(zip(quantities, values))
 
 the_table = axpred.table(cellText=table, loc='center')
@@ -486,12 +486,12 @@ quantities = [r"$\Omega_d$ (red)",
 HFT_CS_EXP = 5.77
 HFT_CS_EXP = 5
 mean_dimer_cs = (clockshift1 +clockshift2 + clockshift3)/3
-values = ["{:.3f}".format(clockshift1),
-		  "{:.3f}".format(clockshift2),
-		  "{:.3f}".format(clockshift3),
-		  "{:.3f}".format(mean_dimer_cs),
-		  "{:.3f}".format(HFT_CS_EXP), 
-		  "{:.3f}".format(mean_dimer_cs + HFT_CS_EXP)]
+values = ["{:.1f}".format(clockshift1),
+		  "{:.1f}".format(clockshift2),
+		  "{:.1f}".format(clockshift3),
+		  "{:.1f}".format(mean_dimer_cs),
+		  "{:.1f}".format(HFT_CS_EXP), 
+		  "{:.1f}".format(mean_dimer_cs + HFT_CS_EXP)]
 table = list(zip(quantities, values))
 
 the_table = axexp.table(cellText=table, loc='center')

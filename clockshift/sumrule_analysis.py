@@ -39,7 +39,7 @@ import matplotlib.pyplot as plt
 import time
 
 ### This turns on (True) and off (False) saving the data/plots 
-Saveon = True 
+Saveon = True
 
 ### script options
 Analysis = True
@@ -284,6 +284,31 @@ for filename in files:
 	yyfit = fit_func(xxfit, *popt)
 	ax.plot(xxfit, yyfit, 'r--')
 	
+	### plot zoomed-in scaled transfer
+	ax = axs[1,1]
+	
+	xlims = [-1,4]
+	axxlims = xlims
+	ylims = [min(run.data['ScaledTransfer'])-0.01,
+			 0.5]
+	xs = np.linspace(xlims[0], xlims[-1], len(y))
+	
+	ax.set(xlabel=xlabel, ylabel=ylabel, xlim=axxlims, ylim=ylims)
+	ax.errorbar(x, y, yerr=yerr, fmt='o', label=label)
+	ax.legend()
+	
+	### plot extrapolated spectra with -5/2 power law
+	ax = axs[0,2]
+	label = r"$A \frac{\Delta^{-3/2}}{1+\Delta/\Delta^*}$"
+	ax.errorbar(x, y, yerr=yerr, fmt='o')
+	ax.plot(xxfit, yyfit, 'r--', label=label)
+	# avoid shading overlap by making new list
+	mask = np.where(x < 2, True, False)
+	ax.fill_between(xxfit, yyfit, alpha=0.15, color = 'b')
+	ax.fill_between(x[mask], y[mask], alpha=0.15, color='b')
+	ax.set(yscale='log', xscale='log', ylabel=ylabel, xlabel=xlabel)
+	ax.legend()
+	
 	### calulate integrals
 	# sumrule
 	SR_interp = np.trapz(TransferInterpFunc(xs), x=xs)
@@ -398,25 +423,25 @@ for filename in files:
 	e_CS_pred = CS_pred*Csem/Cmean
 	
 	### plot x*Scaled transfer
-	ax = axs[1,1]
-	x = run.avg_data['detuning']/EF
-	y = run.avg_data['ScaledTransfer'] * x
-	yerr = np.abs(run.avg_data['em_ScaledTransfer'] * x)
-	xlabel = r"Detuning $\Delta$"
-	ylabel = r"$\Delta \tilde\Gamma$"
-	
-	xlims = [-2,max(x)]
-	axxlims = xlims
-	ylims = [min(run.data['ScaledTransfer']*run.data['detuning']/EF),
-			 max(run.data['ScaledTransfer']*run.data['detuning']/EF)]
-	xs = np.linspace(xlims[0], xlims[-1], len(y))
-	
-	ax.set(xlabel=xlabel, ylabel=ylabel, xlim=axxlims, ylim=ylims)
-	ax.errorbar(x, y, yerr=yerr, fmt='o')
-	xxfit = np.linspace(xfitlims[0], xmax, int(xmax*EF*10))
-	yyfit = fit_func(xxfit, *popt)
-	ax.plot(xxfit, xxfit*yyfit, 'r--')
-	
+# 	ax = axs[1,1]
+# 	x = run.avg_data['detuning']/EF
+# 	y = run.avg_data['ScaledTransfer'] * x
+# 	yerr = np.abs(run.avg_data['em_ScaledTransfer'] * x)
+# 	xlabel = r"Detuning $\Delta$"
+# 	ylabel = r"$\Delta \tilde\Gamma$"
+# 	
+# 	xlims = [-2,max(x)]
+# 	axxlims = xlims
+# 	ylims = [min(run.data['ScaledTransfer']*run.data['detuning']/EF),
+# 			 max(run.data['ScaledTransfer']*run.data['detuning']/EF)]
+# 	xs = np.linspace(xlims[0], xlims[-1], len(y))
+# 	
+# 	ax.set(xlabel=xlabel, ylabel=ylabel, xlim=axxlims, ylim=ylims)
+# 	ax.errorbar(x, y, yerr=yerr, fmt='o')
+# 	xxfit = np.linspace(xfitlims[0], xmax, int(xmax*EF*10))
+# 	yyfit = fit_func(xxfit, *popt)
+# 	ax.plot(xxfit, xxfit*yyfit, 'r--')
+
 	### generate table
 	ax = axs[1,2]
 	ax.axis('off')
