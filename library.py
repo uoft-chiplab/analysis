@@ -5,7 +5,7 @@
 
 Functions to call in analysis scripts
 """
-
+# %%
 import os
 current_dir = os.path.dirname(__file__)
 
@@ -176,3 +176,5 @@ def a97(B, B0=202.14, B0zero=209.07, abg=167.6*a0):
 
 
 
+
+# %%

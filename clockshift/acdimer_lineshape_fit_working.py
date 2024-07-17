@@ -1,9 +1,22 @@
 #-*- coding: utf-8 -*-
+
 """
 Created on Thu Jun  6 20:12:51 2024
 
 @author: coldatoms
 """
+
+# %%
+# import os
+# proj_path = os.path.dirname(os.path.realpath(__file__))
+# root = os.path.dirname(proj_path)
+# data_path = os.path.join(proj_path, 'data')
+# figfolder_path = os.path.join(proj_path, 'figures')
+
+# import imp 
+# library = imp.load_source('library',os.path.join(root,'library.py'))
+# data_class = imp.load_source('data_class',os.path.join(root,'data_class.py'))
+# =======
 import os
 import sys
 # this is a hack to access modules in the parent directory
@@ -301,7 +314,7 @@ def GenerateSpectraFit(Ebfix):
 		return A*np.sqrt(-x+x0) * np.exp((x - x0)/sigma) * np.heaviside(-x+x0,1)
 	return fit_func
 
-
+# %%
 if Bootstrap == True:
 	BOOTSRAP_TRAIL_NUM = 100
 	xfitlims = [min(x), max(x)]
@@ -395,7 +408,6 @@ if (Bootstrapplots == True and Bootstrap == True):
 	# make room for suptitle
 	fig.tight_layout(rect=[0, 0.03, 1, 0.95])	
 # %%	
-	
 ### generate table
 fig, axs = plt.subplots(2)
 axpred = axs[0]
@@ -431,6 +443,9 @@ the_table = axpred.table(cellText=table, loc='center')
 the_table.auto_set_font_size(False)
 the_table.set_fontsize(12)
 the_table.scale(1,1.5)
+
+
+# # %%
 axpred.set(title='Predicted clock shifts [EF]')
 
 axexp = axs[1]

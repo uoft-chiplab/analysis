@@ -14,30 +14,35 @@ better
 	....
 	
 """
-
+# %%
 BOOTSRAP_TRAIL_NUM = 100
 
 # paths
 import os
-proj_path = os.path.dirname(os.path.realpath(__file__))
+print(os.getcwd())
+proj_path = os.path.dirname(os.path.realpath('sumrule_analysis.py'))
+print(proj_path)
 root = os.path.dirname(proj_path)
 data_path = os.path.join(proj_path, 'data')
 figfolder_path = os.path.join(proj_path, 'figures')
 
+import imp 
+library = imp.load_source('library',os.path.join(root,'library.py'))
+data_class = imp.load_source('data_class',os.path.join(root,'data_class.py'))
+
 from library import pi, h, hbar, mK, a0, plt_settings, GammaTilde, tintshade, \
 				 tint_shade_color, ChipKaiser, ChipBlackman, markers, colors
-
 from data_class import Data
 from scipy.optimize import curve_fit
 from scipy.stats import sem
-from clockshift.MonteCarloSpectraIntegration import MonteCarlo_spectra_fit_trapz, \
+from MonteCarloSpectraIntegration import MonteCarlo_spectra_fit_trapz, \
 												Bootstrap_spectra_fit_trapz
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
 import time
-
+# %%
 ### This turns on (True) and off (False) saving the data/plots 
 Saveon = True
 
@@ -882,3 +887,5 @@ if Summaryplots == True:
 	summaryfig_name = timestr = time.strftime("%Y%m%d-%H%M%S")+'summary.png'
 	summaryfig_path = os.path.join(summaryfig_path, summaryfig_name)
 	fig.savefig(summaryfig_path)
+
+# %%
