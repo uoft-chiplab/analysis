@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+#-*- coding: utf-8 -*-
 """
 Created on Thu Jun  6 20:12:51 2024
 
@@ -112,17 +112,7 @@ def gaussian(x, A, x0, sigma):
 
 
 filename='2024-06-12_S_e.dat'
-# data = Data('2023-10-02_H_e.dat', path='E:\\Data\\2023\\10 October2023\\02October2023\\H_202p1G_acdimer_1p8VVA320us', average_by='freq')
-# data = Data('2023-10-02_I_e.dat', path='E:\\Data\\2023\\10 October2023\\02October2023\\I_202p1G_acdimer_1p5VVA640us', average_by='freq')
-# data = Data('2024-06-12_R_e.dat', average_by='freq')
 run = Data(filename,path=data_path)
-# data = Data(filename='2024-06-20_F_e.dat',path = data_class_dir+'//acdimer//data', average_by='freq')
-# data =Data('2024-06-12_T_e.dat', average_by='freq')
-# field=202.1
-
-# 20_F
-# ToTF=0.33
-# EF = 12 # kHz
 T = ToTF * (EF*1000)
 field = 202.14
 freq75 = 47.2227 # MHz, 202.14 G
@@ -304,11 +294,10 @@ print("Predicted dimer spectral weight [Eq. 6]: " + str(I_d))
 correctionfactor = 1/(kappa*a13(Bfield))*(1/(1+re/a13(Bfield)))
 print("Eff. range correction: "+ str(correctionfactor))
 
-
+# %% BOOT STRAPPING
 def GenerateSpectraFit(Ebfix):
 	def fit_func(x, A, sigma):
 		x0 = Ebfix
-	# 	print('xstar = {:.3f}'.format(xmax))
 		return A*np.sqrt(-x+x0) * np.exp((x - x0)/sigma) * np.heaviside(-x+x0,1)
 	return fit_func
 
@@ -328,20 +317,21 @@ if Bootstrap == True:
 	y = np.array(run.data['ScaledTransfer'])
 	
 	# sumrule, first moment and clockshift with analytic extension
-	SR_BS_dist, FM_BS_dist, CS_BS_dist, pFits, SR_extrap_dist, FM_extrap_dist, SR, FM, CS  = \
+	SR_BS_dist, FM_BS_dist, CS_BS_dist, pFits, SR, FM, CS  = \
 		DimerBootStrapFit(x, y, xfitlims, Ebfix, fit_func, trialsB=BOOTSRAP_TRAIL_NUM)
-	
+	# print(SRlineshape)
+	# print(SR)
+	# print(FMlineshape)
+	# print(FM)
 	SR_BS_mean, e_SR_BS = (np.mean(SR_BS_dist), np.std(SR_BS_dist))
 	FM_BS_mean, e_FM_BS = (np.mean(FM_BS_dist), np.std(FM_BS_dist))
 	CS_BS_mean, e_CS_BS = (np.mean(CS_BS_dist), np.std(CS_BS_dist))
-	SR_extrap_mean, e_SR_extrap = (np.mean(SR_extrap_dist), np.std(SR_extrap_dist))
-	FM_extrap_mean, e_FM_extrap = (np.mean(FM_extrap_dist), np.std(FM_extrap_dist))
+	# SR_extrap_mean, e_SR_extrap = (np.mean(SR_extrap_dist), np.std(SR_extrap_dist))
+	# FM_extrap_mean, e_FM_extrap = (np.mean(FM_extrap_dist), np.std(FM_extrap_dist))
 	CS_BS_mean, e_CS_BS = (np.mean(CS_BS_dist), sem(CS_BS_dist))
 	print(r"SR BS mean = {:.3f}$\pm$ {:.3f}".format(SR_BS_mean, e_SR_BS))
 	print(r"FM BS mean = {:.3f}$\pm$ {:.3f}".format(FM_BS_mean, e_FM_BS))
 	print(r"CS BS mean = {:.2f}$\pm$ {:.2f}".format(CS_BS_mean, e_CS_BS))
-	print(r'Extrapolation for SR = {:.4f}$\pm$ {:.4f}'.format(SR_extrap_mean, e_SR_extrap))
-	print(r'Extrapolation for FM = {:.2f}$\pm$ {:.2f}'.format(FM_extrap_mean, e_FM_extrap))
 	median_SR = np.nanmedian(SR_BS_dist)
 	upper_SR = np.nanpercentile(SR_BS_dist, 100-(100.0-conf)/2.)
 	lower_SR = np.nanpercentile(SR_BS_dist, (100.0-conf)/2.)
@@ -363,33 +353,12 @@ if Bootstrap == True:
 
 if (Bootstrapplots == True and Bootstrap == True):
 	plt.rcParams.update({"figure.figsize": [10,8]})
-	fig, axs = plt.subplots(2,3)
+	fig, axs = plt.subplots(2,2)
 	fig.suptitle(filename)
 	
 	bins = 20
 	
-	# fits
-# 	ax = axs[0,0]
-# 	x = run.avg_data['detuning']/EF
-# 	y = run.avg_data['ScaledTransfer']
-# 	yerr = run.avg_data['em_ScaledTransfer']
-# 	xlabel = r"Detuning $\Delta$"
-# 	ylabel = r"Scaled Transfer $\tilde\Gamma$"
-# 	
-# 	xdata = run.data['detuning']/EF
-# 	datamask = xdata.between(*xfitlims)
-
-# 	ylims = [min(run.data.ScaledTransfer[datamask]),
-# 			 max(run.data.ScaledTransfer[datamask])]
-# 	
-# 	plotmask = x.between(*xfitlims)
-# 	xs = np.linspace(xlims[0], xlims[-1], len(y))
-# 	
-# 	ax.set(xlabel=xlabel, ylabel=ylabel, xlim=xfitlims, ylim=ylims)
-# 	ax.plot(xs, fit_func(xs, *popt1), '--r')
-# 	ax.errorbar(x[plotmask], y[plotmask], yerr=yerr[plotmask], 
-# 		  fmt='o', label=label)
-# 	ax.legend()
+# fits
 	
 	# sumrule distribution
 	ax = axs[0,1]
@@ -421,21 +390,11 @@ if (Bootstrapplots == True and Bootstrap == True):
 	ax.axvline(x=upper_CS, color='red', alpha=0.5, linestyle='--', marker='')
 	ax.axvline(x=median_CS, color='red', linestyle='--', marker='')
 	ax.axvline(x=CS_BS_mean, color='k', linestyle='--', marker='')
-	
-	# SR extrapolation distribution
-	ax = axs[0,2]
-	xlabel = "SR Extrapolation"
-	ax.set(xlabel=xlabel, ylabel=ylabel)
-	ax.hist(SR_extrap_dist, bins=bins)
-	
-	# FM extrapolation distribution
-	ax = axs[1,2]
-	xlabel = "FM Extrapolation"
-	ax.set(xlabel=xlabel, ylabel=ylabel)
-	ax.hist(FM_extrap_dist, bins=bins)
+
 	
 	# make room for suptitle
 	fig.tight_layout(rect=[0, 0.03, 1, 0.95])	
+# %%	
 	
 ### generate table
 fig, axs = plt.subplots(2)
