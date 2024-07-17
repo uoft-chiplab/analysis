@@ -213,6 +213,10 @@ for filename in files:
 	# compute Rabi frequency, scaled transfer, and contact
 	run.data['OmegaR'] = 2*pi*run.data['sqrt_pulse_area'] \
 							* VpptoOmegaR * run.data['Vpp']
+	OmegaR_pk = max(run.data['OmegaR'])
+	OmegaR_max = 2*pi*1*VpptoOmegaR*10
+	# here trf was in s so convert to ms, OmegaR is in kHz
+	pulsejuice = OmegaR_pk**2 * (trf*1e3) / OmegaR_max 
 	run.data['ScaledTransfer'] = run.data.apply(lambda x: GammaTilde(x['transfer'],
 									h*EF*1e6, x['OmegaR']*1e3, trf), axis=1)
 	run.data['C'] = run.data.apply(lambda x: 2*np.sqrt(2)*pi**2*x['ScaledTransfer'] * \
@@ -487,6 +491,7 @@ for filename in files:
 		datatosave = {
 				   'Run':[filename], 
 	 			  'Gain':[gain], 
+				   'Pulse Param':[pulsejuice],
 				   'Pulse Time (us)':[trf*1e6],
 				   'Pulse Type':[pulsetype],
 				   'EF':[EF],
@@ -747,7 +752,7 @@ if Summaryplots == True:
 	fig, axes = plt.subplots(2,3)
 
 # 	xlabel = r"Gain"
-	xlabel = r"$\Omega_{R,peak} / \Omega_{R, max}$"
+	xlabel = r"$\Omega_{R,pk}^2 t_{rf} / \Omega_{R, max}$"
 	
 	# sumrule vs gain
 	ax_SR = axes[0,0]
@@ -832,14 +837,15 @@ if Summaryplots == True:
 					e_FM = np.zeros(len(FM))
 					e_CS = np.zeros(len(CS))
 				
-				ax_C.errorbar(sub_df['Gain'], sub_df['C'], yerr=sub_df['e_C'], fmt=marker,ecolor = dark_color)
-				ax_CoSR.errorbar(sub_df['Gain'], sub_df['C/SR'], yerr=sub_df['e_C/SR'], fmt=marker,label=labeltrf,ecolor = dark_color)
-				plot_pST = ax_pST.errorbar(sub_df['Gain'], sub_df['Peak Scaled Transfer'], 
+				xname = 'Pulse Param'
+				ax_C.errorbar(sub_df[xname], sub_df['C'], yerr=sub_df['e_C'], fmt=marker,ecolor = dark_color)
+				ax_CoSR.errorbar(sub_df[xname], sub_df['C/SR'], yerr=sub_df['e_C/SR'], fmt=marker,label=labeltrf,ecolor = dark_color)
+				plot_pST = ax_pST.errorbar(sub_df[xname], sub_df['Peak Scaled Transfer'], 
 						 yerr=sub_df['e_Peak Scaled Transfer'], fmt=marker, label=labelEF,ecolor = dark_color)
 				
-				ax_SR.errorbar(sub_df['Gain'], SR, yerr=e_SR, fmt=marker,ecolor = dark_color)
-				ax_FM.errorbar(sub_df['Gain'], FM, yerr=e_FM, fmt=marker,ecolor = dark_color)
-				ax_CS.errorbar(sub_df['Gain'], CS, yerr=e_CS, fmt=marker,ecolor = dark_color)
+				ax_SR.errorbar(sub_df[xname], SR, yerr=e_SR, fmt=marker,ecolor = dark_color)
+				ax_FM.errorbar(sub_df[xname], FM, yerr=e_FM, fmt=marker,ecolor = dark_color)
+				ax_CS.errorbar(sub_df[xname], CS, yerr=e_CS, fmt=marker,ecolor = dark_color)
 				
 			except TypeError:
 				print()
@@ -860,8 +866,8 @@ if Summaryplots == True:
 	# add some average hlines
 	CSmean = np.mean(df.CS)
 	CoSRmean = np.mean(df['C/SR'])
-	ax_CS.hlines(CSmean, min(df['Gain']), max(df['Gain']))
-	ax_CoSR.hlines(CoSRmean, min(df['Gain']), max(df['Gain']))
+	ax_CS.hlines(CSmean, min(df[xname]), max(df[xname]))
+	ax_CoSR.hlines(CoSRmean, min(df[xname]), max(df[xname]))
 	
 	fig.tight_layout()
 	plt.show()

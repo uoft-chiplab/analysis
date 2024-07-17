@@ -448,7 +448,7 @@ HFT_CS_EXP = 4.8
 mean_dimer_cs = (clockshift1 +clockshift2 + clockshift3)/3
 values = [
 		  "{:.1f}".format(mean_dimer_cs),
-		  "{:.1f}".format(CS_BS_mean),
+		  "{:.1f} +/- {:.1f}".format(CS_BS_mean,  e_CS_BS),
 		  "{:.1f}".format(HFT_CS_EXP), 
 		  "{:.1f}".format(mean_dimer_cs + HFT_CS_EXP),
 		  "{:.1f}".format(CS_BS_mean + HFT_CS_EXP)]
