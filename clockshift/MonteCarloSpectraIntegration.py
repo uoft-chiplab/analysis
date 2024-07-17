@@ -255,7 +255,7 @@ def DimerBootStrapFit(xs, ys, xfitlims, Ebfix, fit_func,
 		# first moment using each set	
 		FM = np.trapz(y_interp*x_interp, x=x_interp) 
 		FMlineshape = np.trapz(fit_func(xi, *pFit, Ebfix)*x_interp, x=x_interp) 
-		print(fit_func(xi, *pFit, Ebfix))
+		# print(fit_func(xi, *pFit, Ebfix))
 		# print(y_interp)
 		# clock shift
 		HFTsumrule = 0.96
