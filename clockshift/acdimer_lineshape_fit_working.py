@@ -32,8 +32,8 @@ proj_path = os.path.dirname(os.path.realpath(__file__))
 data_path = os.path.join(proj_path, "data")
 root = os.path.dirname(proj_path)
 
-Bootstrap = False
-Bootstrapplots = False
+Bootstrap = True
+Bootstrapplots = True
 
 
 # plotting things
@@ -89,6 +89,7 @@ def lineshapefit(x, A, x0, sigma):
 	return ls
 # Ebfix = 3.97493557
 Ebfix = -3.975*1e3 /EF
+# Ebfix = -3.98*1e3/EF
 def lsMB_fixedEb(x, A, sigma):
 	x0 = Ebfix
 	ls = A*np.sqrt(-x+x0) * np.exp((x - x0)/sigma) * np.heaviside(-x+x0,1)
@@ -203,7 +204,7 @@ ax_ls.plot(xx, yy3, '-.', lw=linewidth, color='k', label='Gaussian')
 # T0str = r'$A(2k_F^3 - 3k_F^2 *\sqrt{-\omega - E_b} + \sqrt{-\omega - E_b}^3)\frac{\sqrt{-\omega-E_b}}{-\omega-E_b}$'
 # ax_ls.plot(xx, yyT0, ls =':', color='g',label='T=0: ' + T0str)
 ZYstr = r'$A * exp(\frac{\Delta + E_b}{T}) * (-\Delta - E_b)^{-1/2} *\Theta(-\Delta-E_b)$'
-ax_ls.plot(xxZY, yyZY, ls='-', lw=linewidth, color='g', label='Eq. (49), arb. scale, ' + ZYstr)
+ax_ls.plot(xxZY, yyZY, '-', lw=linewidth, color='g', label='Eq. (49), arb. scale, ' + ZYstr)
 
 textstr = '\n'.join((
  	r'Mod. MB fit params:',
@@ -456,15 +457,15 @@ axpred.axis('tight')
 quantities = [r"$\Omega_d$ (zero range)",
 			  r"$\Omega_+$ (zero range)", 
 			  r"$\Omega_{tot}$ (zero range)", 
+			  r"$\Omega_d$ (corr.)",
 			  r"$\Omega_+$ (corr.)", 
-			  r"$\Omega_{tot}$ (corr.)", 
-			  r"$\Omega_d = \Omega_{tot} - \Omega_+$"]
+			  r"$\Omega_{tot}$ (corr.)"]
 values = ["{:.1f}".format(cs_pred), 
 		  "{:.1f}".format(csHFT_pred),
 		  "{:.1f}".format(cstot_pred_zerorange),
+		  "{:.1f}".format(cstot_pred - csHFT_pred_corr),
 		  "{:.1f}".format(csHFT_pred_corr),
-		  "{:.1f}".format(cstot_pred), 
-		  "{:.1f}".format(cstot_pred - csHFT_pred_corr)]
+		  "{:.1f}".format(cstot_pred)]
 table = list(zip(quantities, values))
 
 the_table = axpred.table(cellText=table, loc='center')
@@ -476,19 +477,15 @@ axpred.set(title='Predicted clock shifts [EF]')
 axexp = axs[1]
 axexp.axis('off')
 axexp.axis('tight')
-quantities = [r"$\Omega_d$ (red)", 
-			  r"$\Omega_d$ (blue)", 
-			  r"$\Omega_d$ (black)", 
-			  r"$\bar{\Omega_d}$",
+quantities = [
+			  r"$\widebar{\Omega_d}$",
 			  r"$\Omega_+$", 
 			  r"$\Omega_{tot}$"]
 # EXPERIMENTAL VALUES
 HFT_CS_EXP = 5.77
-HFT_CS_EXP = 5
+HFT_CS_EXP = 4.8
 mean_dimer_cs = (clockshift1 +clockshift2 + clockshift3)/3
-values = ["{:.1f}".format(clockshift1),
-		  "{:.1f}".format(clockshift2),
-		  "{:.1f}".format(clockshift3),
+values = [
 		  "{:.1f}".format(mean_dimer_cs),
 		  "{:.1f}".format(HFT_CS_EXP), 
 		  "{:.1f}".format(mean_dimer_cs + HFT_CS_EXP)]
