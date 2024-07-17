@@ -437,17 +437,21 @@ axexp = axs[1]
 axexp.axis('off')
 axexp.axis('tight')
 quantities = [
-			  r"$\widebar{\Omega_d}$",
+			  r"$\widebar{\Omega_d}$ (lineshape)",
+			  r"$\widebar{\Omega_d}$ (bootstrap)",
 			  r"$\Omega_+$", 
-			  r"$\Omega_{tot}$"]
+			  r"$\Omega_{tot}$ (lineshape)",
+			  r"$\Omega_{tot}$ (bootstrap)"]
 # EXPERIMENTAL VALUES
 HFT_CS_EXP = 5.77
 HFT_CS_EXP = 4.8
 mean_dimer_cs = (clockshift1 +clockshift2 + clockshift3)/3
 values = [
 		  "{:.1f}".format(mean_dimer_cs),
+		  "{:.1f}".format(CS_BS_mean),
 		  "{:.1f}".format(HFT_CS_EXP), 
-		  "{:.1f}".format(mean_dimer_cs + HFT_CS_EXP)]
+		  "{:.1f}".format(mean_dimer_cs + HFT_CS_EXP),
+		  "{:.1f}".format(CS_BS_mean + HFT_CS_EXP)]
 table = list(zip(quantities, values))
 
 the_table = axexp.table(cellText=table, loc='center')
