@@ -61,7 +61,7 @@ metadata = pd.read_excel(metadata_file)
 files =  metadata.loc[metadata['exclude'] == 0]['filename'].values
 
 # Manual file select, comment out if exclude column should be used instead
-files = ["2024-07-05_D_e"]
+files = ["2024-07-03_F_e"]
 
 # save file path
 savefilename = 'sumrule_analysis_results.xlsx'
@@ -218,12 +218,18 @@ for filename in files:
 	# compute Rabi frequency, scaled transfer, and contact
 	run.data['OmegaR'] = 2*pi*run.data['sqrt_pulse_area'] \
 							* VpptoOmegaR * run.data['Vpp']
+	OmegaR_pk = max(run.data['OmegaR'])
+	OmegaR_max = 2*pi*1*VpptoOmegaR*10
+	# here trf was in s so convert to ms, OmegaR is in kHz
+	pulsejuice = OmegaR_pk**2 * (trf*1e3) / OmegaR_max 
 	run.data['ScaledTransfer'] = run.data.apply(lambda x: GammaTilde(x['transfer'],
 									h*EF*1e6, x['OmegaR']*1e3, trf), axis=1)
 	run.data['C'] = run.data.apply(lambda x: 2*np.sqrt(2)*pi**2*x['ScaledTransfer'] * \
 									   (np.abs(x['detuning'])/EF)**(3/2), axis=1)
 	# run.data = run.data[run.data.detuning != 0]
-			
+	# need a filter like this? Transfer should be nonnegative outside of noise floor
+	run.data = run.data[run.data.ScaledTransfer > -0.1] 
+	# temp
 	### now group by freq to get mean and stddev of mean
 	run.group_by_mean(xname)
 	
@@ -250,8 +256,9 @@ for filename in files:
 	ylabel = r"Transfer $\Gamma \,t_{rf}$"
 	
 	xlims = [-0.04,max(x)]
+	ylims = [-0.01,0.05]
 	
-	ax.set(xlabel=xlabel, ylabel=ylabel, xlim=xlims)
+	ax.set(xlabel=xlabel, ylabel=ylabel, xlim=xlims, ylim=ylims)
 	ax.errorbar(x, y, yerr=yerr, fmt='o')
 	
 	### plot scaled transfer
@@ -292,10 +299,10 @@ for filename in files:
 	### plot zoomed-in scaled transfer
 	ax = axs[1,1]
 	
-	xlims = [-1,4]
+	xlims = [-1,10]
 	axxlims = xlims
-	ylims = [min(run.data['ScaledTransfer'])-0.01,
-			 0.5]
+	ylims = [-0.01,
+			 0.02]
 	xs = np.linspace(xlims[0], xlims[-1], len(y))
 	
 	ax.set(xlabel=xlabel, ylabel=ylabel, xlim=axxlims, ylim=ylims)
@@ -399,7 +406,7 @@ for filename in files:
 	ylabel = r"Contact $C/N$ [$k_F$]"
 	
 	xlims = [-2,max(x)]
-	ylims = [min(run.data['C']), max(run.data['C'])]
+	ylims = [-0.1, max(run.data['C'])]
 	Cdetmin = 2
 	Cdetmax = 10
 	xs = np.linspace(Cdetmin, Cdetmax, num)
@@ -489,6 +496,7 @@ for filename in files:
 		datatosave = {
 				   'Run':[filename], 
 	 			  'Gain':[gain], 
+				   'Pulse Param':[pulsejuice],
 				   'Pulse Time (us)':[trf*1e6],
 				   'Pulse Type':[pulsetype],
 				   'EF':[EF],
@@ -517,6 +525,7 @@ for filename in files:
 			
 		if Bootstrap == True:
 			datatosavePlusBS = {
+					'C/SR': [C_o_SR],
 				  'SR BS mean': [SR_BS_mean],
 				  'e_SR BS': [e_SR_BS],
 				  'FM BS mean': [FM_BS_mean],
@@ -604,26 +613,37 @@ for filename in files:
 		
 		# fits
 		ax = axs[0,0]
-		x = run.avg_data['detuning']/EF
-		y = run.avg_data['ScaledTransfer']
-		yerr = run.avg_data['em_ScaledTransfer']
-		xlabel = r"Detuning $\Delta$"
-		ylabel = r"Scaled Transfer $\tilde\Gamma$"
+		## contact over SR distribution
+		xlabel = "Contact over Sum Rule"
+		ylabel = "Occurances"
+		ax.set(xlabel=xlabel, ylabel=ylabel)
+		ax.hist(Cmean/(np.array(SR_BS_dist)*2), bins=bins)
+		ax.axvline(x=Cmean/(lower_SR*2), color='red', alpha=0.5, linestyle='--', marker='')
+		ax.axvline(x=Cmean/(upper_SR*2), color='red', alpha=0.5, linestyle='--', marker='')
+		ax.axvline(x=Cmean/(median_SR*2), color='red', linestyle='--', marker='')
+		ax.axvline(x=Cmean/(SR_BS_mean*2), color='k', linestyle='--', marker='')
 		
-		xdata = run.data['detuning']/EF
-		datamask = xdata.between(*xfitlims)
+		## scaled transfer with fit
+# 		x = run.avg_data['detuning']/EF
+# 		y = run.avg_data['ScaledTransfer']
+# 		yerr = run.avg_data['em_ScaledTransfer']
+# 		xlabel = r"Detuning $\Delta$"
+# 		ylabel = r"Scaled Transfer $\tilde\Gamma$"
+# 		
+# 		xdata = run.data['detuning']/EF
+# 		datamask = xdata.between(*xfitlims)
 
-		ylims = [min(run.data.ScaledTransfer[datamask]),
-				 max(run.data.ScaledTransfer[datamask])]
-		
-		plotmask = x.between(*xfitlims)
-		xs = np.linspace(xlims[0], xlims[-1], len(y))
-		
-		ax.set(xlabel=xlabel, ylabel=ylabel, xlim=xfitlims, ylim=ylims)
-		ax.plot(xs, fit_func(xs, *popt), '--r')
-		ax.errorbar(x[plotmask], y[plotmask], yerr=yerr[plotmask], 
-			  fmt='o', label=label)
-		ax.legend()
+# 		ylims = [min(run.data.ScaledTransfer[datamask]),
+# 				 max(run.data.ScaledTransfer[datamask])]
+# 		
+# 		plotmask = x.between(*xfitlims)
+# 		xs = np.linspace(xlims[0], xlims[-1], len(y))
+# 		
+# 		ax.set(xlabel=xlabel, ylabel=ylabel, xlim=xfitlims, ylim=ylims)
+# 		ax.plot(xs, fit_func(xs, *popt), '--r')
+# 		ax.errorbar(x[plotmask], y[plotmask], yerr=yerr[plotmask], 
+# 			  fmt='o', label=label)
+# 		ax.legend()
 		
 		# sumrule distribution
 		ax = axs[0,1]
@@ -736,7 +756,8 @@ if Summaryplots == True:
 	plt.rcParams.update({"figure.figsize": [12,8]})
 	fig, axes = plt.subplots(2,3)
 
-	xlabel = r"Gain"
+# 	xlabel = r"Gain"
+	xlabel = r"$\Omega_{R,pk}^2 t_{rf} / \Omega_{R, max}$"
 	
 	# sumrule vs gain
 	ax_SR = axes[0,0]
@@ -821,14 +842,16 @@ if Summaryplots == True:
 					e_FM = np.zeros(len(FM))
 					e_CS = np.zeros(len(CS))
 				
-				ax_C.errorbar(sub_df['Gain'], sub_df['C'], yerr=sub_df['e_C'], fmt=marker,ecolor = dark_color)
-				ax_CoSR.errorbar(sub_df['Gain'], sub_df['C/SR'], yerr=sub_df['e_C/SR'], fmt=marker,label=labeltrf,ecolor = dark_color)
-				plot_pST = ax_pST.errorbar(sub_df['Gain'], sub_df['Peak Scaled Transfer'], 
+				xname = 'Pulse Param'
+				ax_C.errorbar(sub_df[xname], sub_df['C'], yerr=sub_df['e_C'], fmt=marker,ecolor = dark_color)
+				ax_CoSR.errorbar(sub_df[xname], sub_df['C/SR'], yerr=sub_df['e_C/SR'], fmt=marker,label=labeltrf,ecolor = dark_color)
+				plot_pST = ax_pST.errorbar(sub_df[xname], sub_df['Peak Scaled Transfer'], 
 						 yerr=sub_df['e_Peak Scaled Transfer'], fmt=marker, label=labelEF,ecolor = dark_color)
 				
-				ax_SR.errorbar(sub_df['Gain'], SR, yerr=e_SR, fmt=marker,ecolor = dark_color)
-				ax_FM.errorbar(sub_df['Gain'], FM, yerr=e_FM, fmt=marker,ecolor = dark_color)
-				ax_CS.errorbar(sub_df['Gain'], CS, yerr=e_CS, fmt=marker,ecolor = dark_color)
+				ax_SR.errorbar(sub_df[xname], SR, yerr=e_SR, fmt=marker,ecolor = dark_color)
+				ax_FM.errorbar(sub_df[xname], FM, yerr=e_FM, fmt=marker,ecolor = dark_color)
+				ax_CS.errorbar(sub_df[xname], CS, yerr=e_CS, fmt=marker,ecolor = dark_color)
+				
 			except TypeError:
 				print()
 				print('Missing a column in the .xlsx summary data file so the summary plots are being messed up')
@@ -841,8 +864,16 @@ if Summaryplots == True:
 				unique_handlestrf.append(plot_pST)
 				unique_labelstrf.append(labeltrf)
 				
-	ax_pST.legend(unique_handlesEF,unique_labelsEF)
-	ax_CoSR.legend(unique_handlestrf,unique_labelstrf)
+	leg1 = ax_pST.legend(unique_handlesEF,unique_labelsEF, loc='upper right')
+	plt.gca().add_artist(leg1)
+	ax_pST.legend(unique_handlestrf, unique_labelstrf, loc='center right')
+	
+	# add some average hlines
+	CSmean = np.mean(df.CS)
+	CoSRmean = np.mean(df['C/SR'])
+	ax_CS.hlines(CSmean, min(df[xname]), max(df[xname]))
+	ax_CoSR.hlines(CoSRmean, min(df[xname]), max(df[xname]))
+	
 	fig.tight_layout()
 	plt.show()
 
