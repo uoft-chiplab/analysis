@@ -177,7 +177,7 @@ def Bootstrap_spectra_fit_trapz(xs, ys, xfitlims, xstar, fit_func,
 def DimerBootStrapFit(xs, ys, xfitlims, Ebfix, fit_func, 
 									trialsB=1000, pGuess=[0.04,0.7]):
 		
-	def lineshapefit_fixedEb(xi, sigma=1, Ebfix):
+	def lineshapefit_fixedEb(xi, sigma, Ebfix):
 		x0 = Ebfix
 		return np.sqrt(-xi+x0) * np.exp((xi - x0)/sigma) * np.heaviside(-xi+x0,1)
 	
@@ -249,12 +249,12 @@ def DimerBootStrapFit(xs, ys, xfitlims, Ebfix, fit_func,
 		
 		# sumrule using each set
 		SR = np.trapz(y_interp, x=x_interp) 
-		SRlineshape = np.trapz(fit_func(xi, *pFit, Ebfix), x=x_interp) 
+		# SRlineshape = np.trapz(fit_func(xi, *pFit, Ebfix), x=x_interp) 
 
 # 		print(np.trapz(y_interp, x=x_interp))
 		# first moment using each set	
 		FM = np.trapz(y_interp*x_interp, x=x_interp) 
-		FMlineshape = np.trapz(fit_func(xi, *pFit, Ebfix)*x_interp, x=x_interp) 
+		# FMlineshape = np.trapz(fit_func(xi, *pFit, Ebfix)*x_interp, x=x_interp) 
 		# print(fit_func(xi, *pFit, Ebfix))
 		# print(y_interp)
 		# clock shift
@@ -273,7 +273,7 @@ def DimerBootStrapFit(xs, ys, xfitlims, Ebfix, fit_func,
 		SR_distr.append(SR)
 	
 	# return everything
-	return SR_distr, FM_distr, CS_distr, pFitB, SRlineshape, FMlineshape, SR, FM, CS
+	return SR_distr, FM_distr, CS_distr, pFitB, SR, FM, CS
 
 
 # def MonteCarlo_trapz(xs, ys, yserr, num_iter=1000):
