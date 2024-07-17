@@ -6,14 +6,14 @@
 Data class for loading, fitting, and plotting .dat
 Matlab output files
 
-Relies on functions.py
+Relies on fit_functions.py
 """
-
+# %%
 import os 
 from glob import glob
 import sys
 from library import *
-from fit_functions import *
+# from . import fit_functions
 from scipy.optimize import curve_fit
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -344,3 +344,5 @@ class Data:
 # plt.ylabel('Slope')
 # plt.plot(odtratio,mvals,'.')
 		
+
+# %%

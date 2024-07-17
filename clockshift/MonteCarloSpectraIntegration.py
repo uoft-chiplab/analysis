@@ -176,13 +176,10 @@ def Bootstrap_spectra_fit_trapz(xs, ys, xfitlims, xstar, fit_func,
 
 def DimerBootStrapFit(xs, ys, xfitlims, Ebfix, fit_func, 
 									trialsB=1000, pGuess=[0.04,0.7]):
-	
-	""" """
-	def lineshapefit_fixedEb(xi, Ebfix):
+		
+	def lineshapefit_fixedEb(xi, sigma=1, Ebfix):
 		x0 = Ebfix
-# 		ls = A*np.sqrt(-x+x0) * np.exp((x - x0)/sigma) * np.heaviside(-x+x0,1)
-# 		ls = np.nan_to_num(ls)
-		return np.sqrt(-xi+x0) * np.exp((xi - x0)/0.7) * np.heaviside(-xi+x0,1)
+		return np.sqrt(-xi+x0) * np.exp((xi - x0)/sigma) * np.heaviside(-xi+x0,1)
 	
 	num = 5000 # points to integrate over
 	
@@ -217,10 +214,9 @@ def DimerBootStrapFit(xs, ys, xfitlims, Ebfix, fit_func,
 		
 		fitpoints = np.array([[xfit, yfit] for xfit, yfit in zip(xTrial, yTrial) \
 						if (xfit > xfitlims[0] and xfit < xfitlims[-1])])
-# 		print(pGuess)
+		# print(pGuess)
 
 		try:
-			# pylint: disable=unbalanced-tuple-unpacking
 			pFit, cov = curve_fit(fit_func, fitpoints[:,0], 
 						 fitpoints[:,1], pGuess)
 		except Exception:
@@ -244,24 +240,24 @@ def DimerBootStrapFit(xs, ys, xfitlims, Ebfix, fit_func,
 	
 		# compute interpolation array for y, num by num_iter in size
 		y_interp = np.array([np.interp(x, xTrial, yTrial) for x in x_interp])
-# 		print(x_interp)
+		# print(x_interp)
 	
 		# integral from xi to infty
-		SR_extrapolation = pFit[0]*lineshapefit_fixedEb(xi, Ebfix)
+		SR_extrapolation = pFit[0]*lineshapefit_fixedEb(xi, pFit[1],Ebfix)
 # 		print(SR_extrapolation)
-		FM_extrapolation = pFit[0]*lineshapefit_fixedEb(xi, Ebfix)
-	
-		# for the integration, we first sum the interpolation, 
-		# then the extrapolation, then we add the analytic -5/2s portion
+		FM_extrapolation = pFit[0]*lineshapefit_fixedEb(xi, pFit[1], Ebfix)
 		
 		# sumrule using each set
-		SR = np.trapz(y_interp, x=x_interp) + SR_extrapolation
+		SR = np.trapz(y_interp, x=x_interp) 
+		SRlineshape = np.trapz(fit_func(xi, *pFit, Ebfix), x=x_interp) 
+
 # 		print(np.trapz(y_interp, x=x_interp))
 		# first moment using each set	
-		FM = np.trapz(y_interp*x_interp, x=x_interp) + FM_extrapolation
-	
+		FM = np.trapz(y_interp*x_interp, x=x_interp) 
+		FMlineshape = np.trapz(fit_func(xi, *pFit, Ebfix)*x_interp, x=x_interp) 
+		print(fit_func(xi, *pFit, Ebfix))
+		# print(y_interp)
 		# clock shift
-		# we need to do this sample by sample so we have correlated SR and F
 		HFTsumrule = 0.96
 		CS = FM/(SR+HFTsumrule)
 		
@@ -277,7 +273,7 @@ def DimerBootStrapFit(xs, ys, xfitlims, Ebfix, fit_func,
 		SR_distr.append(SR)
 	
 	# return everything
-	return SR_distr, FM_distr, CS_distr, pFitB, SR_extrap_distr, FM_extrap_distr, SR, FM, CS
+	return SR_distr, FM_distr, CS_distr, pFitB, SRlineshape, FMlineshape, SR, FM, CS
 
 
 # def MonteCarlo_trapz(xs, ys, yserr, num_iter=1000):
