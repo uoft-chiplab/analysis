@@ -4,22 +4,34 @@ Created on Thu Jun  6 20:12:51 2024
 
 @author: coldatoms
 """
-# %%
-import os
-proj_path = os.path.dirname(os.path.realpath(__file__))
-root = os.path.dirname(proj_path)
-data_path = os.path.join(proj_path, 'data')
-figfolder_path = os.path.join(proj_path, 'figures')
 
-import imp 
-library = imp.load_source('library',os.path.join(root,'library.py'))
-data_class = imp.load_source('data_class',os.path.join(root,'data_class.py'))
+# %%
+# import os
+# proj_path = os.path.dirname(os.path.realpath(__file__))
+# root = os.path.dirname(proj_path)
+# data_path = os.path.join(proj_path, 'data')
+# figfolder_path = os.path.join(proj_path, 'figures')
+
+# import imp 
+# library = imp.load_source('library',os.path.join(root,'library.py'))
+# data_class = imp.load_source('data_class',os.path.join(root,'data_class.py'))
+# =======
+import os
+import sys
+# this is a hack to access modules in the parent directory
+# Get the current script's directory
+current_dir = os.path.dirname(os.path.abspath(__file__))
+# Get the parent directory by going one level up
+parent_dir = os.path.dirname(current_dir)
+# Add the parent directory to sys.path
+if parent_dir not in sys.path:
+	sys.path.append(parent_dir)
 
 from data_class import Data
 from scipy.optimize import curve_fit
 import matplotlib.colors as mc
 import colorsys
-import os
+import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from library import GammaTilde, pi, h
@@ -32,12 +44,12 @@ proj_path = os.path.dirname(os.path.realpath(__file__))
 data_path = os.path.join(proj_path, "data")
 root = os.path.dirname(proj_path)
 
-Bootstrap = True
-Bootstrapplots = True
+Bootstrap = False
+Bootstrapplots = False
 
 
 # plotting things
-linewidth=5
+linewidth=4
 def adjust_lightness(color, amount=0.5):
     try:
         c = mc.cnames[color]
@@ -54,41 +66,33 @@ Bfield = 202.14 # G
 a0 = 5.2917721092e-11 # m
 re = 107 * a0
 def a13(B):
-	abg = 167.6*a0
+	abg = 167.3*a0 #.6 or .3?
 	DeltaB = 7.2
 	B0=224.2
 	return abg*(1 - DeltaB/(B-B0))
 
-VVAtoVppfile = os.path.join(root, "VVAtoVpp.txt") # calibration file
-VVAs, Vpps = np.loadtxt(VVAtoVppfile, unpack=True)
-VpptoOmegaR = 27.5833 # kHz
-def VVAtoVpp(VVA):
- 	"""Match VVAs to calibration file values. Will get mad if the VVA is not
-		also the file. """
- 	for i, VVA_val in enumerate(VVAs):
-		 if VVA == VVA_val:
- 			Vpp = Vpps[i]
- 	return Vpp
-
-Vpp = VVAtoVpp(1.4) -0.007
+# using 43.2 MHz VVA calibration (very minor difference at this VVA)
+plot_VVAcal = False
+data_file = os.path.join(data_path, 'VVAtoVpp_square_43p2MHz.txt')
+cal = pd.read_csv(data_file, sep='\t', skiprows=1, names=['VVA','Vpp'])
+calInterp = lambda x: np.interp(x, cal['VVA'], cal['Vpp'])
+if plot_VVAcal:
+	fig, ax = plt.subplots()
+	xx = np.linspace(cal.VVA.min(), cal.VVA.max(),100)
+	ax.plot(xx, calInterp(xx), '--')
+	ax.plot(cal.VVA, cal.Vpp, 'o')
+	ax.set(xlabel='VVA', ylabel='Vpp')
+pulsearea = 1 # square pulse
+VpptoOmegaR = 27.5833 # kHz 
+VVA = 1.4
+OmegaR = 2*pi*pulsearea*VpptoOmegaR*calInterp(VVA) # 1/s
 ff=1.03
 trf = 640e-6
-pulseArea=1
-OmegaR = 2*pi*pulseArea*VpptoOmegaR*Vpp # 1/s
 
-def dimerlineshape(omega, Eb, TMHz, fudge=0, arb_scale=1):
-	# everything in MHz
-	Gamma = (np.sqrt(-omega-Eb-fudge) * np.exp((omega+Eb+fudge)/TMHz)* np.heaviside(-omega - Eb-fudge, 1))* arb_scale
-# 	Gamma = np.nan_to_num(Gamma)
-	return Gamma
-
-def dimerlineshape2(omega, Eb, TMHz, arb_scale=1):
+# various lineshape functions for fitting or modeling
+def lsZY_highT(omega, Eb, TMHz, arb_scale=1):
 	Gamma = arb_scale*(np.exp((omega - Eb)/TMHz)) / np.sqrt((-omega+Eb)) * np.heaviside(-omega+Eb, 1)
 	Gamma = np.nan_to_num(Gamma)
-	return Gamma
-
-def dimerls2exp(omega, Eb, TMHz, arb_scale=1):
-	Gamma = arb_scale*(np.exp((omega - Eb)/TMHz))
 	return Gamma
 
 def lineshapefit(x, A, x0, sigma):
@@ -97,13 +101,13 @@ def lineshapefit(x, A, x0, sigma):
 	return ls
 # Ebfix = 3.97493557
 Ebfix = -3.975*1e3 /EF
-def lineshapefit_fixedEb(x, A, sigma):
+def lsMB_fixedEb(x, A, sigma):
 	x0 = Ebfix
 	ls = A*np.sqrt(-x+x0) * np.exp((x - x0)/sigma) * np.heaviside(-x+x0,1)
 	ls = np.nan_to_num(ls)
 	return ls
 
-def lineshapep3fit_fixedEb(x, A, sigma):
+def lsmom3_fixedEb(x, A, sigma):
 	x0 = Ebfix
 	ls = A*(-x+x0) * np.exp((x-x0)/sigma) * np.heaviside(-x+x0,1)
 	ls = np.nan_to_num(ls)
@@ -134,19 +138,16 @@ T = ToTF * (EF*1000)
 field = 202.14
 freq75 = 47.2227 # MHz, 202.14 G
 
+# process data
 run.data['detuning'] = ((run.data.freq - freq75) * 1e3)/EF # kHz in units of EF
 bgrange = [-3.97*1e3/EF, run.data.detuning.max()]
 bgmean = np.mean(run.data[run.data['detuning'].between(bgrange[0], bgrange[1])]['sum95'])
 run.data['transfer'] = (-run.data.sum95 + bgmean) / bgmean
-
 run.data['ScaledTransfer'] = run.data.apply(lambda x: GammaTilde(x['transfer'],
 								h*EF*1e3, OmegaR*1e3, trf), axis=1)
-run.data['ScaledTransfer'] = run.data['ScaledTransfer'] # horrible
-
-
 run.group_by_mean('detuning')
 
-
+# arbitrary cutoff because some points look strange
 cutoff = -4.02*1e3/EF
 run.avg_data['filter'] = np.where(run.avg_data['detuning'] > cutoff, 1, 0)
 
@@ -160,47 +161,61 @@ xnfilt = nfiltdf['detuning']
 ynfilt = nfiltdf['ScaledTransfer']
 yerrnfilt = nfiltdf['em_ScaledTransfer']
 
+# modified MB
 guess1 = [1, 4]
-popt1,pcov1 = curve_fit(lineshapefit_fixedEb, x, y, sigma=yerr, p0=guess1)
+popt1,pcov1 = curve_fit(lsMB_fixedEb, x, y, sigma=yerr, p0=guess1)
 perr1 = np.sqrt(np.diag(pcov1))
 print('modified MB lineshape fit: ')
 print(popt1)
+# modified MB with extra factor of momentum
 guess2 = [1, T * 1e-3/EF]
-popt2,pcov2 = curve_fit(lineshapep3fit_fixedEb, x, y, sigma=yerr, p0=guess2)
+popt2,pcov2 = curve_fit(lsmom3_fixedEb, x, y, sigma=yerr, p0=guess2)
 perr2 = np.sqrt(np.diag(pcov2))
 print('modified MB lineshape with another relative momentum: ')
 print(popt2)
-
+# Gaussian fit
 guess3 = [1, -262, T * 1e-3/EF]
 popt3,pcov3 = curve_fit(gaussian, x, y, sigma=yerr, p0=guess3)
 perr3 = np.sqrt(np.diag(pcov3))
 print('Gaussian: ')
 print(popt3)
 
-
+# evaluate each of the fits
 xrange=0.10*1e3/EF
 xlow = Ebfix-xrange
 xhigh = Ebfix + xrange
-xx = np.linspace(xlow, xhigh, 100000)
-yy = lineshapefit_fixedEb(xx, *popt1)
-yy2 = lineshapep3fit_fixedEb(xx, *popt2)
+xx = np.linspace(xlow, xhigh, 400)
+yy = lsMB_fixedEb(xx, *popt1)
+yy2 = lsmom3_fixedEb(xx, *popt2)
 yy3 = gaussian(xx, *popt3)
 guessT0 = [4e-25,Ebfix,0]
 yyT0 = lineshape_zeroT(xx, *guessT0)
+arbscale = 1e-2/2
+epsilon = 0.001 # small value to avoid divergence
+xxZY = np.linspace(xlow, xhigh, 400)
+yyZY = lsZY_highT(xxZY, Ebfix, T/1e3/EF, arb_scale=arbscale)
 
+# residuals
+yyres = y - lsMB_fixedEb(x, *popt1)
+yyres2 = y - lsmom3_fixedEb(x, *popt2)
+yyres3= y - gaussian(x, *popt3)
+yyresZY = y - lsZY_highT(x, Ebfix, T/1e3/EF, arb_scale=arbscale)
+
+# lineshape plot
 fig, ax_ls = plt.subplots()
 fig.suptitle('ac dimer spectrum at 202.14G, EF={:.1f} kHz, T/TF={:.2f}, T={:.1f} kHz'.format(EF, ToTF, ToTF*EF))
 ax_ls.errorbar(x, y, yerr, marker='o', ls='', markersize = 12, capsize=3, mew=3, mec = adjust_lightness('tab:gray',0.2), color='tab:gray', elinewidth=3)
 ax_ls.errorbar(xnfilt, ynfilt, yerrnfilt, marker='o', ls='', markersize = 12, capsize=3, mew=3, mfc='none', color='tab:gray', elinewidth=3)
 
 fitstr = r'$A\sqrt{-\Delta-E_b}*exp(\frac{\Delta+E_b}{T}) *\Theta(-\Delta-E_b)$'
-ax_ls.plot(xx, yy, ls='--', lw = linewidth, color='r', label='Mod. MB fit: ' + fitstr)
+ax_ls.plot(xx, yy,'--', lw = linewidth, color='r', label='Mod. MB fit: ' + fitstr)
 fitstr2 = r'$A (-\Delta-E_b)*exp(\frac{\Delta+E_b}{T}) *\Theta(-\Delta-E_b)$'
-# ax_ls.plot(xx, yy2, ls = ':', lw = linewidth, color ='b', label = 'Mod. MB w/ collision mom.: ' + fitstr2)
-# ax_ls.plot(xx, yy3, ls = '-.', lw=linewidth, color='k', label='Gaussian')
+ax_ls.plot(xx, yy2, ':', lw = linewidth, color ='b', label = 'Mod. MB w/ collision mom.: ' + fitstr2)
+ax_ls.plot(xx, yy3, '-.', lw=linewidth, color='k', label='Gaussian')
 # T0str = r'$A(2k_F^3 - 3k_F^2 *\sqrt{-\omega - E_b} + \sqrt{-\omega - E_b}^3)\frac{\sqrt{-\omega-E_b}}{-\omega-E_b}$'
 # ax_ls.plot(xx, yyT0, ls =':', color='g',label='T=0: ' + T0str)
-
+ZYstr = r'$A * exp(\frac{\Delta + E_b}{T}) * (-\Delta - E_b)^{-1/2} *\Theta(-\Delta-E_b)$'
+ax_ls.plot(xxZY, yyZY, ls='-', lw=linewidth, color='g', label='Eq. (49), arb. scale, ' + ZYstr)
 
 textstr = '\n'.join((
  	r'Mod. MB fit params:',
@@ -208,17 +223,7 @@ textstr = '\n'.join((
  	r'T = {:.2f} +/- {:.2f} EF'.format(popt1[1], perr1[1]),
 	 r'Eb fixed at {:.1f} EF'.format(Ebfix)
  	))
-ax_ls.text(xlow + 3, 0.018, textstr)
-
-# arbscale=0.25e-2
-arbscale = 1e-2/2
-epsilon = 0.001 # small value to avoid divergence
-xxZY = np.linspace(xlow, xhigh, 400)
-yyZY = dimerlineshape2(xxZY, Ebfix, T/1e3/EF, arb_scale=arbscale)
-# yyZY2 = dimerlineshape2(xxZY, Ebfix, 5*T/1e6, arb_scale=arbscale)
-ZYstr = r'$A * exp(\frac{\Delta + E_b}{T}) * (-\Delta - E_b)^{-1/2} *\Theta(-\Delta-E_b)$'
-ax_ls.plot(xxZY, yyZY, ls='-', lw=linewidth, color='g', label='Eq. (49), arb. scale, ' + ZYstr)
-# ax_ls.plot(xxZY, yyZY2, ls=':', color='m', label='ZY high-T lineshape')
+ax_ls.text(xlow + 3, 0.015, textstr)
 
 ax_ls.legend()
 ax_ls.set_xlim([xlow, xhigh])
@@ -236,51 +241,79 @@ ax2.set_xlabel("Detuning [MHz]")
 
 plt.tight_layout()
 
+# residuals plots
+fig, axs = plt.subplots(2,2)
+ylims=[-0.015, 0.015]
+ax1 = axs[0,0]
+ax1.errorbar(x, yyres,yerr,  marker='o', color='r', mec=adjust_lightness('r'), capsize=2, mew=2, elinewidth=2)
+ax1.set(title='Mod. MB', ylim=ylims)
+ax2 = axs[0,1]
+ax2.errorbar(x, yyres2, yerr, marker='o', color='b', mec=adjust_lightness('b'), capsize=2, mew=2, elinewidth=2)
+ax2.set(title='Mod. k^3', ylim=ylims)
+ax3 = axs[1,0]
+ax3.errorbar(x, yyres3, yerr, marker='o', color='k', mec=adjust_lightness('k'), capsize=2, mew=2, elinewidth=2)
+ax3.set(title='Gaussian', ylim=ylims)
+ax4 = axs[1,1]
+ax4.errorbar(x, yyresZY, yerr, marker='o', color='g', mec=adjust_lightness('g'), capsize=2, mew=2, elinewidth=2)
+ax4.set(title='high-T', ylim=ylims)
+fig.suptitle("Lineshape Residuals")
 ### save fig
-fig_file = os.path.join('figures', 'acdimerspectrum_fit.pdf')
-fig.savefig(os.path.join(proj_path, fig_file))
+# fig_file = os.path.join('figures', 'acdimerspectrum_fit.pdf')
+# fig.savefig(os.path.join(proj_path, fig_file))
 
 ### time for clock shift analysis I guess
-sumrule1 = np.trapz(lineshapefit_fixedEb(xx, *popt1), x=xx)
-sumrule2 = np.trapz(lineshapep3fit_fixedEb(xx, *popt2), x=xx)
+sumrule1 = np.trapz(lsMB_fixedEb(xx, *popt1), x=xx)
+sumrule2 = np.trapz(lsmom3_fixedEb(xx, *popt2), x=xx)
 sumrule3 = np.trapz(gaussian(xx, *popt3), x=xx)
-print("sumrule1 = {:.6f}".format(sumrule1))
-print("sumrule2 = {:.6f}".format(sumrule2))
-print("sumrule3 = {:.6f}".format(sumrule3))
+print("sumrule mod. MB = {:.6f}".format(sumrule1))
+print("sumrule mod. k^3 = {:.6f}".format(sumrule2))
+print("sumrule gaussian = {:.6f}".format(sumrule3))
 
-firstmoment1 = np.trapz(lineshapefit_fixedEb(xx, *popt1) * xx, x=xx)
-firstmoment2 = np.trapz(lineshapep3fit_fixedEb(xx, *popt2) * xx, x=xx)
+firstmoment1 = np.trapz(lsMB_fixedEb(xx, *popt1) * xx, x=xx)
+firstmoment2 = np.trapz(lsmom3_fixedEb(xx, *popt2) * xx, x=xx)
 firstmoment3 = np.trapz(gaussian(xx, *popt3) * xx, x=xx)
-print("first moment1 [EF] = {:.6f}".format(firstmoment1))
-print("first moment2 [EF] = {:.6f}".format(firstmoment2))
-print("first moment3 [EF] = {:.6f}".format(firstmoment3))
+print("first moment mod. MB [EF] = {:.6f}".format(firstmoment1))
+print("first moment mod. k^3 [EF] = {:.6f}".format(firstmoment2))
+print("first moment gaussian [EF] = {:.6f}".format(firstmoment3))
 
 # clock shifts
-# HFTsumrule = 0.43*2 
-HFTsumrule = 0.96 # fudged to make the whole thing 1
+# experimental clockshift
+HFTsumrule = 0.25 # approximately early July 
 clockshift1 = firstmoment1/(sumrule1+HFTsumrule)
 clockshift2 = firstmoment2/(sumrule2+HFTsumrule)
 clockshift3 = firstmoment3/(sumrule3+HFTsumrule)
-print("Clock shift1 [EF]= {:.6f}".format(clockshift1))
-print("Clock shift2 [EF] = {:.6f}".format(clockshift2))
-print("Clock shift3 [EF] = {:.6f}".format(clockshift3))
+print("Clock shift mod. MB [EF]= {:.6f}".format(clockshift1))
+print("Clock shift mod. k^3 [EF] = {:.6f}".format(clockshift2))
+print("Clock shift gaussian [EF] = {:.6f}".format(clockshift3))
+
+# ideal clockshift
+clockshift1 = firstmoment1/0.5
+clockshift2 = firstmoment2/0.5
+clockshift3 = firstmoment3/0.5
+print("Ideal clock shift mod. MB [EF]= {:.6f}".format(clockshift1))
+print("Ideal clock shift mod. k^3 [EF] = {:.6f}".format(clockshift2))
+print("Ideal clock shift gaussian [EF] = {:.6f}".format(clockshift3))
 
 Ctilde_est = 1.44
 cs_pred = -2/(pi*kF*a13(Bfield))*Ctilde_est
 print("predicted dimer clock shift [Eq. (5)]: "+ str(cs_pred))
 
+
 cstot_pred_zerorange = -1/(pi*kF*a13(Bfield)) * Ctilde_est
 print("Predicted total clock shift w/o eff. range term [Eq. (1)]: "+ str(cstot_pred_zerorange))
-csHFT_pred = cstot_pred_zerorange-cs_pred
+csHFT_pred = 1/(pi*kF*a13(Bfield)) *Ctilde_est
 print("Predicted HFT clock shift w/o eff. range term: " + str(csHFT_pred))
 
 cstot_pred = -1/(pi*kF*a13(Bfield)) * (1- pi**2/8*re/a13(Bfield)) * Ctilde_est
 print("Predicted total clock shift w/ eff. range term [Eq. (1)]: "+ str(cstot_pred))
-csHFT_pred = cstot_pred-cs_pred
-print("Predicted HFT clock shift w/ eff. range term: " + str(csHFT_pred))
+csHFT_pred_corr = 1/(pi*kF*a13(Bfield))* (1/(np.sqrt(1-re/a13(Bfield)))) *Ctilde_est
+print("Predicted HFT clock shift w/ eff. range term: " + str(csHFT_pred_corr))
 kappa = 1.2594*1e8
-I_d = kF*Ctilde_est / (pi * kappa) * (1/1+re/a13(Bfield))
+I_d = kF*Ctilde_est / (pi * kappa) * (1/(1+re/a13(Bfield)))
 print("Predicted dimer spectral weight [Eq. 6]: " + str(I_d))
+
+correctionfactor = 1/(kappa*a13(Bfield))*(1/(1+re/a13(Bfield)))
+print("Eff. range correction: "+ str(correctionfactor))
 
 
 def GenerateSpectraFit(Ebfix):
@@ -384,9 +417,10 @@ if (Bootstrapplots == True and Bootstrap == True):
 	fig.tight_layout(rect=[0, 0.03, 1, 0.95])	
 # %%	
 ### generate table
-fig, ax = plt.subplots()
-ax.axis('off')
-ax.axis('tight')
+fig, axs = plt.subplots(2)
+axpred = axs[0]
+axpred.axis('off')
+axpred.axis('tight')
 # quantities = ["sumrule (red)", "1st moment (red)", "Clock shift (red)", \
 # 			  "sumrule (blue)", "1st moment (blue)", "Clock shift (blue)", \
 # 				  "sumrule (black)", "1st moment (black)", "Clock shift (black)"]
@@ -399,27 +433,54 @@ ax.axis('tight')
 # 		  "{:.3f}".format(sumrule3),
 # 		  "{:.3f}".format(firstmoment3),
 # 		  "{:.3f}".format(clockshift3)]
-quantities = [r"$\Omega_d$ (red)", \
-			     r"$\Omega_d$ (blue)", \
-				  r"$\Omega_d$ (black)", \
-					  r"$\Omega_+$ (zero range)", \
-						  r"$\Omega_+$", \
-						  r"$\Omega_{tot}$ (zero range)", \
-							r"$\Omega_{tot}$"  ]
-HFT_CS_zerorange = 5.4
-HFT_CS = 7.4
-values = ["{:.3f}".format(clockshift1), 
-		  "{:.3f}".format(clockshift2),
-		  "{:.3f}".format(clockshift3),
-		  "{:.3f}".format(HFT_CS_zerorange),
-		  "{:.3f}".format(HFT_CS),
-		  "{:.3f}".format(cstot_pred_zerorange),\
-			  "{:.3f}".format(cstot_pred)]
+quantities = [r"$\Omega_d$ (zero range)",
+			  r"$\Omega_+$ (zero range)", 
+			  r"$\Omega_{tot}$ (zero range)", 
+			  r"$\Omega_+$ (corr.)", 
+			  r"$\Omega_{tot}$ (corr.)", 
+			  r"$\Omega_d = \Omega_{tot} - \Omega_+$"]
+values = ["{:.1f}".format(cs_pred), 
+		  "{:.1f}".format(csHFT_pred),
+		  "{:.1f}".format(cstot_pred_zerorange),
+		  "{:.1f}".format(csHFT_pred_corr),
+		  "{:.1f}".format(cstot_pred), 
+		  "{:.1f}".format(cstot_pred - csHFT_pred_corr)]
 table = list(zip(quantities, values))
 
-the_table = ax.table(cellText=table, loc='center')
+the_table = axpred.table(cellText=table, loc='center')
 the_table.auto_set_font_size(False)
 the_table.set_fontsize(12)
 the_table.scale(1,1.5)
 
-# %%
+
+# # %%
+axpred.set(title='Predicted clock shifts [EF]')
+
+axexp = axs[1]
+axexp.axis('off')
+axexp.axis('tight')
+quantities = [r"$\Omega_d$ (red)", 
+			  r"$\Omega_d$ (blue)", 
+			  r"$\Omega_d$ (black)", 
+			  r"$\bar{\Omega_d}$",
+			  r"$\Omega_+$", 
+			  r"$\Omega_{tot}$"]
+# EXPERIMENTAL VALUES
+HFT_CS_EXP = 5.77
+HFT_CS_EXP = 5
+mean_dimer_cs = (clockshift1 +clockshift2 + clockshift3)/3
+values = ["{:.1f}".format(clockshift1),
+		  "{:.1f}".format(clockshift2),
+		  "{:.1f}".format(clockshift3),
+		  "{:.1f}".format(mean_dimer_cs),
+		  "{:.1f}".format(HFT_CS_EXP), 
+		  "{:.1f}".format(mean_dimer_cs + HFT_CS_EXP)]
+table = list(zip(quantities, values))
+
+the_table = axexp.table(cellText=table, loc='center')
+the_table.auto_set_font_size(False)
+the_table.set_fontsize(12)
+the_table.scale(1,1.5)
+axexp.set(title='Experimental clock shifts [EF]')
+
+						
