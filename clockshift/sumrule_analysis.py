@@ -14,35 +14,35 @@ better
 	....
 	
 """
-# %%
+
 BOOTSRAP_TRAIL_NUM = 100
 
 # paths
 import os
-print(os.getcwd())
-proj_path = os.path.dirname(os.path.realpath('sumrule_analysis.py'))
-print(proj_path)
+# print(os.getcwd())
+proj_path = os.path.dirname(os.path.realpath(__file__))
+# print(proj_path)
 root = os.path.dirname(proj_path)
 data_path = os.path.join(proj_path, 'data')
 figfolder_path = os.path.join(proj_path, 'figures')
 
-import imp 
-library = imp.load_source('library',os.path.join(root,'library.py'))
-data_class = imp.load_source('data_class',os.path.join(root,'data_class.py'))
+# import imp 
+# library = imp.load_source('library',os.path.join(root,'library.py'))
+# data_class = imp.load_source('data_class',os.path.join(root,'data_class.py'))
 
 from library import pi, h, hbar, mK, a0, plt_settings, GammaTilde, tintshade, \
 				 tint_shade_color, ChipKaiser, ChipBlackman, markers, colors
 from data_class import Data
 from scipy.optimize import curve_fit
 from scipy.stats import sem
-from MonteCarloSpectraIntegration import MonteCarlo_spectra_fit_trapz, \
+from clockshift.MonteCarloSpectraIntegration import MonteCarlo_spectra_fit_trapz, \
 												Bootstrap_spectra_fit_trapz
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
 import time
-# %%
+
 ### This turns on (True) and off (False) saving the data/plots 
 Saveon = True
 
@@ -51,7 +51,7 @@ Analysis = True
 Summaryplots = True
 MonteCarlo = False
 Bootstrap = True
-Bootstrapplots = True
+Bootstrapplots = False
 Correlations = True
 
 ### metadata
@@ -62,6 +62,7 @@ files =  metadata.loc[metadata['exclude'] == 0]['filename'].values
 
 # Manual file select, comment out if exclude column should be used instead
 files = ["2024-07-03_F_e"]
+
 
 # save file path
 savefilename = 'sumrule_analysis_results.xlsx'
@@ -168,6 +169,8 @@ for filename in files:
 	
 	#### compute detuning
 	run.data['detuning'] = run.data[xname] - res_freq*np.ones(num) # MHz
+	zeroptsindices = np.where(np.array(run.data['detuning']) == 0)[0]
+# 	run.data['detuning'] = run.data['detuning'].drop(index=zeroptsindices)
 	
 	### compute bg c5, transfer, Rabi freq, etc.
 	if bg_freq == bg_freq: # nan check
@@ -888,4 +891,3 @@ if Summaryplots == True:
 	summaryfig_path = os.path.join(summaryfig_path, summaryfig_name)
 	fig.savefig(summaryfig_path)
 
-# %%
