@@ -191,7 +191,8 @@ def DimerBootStrapFit(xs, ys, xfitlims, Ebfix, fit_func,
 	pFitB = np.zeros([trialsB, len(pGuess)]) # array of fit params
 	SR_distr = []
 	FM_distr = []
-	CS_distr = []
+	CS_idl_distr = []
+	CS_exp_distr = []
 	SR_extrap_distr = []
 	FM_extrap_distr = []
 	
@@ -258,8 +259,10 @@ def DimerBootStrapFit(xs, ys, xfitlims, Ebfix, fit_func,
 		# print(fit_func(xi, *pFit, Ebfix))
 		# print(y_interp)
 		# clock shift
-		HFTsumrule = 0.96
-		CS = FM/(SR+HFTsumrule)
+		HFTsumrule = 0.25
+		idealSumrule = 0.5
+		CS_exp = FM/(SR+HFTsumrule)
+		CS_idl = FM / idealSumrule
 		
 # 		if SR<0 or CS<0 or CS>100:
 # 			print("Integration out of bounds")
@@ -268,12 +271,13 @@ def DimerBootStrapFit(xs, ys, xfitlims, Ebfix, fit_func,
 		SR_extrap_distr.append(SR_extrapolation)
 		FM_extrap_distr.append(FM_extrapolation)
 		
-		CS_distr.append(CS)
+		CS_idl_distr.append(CS_idl)
+		CS_exp_distr.append(CS_exp)
 		FM_distr.append(FM)
 		SR_distr.append(SR)
 	
 	# return everything
-	return SR_distr, FM_distr, CS_distr, pFitB, SR, FM, CS
+	return SR_distr, FM_distr, CS_idl_distr, CS_exp_distr, pFitB, SR, FM, CS_idl, CS_exp
 
 
 # def MonteCarlo_trapz(xs, ys, yserr, num_iter=1000):

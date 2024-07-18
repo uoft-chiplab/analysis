@@ -27,16 +27,16 @@ from library import GammaTilde, pi, h
 from clockshift.MonteCarloSpectraIntegration import DimerBootStrapFit
 from scipy.stats import sem
 
-# paths
+## paths
 proj_path = os.path.dirname(os.path.realpath(__file__))
 data_path = os.path.join(proj_path, "data")
 root = os.path.dirname(proj_path)
 
+## Bootstrap switches
 Bootstrap = True
 Bootstrapplots = True
 
-
-# plotting things
+## plotting things
 linewidth=4
 def adjust_lightness(color, amount=0.5):
     try:
@@ -46,11 +46,14 @@ def adjust_lightness(color, amount=0.5):
     c = colorsys.rgb_to_hls(*mc.to_rgb(c))
     return colorsys.hls_to_rgb(c[0], max(0, min(1, amount * c[1])), c[2])
 
-ToTF=0.31
-EF=15.2 # kHz
-kF = 1.1e7
+### metadata
+metadata_filename = 'metadata_dimer_file.xlsx'
+metadata_file = os.path.join(proj_path, metadata_filename)
+metadata = pd.read_excel(metadata_file)
+filename = '2024-07-17_J_e'
 
-Bfield = 202.14 # G
+## constants
+kF = 1.1e7
 a0 = 5.2917721092e-11 # m
 re = 107 * a0
 def a13(B):
@@ -70,12 +73,45 @@ if plot_VVAcal:
 	ax.plot(xx, calInterp(xx), '--')
 	ax.plot(cal.VVA, cal.Vpp, 'o')
 	ax.set(xlabel='VVA', ylabel='Vpp')
-pulsearea = 1 # square pulse
+
+### initialize run data
+df = metadata.loc[metadata.filename == filename].reset_index()
+if df.empty:
+	print("Dataframe is empty! The metadata likely needs updating." )
+
+xname = df['xname'][0]
+ff = df['ff'][0]
+trf = df['trf'][0] #s
+EF = df['EF'][0] #MHz
+Ebfix = -3.99*1e3/EF
+ToTF = df['ToTF'][0]
+VVA = df['VVA'][0] #V
+bg_freq_low = df['bg_freq_low'][0]
+bg_freq_high = df['bg_freq_high'][0]
+Bfield = df['Bfield'][0]
+res_freq = df['res_freq'][0]
+pulsetype = df['pulsetype'][0]
+remove_indices = df['remove_indices'][0]
+
+# create data structure
+filename = filename + ".dat"
+run = Data(filename, path=data_path)
+
+# define a few more constants
+T = ToTF * (EF*1000)
 VpptoOmegaR = 27.5833 # kHz 
-VVA = 1.4
+if pulsetype == 'square':
+	pulsearea=1
 OmegaR = 2*pi*pulsearea*VpptoOmegaR*calInterp(VVA) # 1/s
-ff=1.03
-trf = 640e-6
+
+# remove indices if requested
+if remove_indices == remove_indices: # nan check
+	if type(remove_indices) != int:	
+		remove_list = remove_indices.strip(' ').split(',')
+		remove_indices = [int(index) for index in remove_list]
+	run.data.drop(remove_indices, inplace=True)
+
+num = len(run.data[xname])
 
 # various lineshape functions for fitting or modeling
 def lsZY_highT(omega, Eb, TMHz, arb_scale=1):
@@ -87,9 +123,7 @@ def lineshapefit(x, A, x0, sigma):
 	ls = A*np.sqrt(-x-x0) * np.exp((x + x0)/sigma) * np.heaviside(-x-x0,1)
 	ls = np.nan_to_num(ls)
 	return ls
-# Ebfix = 3.97493557
-Ebfix = -3.975*1e3 /EF
-# Ebfix = -3.98*1e3/EF
+
 def lsMB_fixedEb(x, A, sigma):
 	x0 = Ebfix
 	ls = A*np.sqrt(-x+x0) * np.exp((x - x0)/sigma) * np.heaviside(-x+x0,1)
@@ -111,14 +145,8 @@ def gaussian(x, A, x0, sigma):
 	return A * np.exp(-(x-x0)**2/(2*sigma**2))
 
 
-filename='2024-06-12_S_e.dat'
-run = Data(filename,path=data_path)
-T = ToTF * (EF*1000)
-field = 202.14
-freq75 = 47.2227 # MHz, 202.14 G
-
 # process data
-run.data['detuning'] = ((run.data.freq - freq75) * 1e3)/EF # kHz in units of EF
+run.data['detuning'] = ((run.data.freq - res_freq) * 1e3)/EF # kHz in units of EF
 bgrange = [-3.97*1e3/EF, run.data.detuning.max()]
 bgmean = np.mean(run.data[run.data['detuning'].between(bgrange[0], bgrange[1])]['sum95'])
 run.data['transfer'] = (-run.data.sum95 + bgmean) / bgmean
@@ -127,7 +155,7 @@ run.data['ScaledTransfer'] = run.data.apply(lambda x: GammaTilde(x['transfer'],
 run.group_by_mean('detuning')
 
 # arbitrary cutoff because some points look strange
-cutoff = -4.02*1e3/EF
+cutoff = -4.04*1e3/EF
 run.avg_data['filter'] = np.where(run.avg_data['detuning'] > cutoff, 1, 0)
 
 filtdf = run.avg_data[run.avg_data['filter']==1]
@@ -202,12 +230,13 @@ textstr = '\n'.join((
  	r'T = {:.2f} +/- {:.2f} EF'.format(popt1[1], perr1[1]),
 	 r'Eb fixed at {:.1f} EF'.format(Ebfix)
  	))
-ax_ls.text(xlow + 3, 0.015, textstr)
+# ax_ls.text(xlow + 3, 0.015, textstr)
 
 ax_ls.legend()
 ax_ls.set_xlim([xlow, xhigh])
-ax_ls.set_ylim([-0.01, 0.03])
-ax_ls.set_xlim([-266, -259])
+# ax_ls.set_ylim([-0.01, 0.03])
+ax_ls.set_ylim([-0.01,0.03])
+# ax_ls.set_xlim([max(run.data.detuning), min(run.data.detuning)])
 ax_ls.set_ylabel(r'Scaled transfer $\tilde{\Gamma}$ [arb.]')
 ax_ls.set_xlabel(r'Detuning from 12-resonance $\Delta$ [EF]')
 
@@ -317,7 +346,7 @@ if Bootstrap == True:
 	y = np.array(run.data['ScaledTransfer'])
 	
 	# sumrule, first moment and clockshift with analytic extension
-	SR_BS_dist, FM_BS_dist, CS_BS_dist, pFits, SR, FM, CS  = \
+	SR_BS_dist, FM_BS_dist, CS_BS_idl_dist, CS_BS_exp_dist, pFits, SR, FM, CS_idl, CS_exp  = \
 		DimerBootStrapFit(x, y, xfitlims, Ebfix, fit_func, trialsB=BOOTSRAP_TRAIL_NUM)
 	# print(SRlineshape)
 	# print(SR)
@@ -325,13 +354,16 @@ if Bootstrap == True:
 	# print(FM)
 	SR_BS_mean, e_SR_BS = (np.mean(SR_BS_dist), np.std(SR_BS_dist))
 	FM_BS_mean, e_FM_BS = (np.mean(FM_BS_dist), np.std(FM_BS_dist))
-	CS_BS_mean, e_CS_BS = (np.mean(CS_BS_dist), np.std(CS_BS_dist))
+	CS_BS_idl_mean, e_CS_BS_idl = (np.mean(CS_BS_idl_dist), np.std(CS_BS_idl_dist))
+	CS_BS_exp_mean, e_CS_BS_exp = (np.mean(CS_BS_exp_dist), np.std(CS_BS_exp_dist))
 	# SR_extrap_mean, e_SR_extrap = (np.mean(SR_extrap_dist), np.std(SR_extrap_dist))
 	# FM_extrap_mean, e_FM_extrap = (np.mean(FM_extrap_dist), np.std(FM_extrap_dist))
-	CS_BS_mean, e_CS_BS = (np.mean(CS_BS_dist), sem(CS_BS_dist))
+	CS_BS_idl_mean, e_CS_BS_idl = (np.mean(CS_BS_idl_dist), sem(CS_BS_idl_dist))
+	CS_BS_exp_mean, e_CS_BS_exp = (np.mean(CS_BS_exp_dist), sem(CS_BS_exp_dist))
 	print(r"SR BS mean = {:.3f}$\pm$ {:.3f}".format(SR_BS_mean, e_SR_BS))
 	print(r"FM BS mean = {:.3f}$\pm$ {:.3f}".format(FM_BS_mean, e_FM_BS))
-	print(r"CS BS mean = {:.2f}$\pm$ {:.2f}".format(CS_BS_mean, e_CS_BS))
+	print(r"CS BS mean = {:.2f}$\pm$ {:.2f}".format(CS_BS_idl_mean, e_CS_BS_idl))
+	print(r"CS BS mean = {:.2f}$\pm$ {:.2f}".format(CS_BS_exp_mean, e_CS_BS_exp))
 	median_SR = np.nanmedian(SR_BS_dist)
 	upper_SR = np.nanpercentile(SR_BS_dist, 100-(100.0-conf)/2.)
 	lower_SR = np.nanpercentile(SR_BS_dist, (100.0-conf)/2.)
@@ -340,15 +372,18 @@ if Bootstrap == True:
 	upper_FM = np.nanpercentile(FM_BS_dist, 100-(100.0-conf)/2.)
 	lower_FM = np.nanpercentile(FM_BS_dist, (100.0-conf)/2.)
 	
-	median_CS = np.nanmedian(CS_BS_dist)
-	upper_CS = np.nanpercentile(CS_BS_dist, 100-(100.0-conf)/2.)
-	lower_CS = np.nanpercentile(CS_BS_dist, (100.0-conf)/2.)
+	median_CS_idl = np.nanmedian(CS_BS_idl_dist)
+	upper_CS_idl = np.nanpercentile(CS_BS_idl_dist, 100-(100.0-conf)/2.)
+	lower_CS_idl = np.nanpercentile(CS_BS_idl_dist, (100.0-conf)/2.)
+	median_CS_exp = np.nanmedian(CS_BS_exp_dist)
+	upper_CS_exp = np.nanpercentile(CS_BS_exp_dist, 100-(100.0-conf)/2.)
+	lower_CS_exp = np.nanpercentile(CS_BS_exp_dist, (100.0-conf)/2.)
 	print(r"SR BS median = {:.3f}+{:.3f}-{:.3f}".format(median_SR,
 												  upper_SR-SR, SR-lower_SR))
 	print(r"FM BS median = {:.3f}+{:.3f}-{:.3f}".format(median_FM, 
 												  upper_FM-FM, FM-lower_FM))
-	print(r"CS BS median = {:.2f}+{:.3f}-{:.3f}".format(median_CS, 
-												  upper_CS-CS, CS-lower_CS))
+	print(r"CS BS idl median = {:.2f}+{:.3f}-{:.3f}".format(median_CS_idl, 
+												  upper_CS_idl-CS_idl, CS_idl-lower_CS_idl))
 
 
 if (Bootstrapplots == True and Bootstrap == True):
@@ -361,7 +396,7 @@ if (Bootstrapplots == True and Bootstrap == True):
 # fits
 	
 	# sumrule distribution
-	ax = axs[0,1]
+	ax = axs[0,0]
 	xlabel = "Sum Rule"
 	ylabel = "Occurances"
 	ax.set(xlabel=xlabel, ylabel=ylabel)
@@ -372,7 +407,7 @@ if (Bootstrapplots == True and Bootstrap == True):
 	ax.axvline(x=SR_BS_mean, color='k', linestyle='--', marker='')
 	
 	# first moment distribution
-	ax = axs[1,0]
+	ax = axs[0,1]
 	xlabel = "First Moment"
 	ax.set(xlabel=xlabel, ylabel=ylabel)
 	ax.hist(FM_BS_dist, bins=bins)
@@ -382,14 +417,23 @@ if (Bootstrapplots == True and Bootstrap == True):
 	ax.axvline(x=FM_BS_mean, color='k', linestyle='--', marker='')
 	
 	# clock shift distribution
-	ax = axs[1,1]
-	xlabel = "Clock Shift"
+	ax = axs[1,0]
+	xlabel = "Clock Shift (ideal SR)"
 	ax.set(xlabel=xlabel, ylabel=ylabel)
-	ax.hist(CS_BS_dist, bins=bins)
-	ax.axvline(x=lower_CS, color='red', alpha=0.5, linestyle='--', marker='')
-	ax.axvline(x=upper_CS, color='red', alpha=0.5, linestyle='--', marker='')
-	ax.axvline(x=median_CS, color='red', linestyle='--', marker='')
-	ax.axvline(x=CS_BS_mean, color='k', linestyle='--', marker='')
+	ax.hist(CS_BS_idl_dist, bins=bins)
+	ax.axvline(x=lower_CS_idl, color='red', alpha=0.5, linestyle='--', marker='')
+	ax.axvline(x=upper_CS_idl, color='red', alpha=0.5, linestyle='--', marker='')
+	ax.axvline(x=median_CS_idl, color='red', linestyle='--', marker='')
+	ax.axvline(x=CS_BS_idl_mean, color='k', linestyle='--', marker='')
+
+	ax = axs[1,1]
+	xlabel = "Clock Shift (exp SR)"
+	ax.set(xlabel=xlabel, ylabel=ylabel)
+	ax.hist(CS_BS_exp_dist, bins=bins)
+	ax.axvline(x=lower_CS_exp, color='red', alpha=0.5, linestyle='--', marker='')
+	ax.axvline(x=upper_CS_exp, color='red', alpha=0.5, linestyle='--', marker='')
+	ax.axvline(x=median_CS_exp, color='red', linestyle='--', marker='')
+	ax.axvline(x=CS_BS_exp_mean, color='k', linestyle='--', marker='')
 
 	
 	# make room for suptitle
@@ -401,18 +445,6 @@ fig, axs = plt.subplots(2)
 axpred = axs[0]
 axpred.axis('off')
 axpred.axis('tight')
-# quantities = ["sumrule (red)", "1st moment (red)", "Clock shift (red)", \
-# 			  "sumrule (blue)", "1st moment (blue)", "Clock shift (blue)", \
-# 				  "sumrule (black)", "1st moment (black)", "Clock shift (black)"]
-# values = ["{:.3f}".format(sumrule1),
-# 		  "{:.3f}".format(firstmoment1),
-# 		  "{:.3f}".format(clockshift1), 
-# 		  "{:.3f}".format(sumrule2),
-# 		  "{:.3f}".format(firstmoment2),
-# 		  "{:.3f}".format(clockshift2),
-# 		  "{:.3f}".format(sumrule3),
-# 		  "{:.3f}".format(firstmoment3),
-# 		  "{:.3f}".format(clockshift3)]
 quantities = [r"$\Omega_d$ (zero range)",
 			  r"$\Omega_+$ (zero range)", 
 			  r"$\Omega_{tot}$ (zero range)", 
@@ -438,7 +470,8 @@ axexp.axis('off')
 axexp.axis('tight')
 quantities = [
 			  r"$\widebar{\Omega_d}$ (lineshape)",
-			  r"$\widebar{\Omega_d}$ (bootstrap)",
+			  r"$\widebar{\Omega_d}$ (bootstrap, ideal SR)",
+			  r"$\widebar{\Omega_d}$ (bootstrap, exp SR)",
 			  r"$\Omega_+$", 
 			  r"$\Omega_{tot}$ (lineshape)",
 			  r"$\Omega_{tot}$ (bootstrap)"]
@@ -448,10 +481,11 @@ HFT_CS_EXP = 4.8
 mean_dimer_cs = (clockshift1 +clockshift2 + clockshift3)/3
 values = [
 		  "{:.1f}".format(mean_dimer_cs),
-		  "{:.1f} +/- {:.1f}".format(CS_BS_mean,  e_CS_BS),
+		  "{:.1f} +/- {:.1f}".format(CS_BS_idl_mean,  e_CS_BS_idl),
+		  "{:.1f} +/- {:.1f}".format(CS_BS_exp_mean,  e_CS_BS_exp),
 		  "{:.1f}".format(HFT_CS_EXP), 
 		  "{:.1f}".format(mean_dimer_cs + HFT_CS_EXP),
-		  "{:.1f}".format(CS_BS_mean + HFT_CS_EXP)]
+		  "{:.1f}".format(CS_BS_idl_mean + HFT_CS_EXP)]
 table = list(zip(quantities, values))
 
 the_table = axexp.table(cellText=table, loc='center')
