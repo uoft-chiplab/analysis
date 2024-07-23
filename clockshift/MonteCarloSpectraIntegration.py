@@ -97,6 +97,8 @@ def Bootstrap_spectra_fit_trapz(xs, ys, xfitlims, xstar, fit_func,
 	CS_distr = []
 	SR_extrap_distr = []
 	FM_extrap_distr = []
+	SR_raw_distr = []
+	CS_raw_distr = []
 	
 	while (trialB < trialsB) and (fails < trialsB):
 		if (0 == trialB % (trialsB / 5)):
@@ -153,12 +155,17 @@ def Bootstrap_spectra_fit_trapz(xs, ys, xfitlims, xstar, fit_func,
 		# sumrule using each set
 		SR = np.trapz(y_interp, x=x_interp) + SR_extrapolation
 		
+		
+		
 		# first moment using each set	
 		FM = np.trapz(y_interp*x_interp, x=x_interp) + FM_extrapolation
 	
 		# clock shift
 		# we need to do this sample by sample so we have correlated SR and FM
 		CS = FM/SR
+		
+		SR_raw_distr.append(SR)
+		CS_raw_distr.append(CS)
 		
 		if SR<0 or CS<0 or CS>100:
 			print("Integration out of bounds")
@@ -170,9 +177,9 @@ def Bootstrap_spectra_fit_trapz(xs, ys, xfitlims, xstar, fit_func,
 		CS_distr.append(CS)
 		FM_distr.append(FM)
 		SR_distr.append(SR)
-	
+			
 	# return everything
-	return SR_distr, FM_distr, CS_distr, pFitB, SR_extrap_distr, FM_extrap_distr
+	return np.array(SR_distr), np.array(FM_distr), np.array(CS_distr), pFitB, np.array(SR_extrap_distr), np.array(FM_extrap_distr), np.array(SR_raw_distr), np.array(CS_raw_distr)
 
 def DimerBootStrapFit(xs, ys, xfitlims, Ebfix, fit_func, 
 									trialsB=1000, pGuess=[0.04,0.7]):
