@@ -26,6 +26,7 @@ from library import GammaTilde, pi, h
 
 from clockshift.MonteCarloSpectraIntegration import DimerBootStrapFit
 from scipy.stats import sem
+import pwave_fd_interp as FD # FD distribution data for interpolation functions, Ben Olsen
 
 ## paths
 proj_path = os.path.dirname(os.path.realpath(__file__))
@@ -56,8 +57,11 @@ filename = '2024-07-17_J_e'
 kF = 1.1e7
 a0 = 5.2917721092e-11 # m
 re = 107 * a0
+re_i = 104 * a0
+re_f = 124 * a0
+re = np.sqrt(re_i*re_f) # geometric mean 
 def a13(B):
-	abg = 167.3*a0 #.6 or .3?
+	abg = 167.3*a0 
 	DeltaB = 7.2
 	B0=224.2
 	return abg*(1 - DeltaB/(B-B0))
@@ -82,8 +86,8 @@ if df.empty:
 xname = df['xname'][0]
 ff = df['ff'][0]
 trf = df['trf'][0] #s
-EF = df['EF'][0] #MHz
-Ebfix = -3.99*1e3/EF
+EF = df['EF'][0] #kHz
+Ebfix = -3.993*1e3/EF
 ToTF = df['ToTF'][0]
 VVA = df['VVA'][0] #V
 bg_freq_low = df['bg_freq_low'][0]
@@ -144,6 +148,12 @@ def lineshape_zeroT(x, A, x0,C):
 def gaussian(x, A, x0, sigma):
 	return A * np.exp(-(x-x0)**2/(2*sigma**2))
 
+def lsFD(x, A, numDA):
+	PFD = FD.distRAv[numDA] # 5 = 0.30 T/TF, 6 = 0.40 T/TF
+	x0 = Ebfix
+	ls = A*1/np.sqrt((-x+x0))* PFD(np.sqrt(-x+x0))
+	ls = np.nan_to_num(ls)
+	return ls
 
 # process data
 run.data['detuning'] = ((run.data.freq - res_freq) * 1e3)/EF # kHz in units of EF
@@ -181,7 +191,7 @@ perr2 = np.sqrt(np.diag(pcov2))
 print('modified MB lineshape with another relative momentum: ')
 print(popt2)
 # Gaussian fit
-guess3 = [1, -262, T * 1e-3/EF]
+guess3 = [1, -300, T * 1e-3/EF]
 popt3,pcov3 = curve_fit(gaussian, x, y, sigma=yerr, p0=guess3)
 perr3 = np.sqrt(np.diag(pcov3))
 print('Gaussian: ')
@@ -197,10 +207,26 @@ yy2 = lsmom3_fixedEb(xx, *popt2)
 yy3 = gaussian(xx, *popt3)
 guessT0 = [4e-25,Ebfix,0]
 yyT0 = lineshape_zeroT(xx, *guessT0)
-arbscale = 1e-2/2
-epsilon = 0.001 # small value to avoid divergence
-xxZY = np.linspace(xlow, xhigh, 400)
-yyZY = lsZY_highT(xxZY, Ebfix, T/1e3/EF, arb_scale=arbscale)
+# arbscale = 3.5e-2
+arbscale=popt3[0]
+yyZY = lsZY_highT(xx, Ebfix, T/1e3/EF, arb_scale=arbscale)
+
+arbscale = 0.003
+yyFD_0p30 = lsFD(xx, arbscale, 5)
+yyFD_0p40 = lsFD(xx, arbscale, 6)
+yyFD_0p50 = lsFD(xx, arbscale, 7)
+yyFD_0p60 = lsFD(xx, arbscale, 8)
+# afix a gaussian to the right edge with width ~ EF
+xxG = np.linspace(Ebfix, xhigh, 200)
+yyGRightNonInt = gaussian(xxG, popt3[0], Ebfix, 1) # zero-T noninteracting gas, EF
+yyGRightUni = gaussian(xxG, popt3[0], Ebfix, np.sqrt(0.376))# zero-T unitary gas, Bertsch param
+
+# try convolving with gaussian of width~EF=1
+# for amplitude, use previously fitted naive gaussian
+Gintwidth = np.sqrt(0.376) # zero-T unitary gas, Bertsch param
+Gintwidth=1 # zero-T noninteracting gas, EF
+yyGint = gaussian(xx, popt3[0], Ebfix, Gintwidth)
+yyZYG = np.convolve(yyZY, yyGint,'same')
 
 # residuals
 yyres = y - lsMB_fixedEb(x, *popt1)
@@ -210,19 +236,29 @@ yyresZY = y - lsZY_highT(x, Ebfix, T/1e3/EF, arb_scale=arbscale)
 
 # lineshape plot
 fig, ax_ls = plt.subplots()
-fig.suptitle('ac dimer spectrum at 202.14G, EF={:.1f} kHz, T/TF={:.2f}, T={:.1f} kHz'.format(EF, ToTF, ToTF*EF))
+fig.suptitle('ac dimer spectrum at 202.14G, EF={:.1f} kHz, T/TF={:.2f}, T={:.1f} kHz, Ebfix={:.3f} MHz'.format(EF, ToTF, ToTF*EF, Ebfix*EF/1000))
 ax_ls.errorbar(x, y, yerr, marker='o', ls='', markersize = 12, capsize=3, mew=3, mec = adjust_lightness('tab:gray',0.2), color='tab:gray', elinewidth=3)
 ax_ls.errorbar(xnfilt, ynfilt, yerrnfilt, marker='o', ls='', markersize = 12, capsize=3, mew=3, mfc='none', color='tab:gray', elinewidth=3)
 
 fitstr = r'$A\sqrt{-\Delta-E_b}*exp(\frac{\Delta+E_b}{T}) *\Theta(-\Delta-E_b)$'
-ax_ls.plot(xx, yy,'--', lw = linewidth, color='r', label='Mod. MB fit: ' + fitstr)
+# ax_ls.plot(xx, yy,'--', lw = linewidth, color='r', label='Mod. MB fit: ' + fitstr)
 fitstr2 = r'$A (-\Delta-E_b)*exp(\frac{\Delta+E_b}{T}) *\Theta(-\Delta-E_b)$'
-ax_ls.plot(xx, yy2, ':', lw = linewidth, color ='b', label = 'Mod. MB w/ collision mom.: ' + fitstr2)
-ax_ls.plot(xx, yy3, '-.', lw=linewidth, color='k', label='Gaussian')
+# ax_ls.plot(xx, yy2, ':', lw = linewidth, color ='b', label = 'Mod. MB w/ collision mom.: ' + fitstr2)
+# ax_ls.plot(xx, yy3, '-.', lw=linewidth, color='k', label='Gaussian')
 # T0str = r'$A(2k_F^3 - 3k_F^2 *\sqrt{-\omega - E_b} + \sqrt{-\omega - E_b}^3)\frac{\sqrt{-\omega-E_b}}{-\omega-E_b}$'
 # ax_ls.plot(xx, yyT0, ls =':', color='g',label='T=0: ' + T0str)
 ZYstr = r'$A * exp(\frac{\Delta + E_b}{T}) * (-\Delta - E_b)^{-1/2} *\Theta(-\Delta-E_b)$'
-ax_ls.plot(xxZY, yyZY, '-', lw=linewidth, color='g', label='Eq. (49), arb. scale, ' + ZYstr)
+# ax_ls.plot(xx, yyZY, '-', lw=linewidth, color='g', label='Eq. (49), arb. scale, ' + ZYstr)
+# ax_ls.plot(xx, yyGint, 'b-')
+# ax_ls.plot(xx, yyZYG, 'm-')
+
+# plot FD and FD with a right-sided Gaussian with fixed Eb
+ax_ls.plot(xx, yyFD_0p30, '-', color ='tab:blue', linewidth=3, label='FD_0p30')
+# ax_ls.plot(xx, yyFD_0p40, 'm-')
+# ax_ls.plot(xx, yyFD_0p60, ':',  color ='tab:blue', label = 'FD_0p60')
+# ax_ls.fill_between(xx, yyFD_0p30, yyFD_0p60, color = adjust_lightness('tab:blue', 0.7))
+ax_ls.plot(xxG, yyGRightNonInt, '-', color = 'k', linewidth=3, label='G zero-T non-int')
+ax_ls.plot(xxG, yyGRightUni, ':', color = 'k', linewidth=3, label='G zero-T unitary')
 
 textstr = '\n'.join((
  	r'Mod. MB fit params:',
@@ -233,9 +269,9 @@ textstr = '\n'.join((
 # ax_ls.text(xlow + 3, 0.015, textstr)
 
 ax_ls.legend()
-ax_ls.set_xlim([xlow, xhigh])
+ax_ls.set_xlim([xlow+4, xhigh -4])
 # ax_ls.set_ylim([-0.01, 0.03])
-ax_ls.set_ylim([-0.01,0.03])
+ax_ls.set_ylim([-0.005,0.02])
 # ax_ls.set_xlim([max(run.data.detuning), min(run.data.detuning)])
 ax_ls.set_ylabel(r'Scaled transfer $\tilde{\Gamma}$ [arb.]')
 ax_ls.set_xlabel(r'Detuning from 12-resonance $\Delta$ [EF]')
@@ -302,7 +338,8 @@ print("Ideal clock shift mod. MB [EF]= {:.6f}".format(clockshift1))
 print("Ideal clock shift mod. k^3 [EF] = {:.6f}".format(clockshift2))
 print("Ideal clock shift gaussian [EF] = {:.6f}".format(clockshift3))
 
-Ctilde_est = 1.44
+# Ctilde_est = 1.44
+Ctilde_est = 2.8
 cs_pred = -2/(pi*kF*a13(Bfield))*Ctilde_est
 print("predicted dimer clock shift [Eq. (5)]: "+ str(cs_pred))
 
@@ -322,6 +359,15 @@ print("Predicted dimer spectral weight [Eq. 6]: " + str(I_d))
 
 correctionfactor = 1/(kappa*a13(Bfield))*(1/(1+re/a13(Bfield)))
 print("Eff. range correction: "+ str(correctionfactor))
+
+re_range = np.linspace(re_i/a0, re_f/a0, 100)
+CS_HFT_CORR = 1/(pi*kF*a13(Bfield))* (1/(np.sqrt(1-re_range*a0/a13(Bfield)))) *Ctilde_est
+CS_TOT_CORR = -1/(pi*kF*a13(Bfield)) * (1- pi**2/8*re_range*a0/a13(Bfield)) * Ctilde_est
+CS_DIM_CORR = CS_TOT_CORR - CS_HFT_CORR
+print("CS_HFT_CORR bounds = ({:.1f}, {:.1f})".format(min(CS_HFT_CORR), max(CS_HFT_CORR)))
+print("CS_TOT_CORR bounds = ({:.1f}, {:.1f})".format(min(CS_TOT_CORR), max(CS_TOT_CORR)))
+print("CS_DIM_CORR bounds = ({:.1f}, {:.1f})".format(min(CS_DIM_CORR), max(CS_DIM_CORR)))
+	  
 
 # %% BOOT STRAPPING
 def GenerateSpectraFit(Ebfix):
@@ -383,7 +429,7 @@ if Bootstrap == True:
 	print(r"FM BS median = {:.3f}+{:.3f}-{:.3f}".format(median_FM, 
 												  upper_FM-FM, FM-lower_FM))
 	print(r"CS BS idl median = {:.2f}+{:.3f}-{:.3f}".format(median_CS_idl, 
-												  upper_CS_idl-CS_idl, CS_idl-lower_CS_idl))
+												  upper_CS_idl-median_CS_idl, median_CS_idl-lower_CS_idl))
 
 
 if (Bootstrapplots == True and Bootstrap == True):
@@ -445,13 +491,17 @@ fig, axs = plt.subplots(2)
 axpred = axs[0]
 axpred.axis('off')
 axpred.axis('tight')
-quantities = [r"$\Omega_d$ (zero range)",
+quantities = [r"$\widetilde{C}$",
+			  r"$r_e/a_0$",
+			  r"$\Omega_d$ (zero range)",
 			  r"$\Omega_+$ (zero range)", 
 			  r"$\Omega_{tot}$ (zero range)", 
 			  r"$\Omega_d$ (corr.)",
 			  r"$\Omega_+$ (corr.)", 
 			  r"$\Omega_{tot}$ (corr.)"]
-values = ["{:.1f}".format(cs_pred), 
+values = ["{:.1f}".format(Ctilde_est),
+		  "{:.1f}".format(re/a0),
+	"{:.1f}".format(cs_pred), 
 		  "{:.1f}".format(csHFT_pred),
 		  "{:.1f}".format(cstot_pred_zerorange),
 		  "{:.1f}".format(cstot_pred - csHFT_pred_corr),
@@ -481,8 +531,8 @@ HFT_CS_EXP = 4.8
 mean_dimer_cs = (clockshift1 +clockshift2 + clockshift3)/3
 values = [
 		  "{:.1f}".format(mean_dimer_cs),
-		  "{:.1f} +/- {:.1f}".format(CS_BS_idl_mean,  e_CS_BS_idl),
-		  "{:.1f} +/- {:.1f}".format(CS_BS_exp_mean,  e_CS_BS_exp),
+		  "{:.1f} +{:.1f}-{:.1f}".format(median_CS_idl, upper_CS_idl-median_CS_idl, median_CS_idl-lower_CS_idl),
+		  "{:.1f} +{:.1f}-{:.1f}".format(median_CS_exp, upper_CS_exp-median_CS_exp, median_CS_exp-lower_CS_exp),
 		  "{:.1f}".format(HFT_CS_EXP), 
 		  "{:.1f}".format(mean_dimer_cs + HFT_CS_EXP),
 		  "{:.1f}".format(CS_BS_idl_mean + HFT_CS_EXP)]
