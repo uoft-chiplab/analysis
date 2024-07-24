@@ -87,7 +87,8 @@ xname = df['xname'][0]
 ff = df['ff'][0]
 trf = df['trf'][0] #s
 EF = df['EF'][0] #kHz
-Ebfix = -3.993*1e3/EF
+#Ebfix = -3.993*1e3/EF
+Ebfix = -3.987*1e3/EF
 ToTF = df['ToTF'][0]
 VVA = df['VVA'][0] #V
 bg_freq_low = df['bg_freq_low'][0]
@@ -224,9 +225,22 @@ yyGRightUni = gaussian(xxG, popt3[0], Ebfix, np.sqrt(0.376))# zero-T unitary gas
 # try convolving with gaussian of width~EF=1
 # for amplitude, use previously fitted naive gaussian
 Gintwidth = np.sqrt(0.376) # zero-T unitary gas, Bertsch param
-Gintwidth=1 # zero-T noninteracting gas, EF
-yyGint = gaussian(xx, popt3[0], Ebfix, Gintwidth)
-yyZYG = np.convolve(yyZY, yyGint,'same')
+Gintwidth=0.5
+# Gintwidth=1 # zero-T noninteracting gas, EF
+Gpeak = Ebfix
+# Gpeak = popt3[1]
+yyGw_1p0 = gaussian(xx, popt3[0], Gpeak, 1)
+yyGw_0p75 = gaussian(xx, popt3[0], Gpeak, 0.75)
+yyGw_0p50 = gaussian(xx, popt3[0], Gpeak, 0.5)
+yyGw_0p30 = gaussian(xx, popt3[0], Gpeak, 0.3)
+# yyZYG = np.convolve(yyZY, yyGint,'same')
+
+yyFD_0p30_2 = lsFD(xx, 1, 5)
+arbscale = 0.02
+yyFDG_0p30 = arbscale*np.convolve(yyFD_0p30_2, yyGw_0p30, 'same')
+yyFDG_0p50 = arbscale*np.convolve(yyFD_0p30_2, yyGw_0p50, 'same')
+yyFDG_0p75 = arbscale*np.convolve(yyFD_0p30_2, yyGw_0p75, 'same')
+yyFDG_1p0 = arbscale*np.convolve(yyFD_0p30_2, yyGw_1p0, 'same')
 
 # residuals
 yyres = y - lsMB_fixedEb(x, *popt1)
@@ -259,6 +273,11 @@ ax_ls.plot(xx, yyFD_0p30, '-', color ='tab:blue', linewidth=3, label='FD_0p30')
 # ax_ls.fill_between(xx, yyFD_0p30, yyFD_0p60, color = adjust_lightness('tab:blue', 0.7))
 ax_ls.plot(xxG, yyGRightNonInt, '-', color = 'k', linewidth=3, label='G zero-T non-int')
 ax_ls.plot(xxG, yyGRightUni, ':', color = 'k', linewidth=3, label='G zero-T unitary')
+
+ax_ls.plot(xx, yyFDG_0p30, '--', color = adjust_lightness('r', 0.3), linewidth=3, label='FD conv G, width=0.3')
+ax_ls.plot(xx, yyFDG_0p50, '--', color=adjust_lightness('r', 0.5), linewidth=3, label='FD conv G, width=0.5')
+ax_ls.plot(xx, yyFDG_0p75, '--', color=adjust_lightness('r', 0.75), linewidth=3, label='FD conv G, width=0.75')
+ax_ls.plot(xx, yyFDG_1p0, '--', color=adjust_lightness('r', 1.0), linewidth=3, label='FD conv G, width=1.0')
 
 textstr = '\n'.join((
  	r'Mod. MB fit params:',
