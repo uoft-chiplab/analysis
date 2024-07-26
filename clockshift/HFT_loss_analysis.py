@@ -330,7 +330,7 @@ if save_file:
     save_file_path = os.path.join(data_folder, 'HFT_loss_results', save_file)
 
     if old_data:
-        metadata[metadata['a']>=0].to_csv(save_file_path, index=False, columns=["date", "letter", "pulse", "time", "Omega_R"]+columns)
+        metadata[metadata['a']>=0].to_csv(save_file_path, index=False, columns=["date", "letter", "pulse", "time", "Omega_R"]+new_columns)
     else:
-        metadata[metadata['exclude']==0].to_csv(save_file_path, index=False, columns=["filename", "EF", "pulsetype", "trf"]+columns)
+        metadata[metadata['exclude']==0].to_csv(save_file_path, index=False, columns=["filename", "EF", "pulsetype", "trf"]+new_columns)
 
