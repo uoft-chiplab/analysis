@@ -49,6 +49,7 @@ Bootstrap = True
 Bootstrapplots = True
 
 
+
 # plotting things
 linewidth=4
 def adjust_lightness(color, amount=0.5):
@@ -125,7 +126,17 @@ def gaussian(x, A, x0, sigma):
 
 
 filename='2024-06-12_S_e.dat'
+# data = Data('2023-10-02_H_e.dat', path='E:\\Data\\2023\\10 October2023\\02October2023\\H_202p1G_acdimer_1p8VVA320us', average_by='freq')
+# data = Data('2023-10-02_I_e.dat', path='E:\\Data\\2023\\10 October2023\\02October2023\\I_202p1G_acdimer_1p5VVA640us', average_by='freq')
+# data = Data('2024-06-12_R_e.dat', average_by='freq')
 run = Data(filename,path=data_path)
+# data = Data(filename='2024-06-20_F_e.dat',path = data_class_dir+'//acdimer//data', average_by='freq')
+# data =Data('2024-06-12_T_e.dat', average_by='freq')
+# field=202.1
+
+# 20_F
+# ToTF=0.33
+# EF = 12 # kHz
 T = ToTF * (EF*1000)
 field = 202.14
 freq75 = 47.2227 # MHz, 202.14 G
@@ -207,7 +218,7 @@ ax_ls.plot(xx, yy3, '-.', lw=linewidth, color='k', label='Gaussian')
 # T0str = r'$A(2k_F^3 - 3k_F^2 *\sqrt{-\omega - E_b} + \sqrt{-\omega - E_b}^3)\frac{\sqrt{-\omega-E_b}}{-\omega-E_b}$'
 # ax_ls.plot(xx, yyT0, ls =':', color='g',label='T=0: ' + T0str)
 ZYstr = r'$A * exp(\frac{\Delta + E_b}{T}) * (-\Delta - E_b)^{-1/2} *\Theta(-\Delta-E_b)$'
-ax_ls.plot(xxZY, yyZY, '-', lw=linewidth, color='g', label='Eq. (49), arb. scale, ' + ZYstr)
+ax_ls.plot(xxZY, yyZY, ls='-', lw=linewidth, color='g', label='Eq. (49), arb. scale, ' + ZYstr)
 
 textstr = '\n'.join((
  	r'Mod. MB fit params:',
@@ -307,7 +318,7 @@ print("Predicted dimer spectral weight [Eq. 6]: " + str(I_d))
 correctionfactor = 1/(kappa*a13(Bfield))*(1/(1+re/a13(Bfield)))
 print("Eff. range correction: "+ str(correctionfactor))
 
-# %% BOOT STRAPPING
+
 def GenerateSpectraFit(Ebfix):
 	def fit_func(x, A, sigma):
 		x0 = Ebfix
@@ -330,7 +341,7 @@ if Bootstrap == True:
 	y = np.array(run.data['ScaledTransfer'])
 	
 	# sumrule, first moment and clockshift with analytic extension
-	SR_BS_dist, FM_BS_dist, CS_BS_dist, pFits, SR, FM, CS  = \
+	SR_BS_dist, FM_BS_dist, CS_BS_dist, pFits, SRlineshape, FMlineshape, SR, FM, CS  = \
 		DimerBootStrapFit(x, y, xfitlims, Ebfix, fit_func, trialsB=BOOTSRAP_TRAIL_NUM)
 	# print(SRlineshape)
 	# print(SR)
@@ -428,15 +439,15 @@ axpred.axis('tight')
 quantities = [r"$\Omega_d$ (zero range)",
 			  r"$\Omega_+$ (zero range)", 
 			  r"$\Omega_{tot}$ (zero range)", 
-			  r"$\Omega_d$ (corr.)",
 			  r"$\Omega_+$ (corr.)", 
-			  r"$\Omega_{tot}$ (corr.)"]
+			  r"$\Omega_{tot}$ (corr.)", 
+			  r"$\Omega_d = \Omega_{tot} - \Omega_+$"]
 values = ["{:.1f}".format(cs_pred), 
 		  "{:.1f}".format(csHFT_pred),
 		  "{:.1f}".format(cstot_pred_zerorange),
-		  "{:.1f}".format(cstot_pred - csHFT_pred_corr),
 		  "{:.1f}".format(csHFT_pred_corr),
-		  "{:.1f}".format(cstot_pred)]
+		  "{:.1f}".format(cstot_pred), 
+		  "{:.1f}".format(cstot_pred - csHFT_pred_corr)]
 table = list(zip(quantities, values))
 
 the_table = axpred.table(cellText=table, loc='center')
@@ -451,22 +462,22 @@ axpred.set(title='Predicted clock shifts [EF]')
 axexp = axs[1]
 axexp.axis('off')
 axexp.axis('tight')
-quantities = [
-			  r"$\widebar{\Omega_d}$ (lineshape)",
-			  r"$\widebar{\Omega_d}$ (bootstrap)",
+quantities = [r"$\Omega_d$ (red)", 
+			  r"$\Omega_d$ (blue)", 
+			  r"$\Omega_d$ (black)", 
+			  r"$\bar{\Omega_d}$",
 			  r"$\Omega_+$", 
-			  r"$\Omega_{tot}$ (lineshape)",
-			  r"$\Omega_{tot}$ (bootstrap)"]
+			  r"$\Omega_{tot}$"]
 # EXPERIMENTAL VALUES
 HFT_CS_EXP = 5.77
-HFT_CS_EXP = 4.8
+HFT_CS_EXP = 5
 mean_dimer_cs = (clockshift1 +clockshift2 + clockshift3)/3
-values = [
+values = ["{:.1f}".format(clockshift1),
+		  "{:.1f}".format(clockshift2),
+		  "{:.1f}".format(clockshift3),
 		  "{:.1f}".format(mean_dimer_cs),
-		  "{:.1f} +/- {:.1f}".format(CS_BS_mean,  e_CS_BS),
 		  "{:.1f}".format(HFT_CS_EXP), 
-		  "{:.1f}".format(mean_dimer_cs + HFT_CS_EXP),
-		  "{:.1f}".format(CS_BS_mean + HFT_CS_EXP)]
+		  "{:.1f}".format(mean_dimer_cs + HFT_CS_EXP)]
 table = list(zip(quantities, values))
 
 the_table = axexp.table(cellText=table, loc='center')
@@ -476,3 +487,5 @@ the_table.scale(1,1.5)
 axexp.set(title='Experimental clock shifts [EF]')
 
 						
+
+# %%

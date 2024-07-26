@@ -15,7 +15,7 @@ better
 	
 """
 
-BOOTSRAP_TRAIL_NUM = 100
+BOOTSRAP_TRAIL_NUM = 1000
 
 # paths
 import os
@@ -40,11 +40,13 @@ from clockshift.MonteCarloSpectraIntegration import MonteCarlo_spectra_fit_trapz
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+from matplotlib.lines import Line2D
 
 import time
 
 ### This turns on (True) and off (False) saving the data/plots 
-Saveon = True
+Saveon = False
 
 ### script options
 Analysis = True
@@ -61,7 +63,7 @@ metadata = pd.read_excel(metadata_file)
 files =  metadata.loc[metadata['exclude'] == 0]['filename'].values
 
 # Manual file select, comment out if exclude column should be used instead
-files = ["2024-07-03_F_e"]
+# files = ["2024-07-18_E_e"]
 
 
 # save file path
@@ -259,7 +261,7 @@ for filename in files:
 	ylabel = r"Transfer $\Gamma \,t_{rf}$"
 	
 	xlims = [-0.04,max(x)]
-	ylims = [-0.01,0.05]
+	ylims = [min(run.data['transfer']),max(run.data['transfer'])]
 	
 	ax.set(xlabel=xlabel, ylabel=ylabel, xlim=xlims, ylim=ylims)
 	ax.errorbar(x, y, yerr=yerr, fmt='o')
@@ -274,7 +276,7 @@ for filename in files:
 	
 	xlims = [-2,max(x)]
 	axxlims = xlims
-	ylims = [min(run.data['ScaledTransfer'])-0.05,
+	ylims = [min(run.data['ScaledTransfer']),
 			 max(run.data['ScaledTransfer'])]
 	xs = np.linspace(xlims[0], xlims[-1], len(y))
 	
@@ -302,10 +304,10 @@ for filename in files:
 	### plot zoomed-in scaled transfer
 	ax = axs[1,1]
 	
-	xlims = [-1,10]
+	xlims = [-1,1]
 	axxlims = xlims
-	ylims = [-0.01,
-			 0.02]
+	ylims = [(min(run.data['ScaledTransfer']))/4,
+			 max(run.data['ScaledTransfer'])]
 	xs = np.linspace(xlims[0], xlims[-1], len(y))
 	
 	ax.set(xlabel=xlabel, ylabel=ylabel, xlim=axxlims, ylim=ylims)
@@ -392,13 +394,24 @@ for filename in files:
 		median_CS = np.nanmedian(CS_BS_dist)
 		upper_CS = np.nanpercentile(CS_BS_dist, 100-(100.0-conf)/2.)
 		lower_CS = np.nanpercentile(CS_BS_dist, (100.0-conf)/2.)
-		print(r"SR BS median = {:.3f}+{:.3f}-{:.3f}".format(median_SR,
-													  upper_SR-SR, SR-lower_SR))
-		print(r"FM BS median = {:.3f}+{:.3f}-{:.3f}".format(median_FM, 
-													  upper_FM-FM, FM-lower_FM))
-		print(r"CS BS median = {:.2f}+{:.3f}-{:.3f}".format(median_CS, 
-													  upper_CS-CS, CS-lower_CS))
 		
+		Cdist = pFits*2*np.sqrt(2)*np.pi**2
+		median_C = np.nanmedian(Cdist)
+		upper_C = np.nanpercentile(Cdist, 100-(100.0-conf)/2.)
+		lower_C = np.nanpercentile(Cdist, (100.0-conf)/2.)
+		
+		CoSR = Cdist / ( 2  *SR_BS_dist) 
+		median_CoSR = np.nanmedian(CoSR)
+		upper_CoSR = np.nanpercentile(CoSR, 100-(100.0-conf)/2.)
+		lower_CoSR = np.nanpercentile(CoSR, (100.0-conf)/2.)
+		
+		print(r"SR BS median = {:.3f}+{:.3f}-{:.3f}".format(median_SR,
+													  upper_SR-median_SR, median_SR-lower_SR))
+		print(r"FM BS median = {:.3f}+{:.3f}-{:.3f}".format(median_FM, 
+													  upper_FM-median_FM, median_FM-lower_FM))
+		print(r"CS BS median = {:.2f}+{:.3f}-{:.3f}".format(median_CS, 
+													  upper_CS-median_CS, median_CS-lower_CS))
+# 		print(median_CoSR)
 	
 	### plot contact
 	ax = axs[0,1]
@@ -418,24 +431,27 @@ for filename in files:
 	Cmean = df[df.detuning/EF<Cdetmax].C.mean()
 	Csem = df[df.detuning/EF<Cdetmax].C.sem()
 	
+	
 	# choose sumrule for Contact normalizing as MC, BS or raw
-	if MonteCarlo:	
-		C_o_SR = Cmean/(2*SR_MC)
-		e_C_o_SR = C_o_SR*np.sqrt((Csem/Cmean)**2+(e_SR_MC/SR_MC)**2)
-	elif Bootstrap: 
-		C_o_SR = Cmean/(2*SR_BS_mean)
-		e_C_o_SR = C_o_SR*np.sqrt((Csem/Cmean)**2+(e_SR_BS/SR_BS_mean)**2)
-	else:
-		C_o_SR = Cmean/(2*SR)
-		e_C_o_SR = C_o_SR*Csem/Cmean
+# 	if MonteCarlo:	
+# 		C_o_SR = Cmean/(2*SR_MC)
+# 		e_C_o_SR = C_o_SR*np.sqrt((Csem/Cmean)**2+(e_SR_MC/SR_MC)**2)
+# 	elif Bootstrap: 
+# 		C_o_SR = Cmean/(2*SR_BS_mean)
+# 		e_C_o_SR = C_o_SR*np.sqrt((Csem/Cmean)**2+(e_SR_BS/SR_BS_mean)**2)
+# 	else:
+# 		C_o_SR = Cmean/(2*SR)
+# 		e_C_o_SR = C_o_SR*Csem/Cmean
 	
 	ax.set(xlabel=xlabel, ylabel=ylabel, xlim=xlims, ylim=ylims)
 	ax.errorbar(x, y, yerr=yerr, fmt='o')
 	ax.plot(xs, Cmean*np.ones(num), "--")
 	
 	# Clock Shift from contact
-	CS_pred = 1/(pi*kF*a13(Bfield)) * Cmean
-	e_CS_pred = CS_pred*Csem/Cmean
+	CS_pred = 1/(pi*kF*a13(Bfield)) * median_C 
+	e_CS_low = 1/(pi*kF*a13(Bfield)) * lower_C 
+	e_CS_upper = 1/(pi*kF*a13(Bfield)) * upper_C
+	 
 	
 	### plot x*Scaled transfer
 # 	ax = axs[1,1]
@@ -460,14 +476,12 @@ for filename in files:
 	### generate table
 	ax = axs[1,2]
 	ax.axis('off')
-	ax.axis('tight')
-	quantities = ["Run", "SR", "FM", "CS", "Contact $C/N$","C/SR"]
+# 	ax.axis('tight')
+	quantities = ["Run", "SR", "FM", "CS"]
 	values = [filename[:-6],
 			  "{:.3f}".format(SR),
 			  "{:.3f}".format(FM),
-			  "{:.2f}".format(CS),
-			  "{:.2f}$\pm${:.2f} $k_F$".format(Cmean, Csem),
-			  r"{:.2f}$\pm${:.2f}".format(C_o_SR, e_C_o_SR)
+			  "{:.2f}".format(CS)
 			  ]
 	if MonteCarlo == True:
 		quantities += ["SR MC", "FM MC", "CS MC"]
@@ -477,12 +491,14 @@ for filename in files:
 		values = values + MC_values
 		
 	if Bootstrap == True:
-		quantities += ["SR BS", "FM BS", "CS BS", 'SR Extrap', 'FM Extrap']
-		BS_values = [r"{:.3f}$\pm${:.3f}".format(SR_BS_mean, e_SR_BS),
-				   r"{:.3f}$\pm${:.3f}".format(FM_BS_mean, e_FM_BS),
-				   r"{:.2f}$\pm${:.2f}".format(CS_BS_mean, e_CS_BS),
-				  r"{:.4f}$\pm${:.4f}".format(SR_extrap_mean, e_SR_extrap),
-				  r"{:.2f}$\pm${:.2f}".format(FM_extrap_mean, e_FM_extrap)]
+		quantities += ["SR BS", "FM BS", "CS BS", 'Transfer Scale', 'FM Extrap', "Contact $C/N$"]
+		BS_values = [r"{:.3f}+{:.1f}-{:.1f}".format(SR_BS_mean, median_SR - lower_SR, upper_SR - median_SR),
+				   r"{:.3f}+{:.1f}-{:.1f}".format(FM_BS_mean, median_FM - lower_FM, upper_FM - median_FM),
+				   r"{:.2f}+{:.1f}-{:.1f}".format(CS_BS_mean, median_CS - lower_CS, upper_CS - median_CS),
+				  r"{:.4f}".format(pulsejuice),
+				  r"{:.2f}$\pm${:.2f}".format(FM_extrap_mean, e_FM_extrap),
+	 "{:.2f}+{:.1f}-{:.1f} $k_F$".format(median_C, median_C - lower_C, upper_C - median_C ),
+]
 		values = values + BS_values
 		
 	table = list(zip(quantities, values))
@@ -499,7 +515,7 @@ for filename in files:
 		datatosave = {
 				   'Run':[filename], 
 	 			  'Gain':[gain], 
-				   'Pulse Param':[pulsejuice],
+				   'Transfer Scale':[pulsejuice],
 				   'Pulse Time (us)':[trf*1e6],
 				   'Pulse Type':[pulsetype],
 				   'EF':[EF],
@@ -508,10 +524,10 @@ for filename in files:
 				  'CS':[CS],
 	 			  'C':[Cmean],
 				   'e_C':[Csem],
-	 			  'C/SR':[C_o_SR],
-				   'e_C/SR':[e_C_o_SR],
+	 			  'C/SR':[median_CoSR],
 				  'CS pred': [CS_pred],
-				  'e_CS pred': [e_CS_pred],
+				  'lower_CS pred': [lower_CS],
+				  'upper_CS pred': [upper_CS],
 	 			  'Peak Scaled Transfer':[maxfp], 
 				  'e_Peak Scaled Transfer':[e_maxfp]}
 		 
@@ -528,7 +544,9 @@ for filename in files:
 			
 		if Bootstrap == True:
 			datatosavePlusBS = {
-					'C/SR': [C_o_SR],
+					'C/SR': [median_CoSR],
+				   'lower_C/SR':[lower_CoSR-median_CoSR],
+				   'upper_C/SR':[median_CoSR-upper_CoSR],
 				  'SR BS mean': [SR_BS_mean],
 				  'e_SR BS': [e_SR_BS],
 				  'FM BS mean': [FM_BS_mean],
@@ -536,14 +554,14 @@ for filename in files:
 				  'CS BS mean': [CS_BS_mean],
 				  'e_CS BS': [e_CS_BS],
 				   'SR BS median': [median_SR],
-				  'SR m conf': [lower_SR],
-				  'SR p conf': [upper_SR],
+				  'SR m conf': [median_SR-lower_SR],
+				  'SR p conf': [upper_SR-median_SR],
 				  'FM BS median': [median_FM],
-				  'FM m conf': [lower_FM],
-				  'FM p conf': [upper_FM],
+				  'FM m conf': [median_FM-lower_FM],
+				  'FM p conf': [upper_FM-median_FM],
 				  'CS BS median': [median_CS],
-				  'CS m conf': [lower_CS],
-				  'CS p conf': [upper_CS],
+				  'CS m conf': [median_CS-lower_CS],
+				  'CS p conf': [upper_CS-median_CS],
 				  'SR extrapolation':[SR_extrap_mean],
 				  'FM extrapolation':[FM_extrap_mean],
 				  'e_SR extrapolation':[e_SR_extrap],
@@ -681,9 +699,9 @@ for filename in files:
 		
 		# SR extrapolation distribution
 		ax = axs[0,2]
-		xlabel = "SR Extrapolation"
+		xlabel = "Contact"
 		ax.set(xlabel=xlabel, ylabel=ylabel)
-		ax.hist(SR_extrap_dist, bins=bins)
+		ax.hist(pFits*2*np.sqrt(2)*np.pi**2, bins=bins)
 		
 		# FM extrapolation distribution
 		ax = axs[1,2]
@@ -696,49 +714,96 @@ for filename in files:
 		
 	if Correlations == True: 
 		
-		# Example data
-		x_values = [SR_BS_dist,FM_BS_dist,CS_BS_dist]
-		x_values_names = ['Sum Rule','First Moment','Clock Shift']
-		y_values = [SR_extrap_dist,FM_extrap_dist]
-		y_values_names = ['SR Extrapolation','FM Extrapolation']
-		
-		# Determine number of combinations
-		num_plots = len(x_values) * len(y_values)
-		
-		# Create subplots grid
-		cols = 3  # Number of columns in the subplot grid
-		rows = (num_plots - 1) // cols + 1  # Number of rows calculated based on number of plots
-		
-		fig, axes = plt.subplots(rows, cols, figsize=(22, 15), sharex=False, sharey=False)
-		fig.suptitle(filename)
-		# Flatten axes in case there's only one row or column
-		axes = np.ravel(axes)
-		
-		# Loop over x and y values to plot each combination
-		for i, x_data in enumerate(x_values):
-		    for j, y_data in enumerate(y_values):
-		        index = i * len(y_values) + j
-		        ax = axes[index]
-		        
-		        ax.scatter(x_data, y_data)
-		        ax.set_xlabel(x_values_names[i], fontsize = 18)
-		        ax.set_ylabel(y_values_names[j], fontsize = 18)
-				
-		        x_min, x_max = np.min(x_data), np.max(x_data)
-		        y_min, y_max = np.min(y_data), np.max(y_data)
-		        ax.set_xlim(x_min,x_max)
-		        ax.set_ylim(y_min,y_max)
-				
-# 		        ax.legend()
-		
-		# Remove any extra subplots
-		for ax in axes[num_plots:]:
-		    ax.remove()
+		try: 
+	
+			x_values = [Cdist,SR_BS_dist,FM_BS_dist,CS_BS_dist,CoSR]
+			x_values_names = ['C','Sum Rule','FM','Clock Shift','CoSR']
+			y_values = [Cdist,SR_BS_dist,FM_BS_dist,CS_BS_dist,CoSR]
+			y_values_names = ['C','Sum Rule','FM','Clock Shift','CoSR']
+	
+			x_values = [Cdist,SR_BS_dist,FM_BS_dist,CS_BS_dist]
+			x_values_names = ['Contact','Sum Rule','First Moment','Clock Shift']
+			y_values = [Cdist,SR_BS_dist,FM_BS_dist,CS_BS_dist]
+			y_values_names = ['Contact','Sum Rule','First Moment','Clock Shift']
 			
-		# make room for suptitle
-		fig.tight_layout(rect=[0, 0.03, 1, 0.95])	
-		plt.show()
-
+			
+			rows = len(x_values)
+			cols = rows + 1
+			
+			fig, axes = plt.subplots(rows, cols, figsize=(22, 15), sharex=False, sharey=False)
+			axes = np.ravel(axes)
+			
+			medianvalues = [median_C, median_SR, median_FM, median_CS]
+			uppermedianerrorvalues = [upper_C-median_C, upper_SR-median_SR, upper_FM-median_FM, upper_CS-median_CS]
+			lowermedianerrorvalues = [median_C-lower_C, median_SR-lower_SR, median_FM-lower_FM, median_CS-lower_CS]
+			meanvals = [np.mean(Cdist),SR_BS_mean, FM_BS_mean,CS_BS_mean]
+			
+			for i, (x_data, x_name) in enumerate(zip(x_values, x_values_names)):
+			    for j, (y_data, y_name) in enumerate(zip(y_values, y_values_names)):
+			        index = i * cols + j
+					
+			        if i == j :
+			            ax = axes[index]
+			            ax.hist(x_values[i], bins=20)
+						
+			            median = medianvalues[i]
+			            ax.axvline(median, color='black', linestyle='--', linewidth=2, label='Median')
+						
+			            upper = uppermedianerrorvalues[i] + medianvalues[i]
+			            ax.axvline(upper, color='r', linestyle='--', linewidth=2, label='Upper Percentile')
+						
+			            lower = - (lowermedianerrorvalues[i] - medianvalues[i]) 
+			            ax.axvline(lower, color='r', linestyle='--', linewidth=2,label='Lower')
+						
+			            mean = meanvals[i]
+			            ax.axvline(mean, color='g', linestyle='--', linewidth=2, label='Mean')
+						
+			        else: 
+			            ax = axes[index]
+			            ax.scatter( y_data, x_data)
+	# 					
+	# 		indices = [5,10,11,15,16,17]
+	# 		for i in indices:
+	# 		    ax = axes[i]
+	# 		    ax.tick_params(axis='both', which='both', length=0)
+	# 		    ax.set_xticks([])
+	# 		    ax.set_yticks([])
+	# 		    ax.spines['top'].set_visible(False)					
+	# 		    ax.spines['bottom'].set_visible(False)				
+	# 		    ax.spines['right'].set_visible(False)					
+	# 		    ax.spines['left'].set_visible(False)	
+	
+						
+			for i in range(0,4):
+				axes[i].set_xlabel(f'{x_values_names[i]}')
+				axes[i].xaxis.set_label_position('top')
+				
+			for i in range(rows):
+				index = i * cols + cols - 5
+				ax = axes[index]
+				
+				ax.set_ylabel(f'{y_values_names[i]}')
+				ax.yaxis.set_label_position('left')			
+	
+	
+			for i in range(rows):
+	 			index = i * cols + cols - 1
+	 			ax = axes[index]
+	 			
+	 			ax.axis('off')
+	 			ax.text(0.5, 0.5, f'Median {x_values_names[i]} is {medianvalues[i]:.2f}+{uppermedianerrorvalues[i]:.2f}-{lowermedianerrorvalues[i]:.2f}', fontsize=12, ha='center', va='center')
+			
+	# 		medianlabel = Line2D([0], [0], marker='',label='Median', color='black', linestyle= '--', linewidth=3 )
+	# 		upperlabel = Line2D([0], [0],marker='', label='Upper Percentile', color='r', linestyle= '--', linewidth=3 )
+	# 		lowerlabel = Line2D([0], [0],marker='', label='Lower Percentile', color='r', linestyle= '--', linewidth=3 )		
+	# 		meanlabel = Line2D([0], [0],marker='', label='Mean', color='g', linestyle= '--', linewidth=3 )		
+	# 		
+	# 		axes[5].legend(handles=[medianlabel,upperlabel,lowerlabel,meanlabel], prop={'size': 16})
+	# 					
+	
+		except ValueError:
+			print('x and y lengths do not match with some correlation plot - kp look into fixing this ')
+			continue 
 if Summaryplots == True:
 	
 # 	df = datatosavedf
@@ -845,15 +910,15 @@ if Summaryplots == True:
 					e_FM = np.zeros(len(FM))
 					e_CS = np.zeros(len(CS))
 				
-				xname = 'Pulse Param'
+				xname = 'Transfer Scale'
 				ax_C.errorbar(sub_df[xname], sub_df['C'], yerr=sub_df['e_C'], fmt=marker,ecolor = dark_color)
-				ax_CoSR.errorbar(sub_df[xname], sub_df['C/SR'], yerr=sub_df['e_C/SR'], fmt=marker,label=labeltrf,ecolor = dark_color)
+				plot_CoSR = ax_CoSR.errorbar(sub_df[xname], sub_df['C/SR'], yerr=[sub_df['C/SR']-sub_df['lower_C/SR']], fmt=marker,label=labeltrf,ecolor = dark_color)
 				plot_pST = ax_pST.errorbar(sub_df[xname], sub_df['Peak Scaled Transfer'], 
 						 yerr=sub_df['e_Peak Scaled Transfer'], fmt=marker, label=labelEF,ecolor = dark_color)
 				
-				ax_SR.errorbar(sub_df[xname], SR, yerr=e_SR, fmt=marker,ecolor = dark_color)
-				ax_FM.errorbar(sub_df[xname], FM, yerr=e_FM, fmt=marker,ecolor = dark_color)
-				ax_CS.errorbar(sub_df[xname], CS, yerr=e_CS, fmt=marker,ecolor = dark_color)
+				ax_SR.errorbar(sub_df[xname], SR, yerr=np.abs(e_SR), fmt=marker,ecolor = dark_color)
+				ax_FM.errorbar(sub_df[xname], FM, yerr=np.abs(e_FM), fmt=marker,ecolor = dark_color)
+				ax_CS.errorbar(sub_df[xname], CS, yerr=np.abs(e_CS), fmt=marker,ecolor = dark_color)
 				
 			except TypeError:
 				print()
@@ -864,7 +929,7 @@ if Summaryplots == True:
 				unique_handlesEF.append(plot_pST)
 				unique_labelsEF.append(labelEF)
 			if labeltrf not in unique_labelstrf:
-				unique_handlestrf.append(plot_pST)
+				unique_handlestrf.append(plot_CoSR)
 				unique_labelstrf.append(labeltrf)
 				
 	leg1 = ax_pST.legend(unique_handlesEF,unique_labelsEF, loc='upper right')
@@ -876,7 +941,7 @@ if Summaryplots == True:
 	CoSRmean = np.mean(df['C/SR'])
 	ax_CS.hlines(CSmean, min(df[xname]), max(df[xname]))
 	ax_CoSR.hlines(CoSRmean, min(df[xname]), max(df[xname]))
-	
+# 	
 	fig.tight_layout()
 	plt.show()
 
