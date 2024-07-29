@@ -190,17 +190,4 @@ def guessACdimer(field):
 def a97(B, B0=202.14, B0zero=209.07, abg=167.6*a0): 
 	return abg * (1 - (B0zero - B0)/(B - B0));
 
-def OmegaRcalibration():
-	try:
-		VVAtoVppfile = os.path.join("VVAtoVpp.txt")
-	except:
-		FileNotFoundError("VVAtoVpp.txt not found. Check CWD or that file exists.")
-	
-	VVAs, Vpps = np.loadtxt(VVAtoVppfile, unpack=True)
-	VpptoOmegaR = 27.5833 # kHz
-	OmegaR_interp = lambda x: VpptoOmegaR*np.interp(x, VVAs, Vpps)
-
-	return OmegaR_interp
-
-
 # %%
