@@ -38,6 +38,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from library import GammaTilde, pi, h
 
+from contact_correlations.UFG_analysis import BulkViscTrap, BulkViscUniform
 from clockshift.MonteCarloSpectraIntegration import DimerBootStrapFit
 from scipy.stats import sem
 import pwave_fd_interp as FD # FD distribution data for interpolation functions, Ben Olsen
@@ -104,7 +105,7 @@ xname = df['xname'][0]
 ff = df['ff'][0]
 trf = df['trf'][0] #s
 EF = df['EF'][0] #kHz
-#Ebfix = -3.993*1e3/EF
+# Ebfix = -3.993*1e3/EF
 Ebfix = -3.987*1e3/EF
 ToTF = df['ToTF'][0]
 VVA = df['VVA'][0] #V
@@ -177,6 +178,14 @@ def lsFD(x, A, numDA):
 	ls = np.nan_to_num(ls)
 	return ls
 
+def convfunc(tau, t, t0, sigma):
+	 return FDinterp(tau) * norm_gaussian(t-tau, t0, sigma)
+def convint(t):
+	# the integral converges better when ranges don't go to infinity
+	qrangelow = Ebfix - 100
+	qrangehigh= Ebfix + 100
+	return quad(convfunc, qrangelow, qrangehigh, args=(t,0,mutrap))
+
 # process data
 run.data['detuning'] = ((run.data.freq - res_freq) * 1e3)/EF # kHz in units of EF
 bgrange = [-3.97*1e3/EF, run.data.detuning.max()]
@@ -204,26 +213,27 @@ yerrnfilt = nfiltdf['em_ScaledTransfer']
 guess1 = [1, 4]
 popt1,pcov1 = curve_fit(lsMB_fixedEb, x, y, sigma=yerr, p0=guess1)
 perr1 = np.sqrt(np.diag(pcov1))
-print('modified MB lineshape fit: ')
-print(popt1)
+# print('modified MB lineshape fit: ')
+# print(popt1)
 # modified MB with extra factor of momentum
 guess2 = [1, T * 1e-3/EF]
 popt2,pcov2 = curve_fit(lsmom3_fixedEb, x, y, sigma=yerr, p0=guess2)
 perr2 = np.sqrt(np.diag(pcov2))
-print('modified MB lineshape with another relative momentum: ')
-print(popt2)
+# print('modified MB lineshape with another relative momentum: ')
+# print(popt2)
 # Gaussian fit
 guess3 = [1, -300, T * 1e-3/EF]
 popt3,pcov3 = curve_fit(gaussian, x, y, sigma=yerr, p0=guess3)
 perr3 = np.sqrt(np.diag(pcov3))
-print('Gaussian: ')
-print(popt3)
+# print('Gaussian: ')
+# print(popt3)
 
 # evaluate each of the fits
 xrange=0.10*1e3/EF
 xlow = Ebfix-xrange
 xhigh = Ebfix + xrange
-xx = np.linspace(xlow, xhigh, 1000)
+xnum = 1000
+xx = np.linspace(xlow, xhigh, xnum)
 yy = lsMB_fixedEb(xx, *popt1)
 yy2 = lsmom3_fixedEb(xx, *popt2)
 yy3 = gaussian(xx, *popt3)
@@ -233,57 +243,55 @@ yyT0 = lineshape_zeroT(xx, *guessT0)
 arbscale=popt3[0]
 yyZY = lsZY_highT(xx, Ebfix, T/1e3/EF, arb_scale=arbscale)
 
-arbscale = 0.003
-arbscale=1
-yyFD_0p30 = lsFD(xx, arbscale, 5)
-yyFD_0p40 = lsFD(xx, arbscale, 6)
-yyFD_0p50 = lsFD(xx, arbscale, 7)
-yyFD_0p60 = lsFD(xx, arbscale, 8)
-# afix a gaussian to the right edge with width ~ EF
-xxG = np.linspace(Ebfix, xhigh, 200)
-yyGRightNonInt = gaussian(xxG, popt3[0], Ebfix, 1) # zero-T noninteracting gas, EF
-yyGRightUni = gaussian(xxG, popt3[0], Ebfix, np.sqrt(0.376))# zero-T unitary gas, Bertsch param
+# residuals
+# yyres = y - lsMB_fixedEb(x, *popt1)
+# yyres2 = y - lsmom3_fixedEb(x, *popt2)
+# yyres3= y - gaussian(x, *popt3)
+# yyresZY = y - lsZY_highT(x, Ebfix, T/1e3/EF, arb_scale=arbscale)
 
-# try convolving with gaussian of width~EF=1
-# for amplitude, use previously fitted naive gaussian
-Gintwidth = np.sqrt(0.376) # zero-T unitary gas, Bertsch param
-Gintwidth=0.5
-# Gintwidth=1 # zero-T noninteracting gas, EF
-Gpeak = Ebfix
-# Gpeak = popt3[1]
-yyGw_1p0 = norm_gaussian(xx, Gpeak, 1)
-yyGw_0p75 = norm_gaussian(xx, Gpeak, 0.75)
-yyGw_0p50 = norm_gaussian(xx+3, Gpeak, 0.5)
-G0p50norm = np.trapz(yyGw_0p50, xx)
-print('G0p50norm: '+str(G0p50norm))
-yyGw_0p30 = norm_gaussian(xx, Gpeak, 0.3)
-# yyZYG = np.convolve(yyZY, yyGint,'same')
+### estimate chemical potential of 3D harmonic trapped gas
+# only use up to max freq
+nu_min = 1
+nu_max = 140
+num = int(nu_max/nu_min)
+nus = np.linspace(nu_min*1e3, nu_max*1e3, num)
+barnu = (170*440*440)**(1/3) # guess for now; need to check current parameters
 
-arbscale = 0.982
+thetas = np.array([0.3,0.34,0.4])
+
+print("Computing BVT theory curve for ToTF={:.2f}".format(ToTF))
+params_trap = [T, barnu, 5000] # give T, barnu and mutrap_guess in Hz
+BVT = BulkViscTrap(*params_trap, nus, ToTF=ToTF)
+print("Computation complete.")
+mutrapHz = BVT.betamutrap*T
+mutrap = (mutrapHz/1e3)/EF # kHz/kHz
+print("Chemical potential in trap: " + str(mutrap) + ' EF')
+
+# arbscale = 0.982
 arbscale=1
+qrange=xnum
+FDinterp_list = []
+FDnorm_list = []
+fig, ax_FD = plt.subplots()
+for i in range(3, 8):
+	FDinterp = lambda x: np.interp(x, xx, lsFD(xx, arbscale, i))
+	FDnorm = quad(FDinterp, -qrange, qrange, points=xx, limit=2*xx.shape[0])
+	ax_FD.plot(xx, FDinterp(xx), '-', label=str(i))
+	FDinterp_list.append(FDinterp)
+	FDnorm_list.append(FDnorm)
+ax_FD.set_xlim([-303,-298])
+ax_FD.legend()
+
 yyFD_0p30_T = lsFD(xx, arbscale, 5)
 FDinterp = lambda x: np.interp(x, xx, yyFD_0p30_T)
-qrange = 10000
+qrange = 1000
 FDnorm = quad(FDinterp, -qrange, qrange, points=xx, limit=2*xx.shape[0]) # somehow "points" is needed
 # FDnorm = np.trapz(yyFD_0p30_T, xx)
 print('FDnorm: ' + str(FDnorm))
-yyFDG_0p30 = np.convolve(yyFD_0p30_T, yyGw_0p30, 'same')
-yyFDG_0p50 = np.convolve(yyGw_0p50, yyFD_0p30_T, 'same')
-FDGnorm = np.trapz(yyFDG_0p50, xx)
-print('FDGnorm: ' + str(FDGnorm))
-yyFDG_0p75 = np.convolve(yyFD_0p30_T, yyGw_0p75, 'same')
-yyFDG_1p0 = np.convolve(yyFD_0p30_T, yyGw_1p0, 'same')
 
-def convfunc(tau, t):
- 	# return FDinterp(tau) * norm_gaussian(t-tau, Gpeak, 1)
-	 return FDinterp(tau) * norm_gaussian(t-tau, Gpeak, 1)
-def convint(t):
-	qrangelow = Ebfix - 100
-	qrangehigh= Ebfix + 100
-	return quad(convfunc, qrangelow, qrangehigh, args=(t))
 
-# xxconv = np.linspace(-10, 10, 1000)
-xxconv = np.linspace(-610, -590, 1000)
+### Calculate the FD-G convolution
+xxconv = np.linspace(-310, -290, 1000)
 yyconv = []
 e_yyconv = []
 for xconv in xxconv:
@@ -292,21 +300,24 @@ for xconv in xxconv:
 	yyconv.append(a)
 	e_yyconv.append(b)
 print('Conv norm: ' + str(np.trapz(yyconv, xxconv)))
-# residuals
-yyres = y - lsMB_fixedEb(x, *popt1)
-yyres2 = y - lsmom3_fixedEb(x, *popt2)
-yyres3= y - gaussian(x, *popt3)
-yyresZY = y - lsZY_highT(x, Ebfix, T/1e3/EF, arb_scale=arbscale)
+convinterp = lambda x: np.interp(x, xxconv, yyconv)
+def convls(x, A, x0, C):
+	return A*convinterp(x-x0) + C
+guess_FDG = [0.1, 0, 0]
+popt_FDG, pcov_FDG = curve_fit(convls, x, y, sigma=yerr, p0=guess_FDG)
+perr_FDG = np.sqrt(np.diag(pcov_FDG))
+print(popt_FDG)
+print(perr_FDG)
+
 
 # plot playing with lineshapes
 fig, ax = plt.subplots()
-ax.plot(xx, yyFD_0p30_T, '-', label='FD')
-ax.plot(xx, yyGw_0p50, '-', label='G')
-# ax.plot(xx, yyFDG_0p50, '-', label='FDG')
-ax.plot(xxconv-Ebfix, yyconv, '-', label='conv')
+ax.plot(xxconv, yyconv, '-', label='conv')
+ax.plot(xxconv, convls(xxconv, 0.1, 0, 0), '--', label='scaled conv')
 ax.set_ylim([0, 1])
 ax.set_xlim([-305, -295])
 ax.legend()
+
 
 
 # plot lineshape on data
@@ -329,17 +340,27 @@ ZYstr = r'$A * exp(\frac{\Delta + E_b}{T}) * (-\Delta - E_b)^{-1/2} *\Theta(-\De
 
 # plot FD and FD with a right-sided Gaussian with fixed Eb
 # ax_ls.plot(xx, yyFD_0p30, '-', color ='tab:blue', linewidth=3, label='FD_0p30')
-ax_ls.plot(xx, yyFD_0p30_T, '-', color='tab:blue', linewidth=3, label='FD_0p30')
+# ax_ls.plot(xx, yyFD_0p30_T, '-', color='tab:blue', linewidth=3, label='FD_0p30')
 # ax_ls.plot(xx, yyFD_0p40, 'm-')
 # ax_ls.plot(xx, yyFD_0p60, ':',  color ='tab:blue', label = 'FD_0p60')
 # ax_ls.fill_between(xx, yyFD_0p30, yyFD_0p60, color = adjust_lightness('tab:blue', 0.7))
-ax_ls.plot(xxG, yyGRightNonInt, '-', color = 'k', linewidth=3, label='G zero-T non-int')
-ax_ls.plot(xxG, yyGRightUni, ':', color = 'k', linewidth=3, label='G zero-T unitary')
+# ax_ls.plot(xxG, yyGRightNonInt, '-', color = 'k', linewidth=3, label='G zero-T non-int')
+# ax_ls.plot(xxG, yyGRightUni, ':', color = 'k', linewidth=3, label='G zero-T unitary')
 
-ax_ls.plot(xx, yyFDG_0p30, '--', color = adjust_lightness('r', 0.3), linewidth=3, label='FD conv G, width=0.3')
-ax_ls.plot(xx, yyFDG_0p50, '--', color=adjust_lightness('r', 0.5), linewidth=3, label='FD conv G, width=0.5')
-ax_ls.plot(xx, yyFDG_0p75, '--', color=adjust_lightness('r', 0.75), linewidth=3, label='FD conv G, width=0.75')
-ax_ls.plot(xx, yyFDG_1p0, '--', color=adjust_lightness('r', 1.0), linewidth=3, label='FD conv G, width=1.0')
+yyconvls = convls(xxconv, *popt_FDG)
+ax_ls.plot(xxconv, yyconvls, '-',color='red', linewidth=3, label='conv')
+
+SR_convls = np.trapz(yyconvls, xxconv) - popt_FDG[-1]
+FM_convls = np.trapz(yyconvls * xxconv, xxconv) - popt_FDG[-1]
+CS_convls = FM_convls/0.5
+Ctilde_convls = CS_convls * (pi*kF*a13(Bfield)) / -2
+
+print('Convolution SR: ' + str(SR_convls))
+print('Convolution FM: ' + str(FM_convls))
+print('Convolution CS: ' + str(CS_convls))
+print('Convolution Ctilde: ' + str(Ctilde_convls))
+
+
 
 textstr = '\n'.join((
  	r'Mod. MB fit params:',
@@ -366,22 +387,26 @@ ax2.set_xlabel("Detuning [MHz]")
 
 plt.tight_layout()
 
+
+
+
+
 # residuals plots
-fig, axs = plt.subplots(2,2)
-ylims=[-0.015, 0.015]
-ax1 = axs[0,0]
-ax1.errorbar(x, yyres,yerr,  marker='o', color='r', mec=adjust_lightness('r'), capsize=2, mew=2, elinewidth=2)
-ax1.set(title='Mod. MB', ylim=ylims)
-ax2 = axs[0,1]
-ax2.errorbar(x, yyres2, yerr, marker='o', color='b', mec=adjust_lightness('b'), capsize=2, mew=2, elinewidth=2)
-ax2.set(title='Mod. k^3', ylim=ylims)
-ax3 = axs[1,0]
-ax3.errorbar(x, yyres3, yerr, marker='o', color='k', mec=adjust_lightness('k'), capsize=2, mew=2, elinewidth=2)
-ax3.set(title='Gaussian', ylim=ylims)
-ax4 = axs[1,1]
-ax4.errorbar(x, yyresZY, yerr, marker='o', color='g', mec=adjust_lightness('g'), capsize=2, mew=2, elinewidth=2)
-ax4.set(title='high-T', ylim=ylims)
-fig.suptitle("Lineshape Residuals")
+# fig, axs = plt.subplots(2,2)
+# ylims=[-0.015, 0.015]
+# ax1 = axs[0,0]
+# ax1.errorbar(x, yyres,yerr,  marker='o', color='r', mec=adjust_lightness('r'), capsize=2, mew=2, elinewidth=2)
+# ax1.set(title='Mod. MB', ylim=ylims)
+# ax2 = axs[0,1]
+# ax2.errorbar(x, yyres2, yerr, marker='o', color='b', mec=adjust_lightness('b'), capsize=2, mew=2, elinewidth=2)
+# ax2.set(title='Mod. k^3', ylim=ylims)
+# ax3 = axs[1,0]
+# ax3.errorbar(x, yyres3, yerr, marker='o', color='k', mec=adjust_lightness('k'), capsize=2, mew=2, elinewidth=2)
+# ax3.set(title='Gaussian', ylim=ylims)
+# ax4 = axs[1,1]
+# ax4.errorbar(x, yyresZY, yerr, marker='o', color='g', mec=adjust_lightness('g'), capsize=2, mew=2, elinewidth=2)
+# ax4.set(title='high-T', ylim=ylims)
+# fig.suptitle("Lineshape Residuals")
 ### save fig
 # fig_file = os.path.join('figures', 'acdimerspectrum_fit.pdf')
 # fig.savefig(os.path.join(proj_path, fig_file))
