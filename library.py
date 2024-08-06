@@ -48,7 +48,7 @@ plt_settings = {"axes.linewidth": frame_size,
 					 "lines.marker":"o"}
 
 # plot color and markers
-colors = ["blue", "red", "green", "orange", 
+colors = ["blue", "orange", "green", "red", 
 		  "purple", "teal", "pink", "brown"]
 
 	
