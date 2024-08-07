@@ -48,7 +48,7 @@ plt_settings = {"axes.linewidth": frame_size,
 					 "lines.marker":"o"}
 
 # plot color and markers
-colors = ["blue", "red", "green", "orange", 
+colors = ["blue", "orange", "green", "red", 
 		  "purple", "teal", "pink", "brown"]
 
 	
@@ -74,6 +74,22 @@ def tint_shade_color(color, amount=0.5):
         c = color
     c = colorsys.rgb_to_hls(*mc.to_rgb(c))
     return colorsys.hls_to_rgb(c[0], max(0, min(1, amount * c[1])), c[2])
+
+def OmegaRcalibration():
+	"""
+	Returns function that interpolates the recent calibration from 
+	VVAtoVpp.txt which should be in the root of the analysis folder.
+	Input of function is VVA, output is OmegaR in kHz.
+	"""
+	try: 
+		VVAtoVppfile = os.path.join("VVAtoVpp.txt") # calibration file
+	except:
+		FileNotFoundError("VVAtoVpp.txt not found. Check CWD or that file exists.")
+	VVAs, Vpps = np.loadtxt(VVAtoVppfile, unpack=True)
+	VpptoOmegaR = 27.5833 # kHz
+	OmegaR_interp = lambda x: VpptoOmegaR*np.interp(x, VVAs, Vpps)
+	
+	return OmegaR_interp
 
 def ChipBlackman(x, a_n=[0.42659, 0.49656, 0.076849]):
 	"""The ChipLab Blackman that exists in the pulse generation 
@@ -173,8 +189,5 @@ def guessACdimer(field):
 
 def a97(B, B0=202.14, B0zero=209.07, abg=167.6*a0): 
 	return abg * (1 - (B0zero - B0)/(B - B0));
-
-
-
 
 # %%

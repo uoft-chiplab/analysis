@@ -7,73 +7,8 @@ Created on Wed Jun 26 16:04:26 2024
 import numpy as np
 from scipy.optimize import curve_fit
 import time
+import matplotlib.pyplot as plt
 
-def MonteCarlo_spectra_fit_trapz(xs, ys, yserr, fitmask, xstar, fit_func, 
-									num_iter=1000):
-	""" Computes trapz for interpolated list of data points (xs, ys+-yserr),
-	which is extrapolated using fit_func out to max(xs). Estimates std dev of 
-	result by sampling ys and yserr from Gaussian distributions, and fitting
-	to this sample, num_iter (default 1000) times."""
-	
-	def dwSpectra(xi, x_star):
-		return 2*(1/np.sqrt(xi)-np.arctan(np.sqrt(x_star/xi))/np.sqrt(x_star))
-
-	def wdwSpectra(xi, x_star):
-		return 2*np.sqrt(x_star)*np.arctan(np.sqrt(x_star/xi))
-	
-	def rand_y(y, yerr, size):
-		generator = np.random.default_rng()
-		return generator.normal(loc=y, scale=yerr, size=num_iter)
-	# array of lists of y vals, from Gaussians with centres y and widths yerr
-	ys_iter = np.array([rand_y(y, yerr, num_iter) for y, 
-					 yerr in zip(ys, yserr)])
-	
-	popts = []
-	pcovs = []
-	# fit to determine lineshape for each iteration
-	for i in range(num_iter):
-		ys_fit = ys_iter[:,i]
-		popt, pcov = curve_fit(fit_func, xs[fitmask], ys_fit[fitmask])
-		popts.append(popt)
-		pcovs.append(pcov)
-	
-	# extrapolation starting point
-	xi = max(xs)
-	
-	# interpolation array for x, num in size
-	num = 1000 # points to integrate over
-	xs_interp = np.linspace(min(xs), xi, num)
-	
-	# compute interpolation array for y, num by num_iter in size
-	ys_interp_iter = np.array([[np.interp(xi, xs, ys_iter[:,i]) \
-							 for xi in xs_interp] for i in range(num_iter)])
-	
-	# integral from xi to infty
-	SR_extrapolations = np.array(popts)[:,0]*dwSpectra(xi, xstar)
-	FM_extrapolations = np.array(popts)[:,0]*wdwSpectra(xi, xstar)
-	
-	# for the integration, we first sum the interpolation, 
-	# then the extrapolation, then we add the analytic -5/2s portion
-	
-	# sumrule using each set
-	SR_distr = np.array([np.trapz(ys_interp_iter[i], x=xs_interp) \
-			+ SR_extrapolations[i] for i in range(num_iter)])
-	# first moment using each set	
-	FM_distr = np.array([np.trapz(ys_interp_iter[i]*xs_interp, x=xs_interp) \
-			+ FM_extrapolations[i] for i in range(num_iter)])
-	
-	# clock shift
-	# we need to do this sample by sample so we have correlated SR and FM
-	CS_distr = np.array([FM/SR for FM, SR in zip(FM_distr, SR_distr)])
-	
-	SR_mean, e_SR = (np.mean(SR_distr), np.std(SR_distr))
-	FM_mean, e_FM = (np.mean(FM_distr), np.std(FM_distr))
-	CS_mean, e_CS = (np.mean(CS_distr), np.std(CS_distr))
-	
-	# return everything
-	return SR_distr, SR_mean, e_SR, FM_distr, FM_mean, e_FM, CS_distr, \
-		CS_mean, e_CS, popts, pcovs
-		
 		
 def Bootstrap_spectra_fit_trapz(xs, ys, xfitlims, xstar, fit_func, 
 									trialsB=1000, pGuess=[1]):
@@ -83,6 +18,8 @@ def Bootstrap_spectra_fit_trapz(xs, ys, xfitlims, xstar, fit_func,
 
 	def wdwSpectra(xi, x_star):	
 		return 2*np.sqrt(x_star)*np.arctan(np.sqrt(x_star/xi))
+	
+	mincutoff = min(xs) # the 47MHz point
 	
 	num = 5000 # points to integrate over
 	
@@ -97,6 +34,9 @@ def Bootstrap_spectra_fit_trapz(xs, ys, xfitlims, xstar, fit_func,
 	CS_distr = []
 	SR_extrap_distr = []
 	FM_extrap_distr = []
+	SR_raw_distr = []
+	CS_raw_distr = []
+	extrapstart = []
 	
 	while (trialB < trialsB) and (fails < trialsB):
 		if (0 == trialB % (trialsB / 5)):
@@ -136,12 +76,18 @@ def Bootstrap_spectra_fit_trapz(xs, ys, xfitlims, xstar, fit_func,
 	
 		# extrapolation starting point
 		xi = max(xTrial)
+# 		print(xi)
 	
+		
+		# select interpolation points to not have funny business
+		interp_points = np.array([[x, y] for x, y in zip(xTrial, yTrial) if (x > -2)])
+		
 		# interpolation array for x, num in size
-		x_interp = np.linspace(min(xTrial), xi, num)
+		x_interp = np.linspace(min(interp_points[:,0]), xi, num)
 	
 		# compute interpolation array for y, num by num_iter in size
-		y_interp = np.array([np.interp(x, xTrial, yTrial) for x in x_interp])
+		y_interp = np.array([np.interp(x, interp_points[:,0], 
+								 interp_points[:,1]) for x in x_interp])
 	
 		# integral from xi to infty
 		SR_extrapolation = pFit[0]*dwSpectra(xi, xstar)
@@ -153,6 +99,7 @@ def Bootstrap_spectra_fit_trapz(xs, ys, xfitlims, xstar, fit_func,
 		# sumrule using each set
 		SR = np.trapz(y_interp, x=x_interp) + SR_extrapolation
 		
+		
 		# first moment using each set	
 		FM = np.trapz(y_interp*x_interp, x=x_interp) + FM_extrapolation
 	
@@ -160,9 +107,14 @@ def Bootstrap_spectra_fit_trapz(xs, ys, xfitlims, xstar, fit_func,
 		# we need to do this sample by sample so we have correlated SR and FM
 		CS = FM/SR
 		
+		
 		if SR<0 or CS<0 or CS>100:
 			print("Integration out of bounds")
 			continue
+		
+		extrapstart.append(xi)
+		SR_raw_distr.append(SR)
+		CS_raw_distr.append(CS)
 	
 		SR_extrap_distr.append(SR_extrapolation)
 		FM_extrap_distr.append(FM_extrapolation)
@@ -170,9 +122,11 @@ def Bootstrap_spectra_fit_trapz(xs, ys, xfitlims, xstar, fit_func,
 		CS_distr.append(CS)
 		FM_distr.append(FM)
 		SR_distr.append(SR)
-	
+			
 	# return everything
-	return SR_distr, FM_distr, CS_distr, pFitB, SR_extrap_distr, FM_extrap_distr
+	return np.array(SR_distr), np.array(FM_distr), np.array(CS_distr), \
+				pFitB, np.array(SR_extrap_distr), np.array(FM_extrap_distr), \
+				np.array(SR_raw_distr), np.array(CS_raw_distr), extrapstart
 
 def DimerBootStrapFit(xs, ys, xfitlims, Ebfix, fit_func, 
 									trialsB=1000, pGuess=[0.04,0.7]):
@@ -278,6 +232,72 @@ def DimerBootStrapFit(xs, ys, xfitlims, Ebfix, fit_func,
 	
 	# return everything
 	return SR_distr, FM_distr, CS_idl_distr, CS_exp_distr, pFitB, SR, FM, CS_idl, CS_exp
+
+def MonteCarlo_spectra_fit_trapz(xs, ys, yserr, fitmask, xstar, fit_func, 
+									num_iter=1000):
+	""" Computes trapz for interpolated list of data points (xs, ys+-yserr),
+	which is extrapolated using fit_func out to max(xs). Estimates std dev of 
+	result by sampling ys and yserr from Gaussian distributions, and fitting
+	to this sample, num_iter (default 1000) times."""
+	
+	def dwSpectra(xi, x_star):
+		return 2*(1/np.sqrt(xi)-np.arctan(np.sqrt(x_star/xi))/np.sqrt(x_star))
+
+	def wdwSpectra(xi, x_star):
+		return 2*np.sqrt(x_star)*np.arctan(np.sqrt(x_star/xi))
+	
+	def rand_y(y, yerr, size):
+		generator = np.random.default_rng()
+		return generator.normal(loc=y, scale=yerr, size=num_iter)
+	# array of lists of y vals, from Gaussians with centres y and widths yerr
+	ys_iter = np.array([rand_y(y, yerr, num_iter) for y, 
+					 yerr in zip(ys, yserr)])
+	
+	popts = []
+	pcovs = []
+	# fit to determine lineshape for each iteration
+	for i in range(num_iter):
+		ys_fit = ys_iter[:,i]
+		popt, pcov = curve_fit(fit_func, xs[fitmask], ys_fit[fitmask])
+		popts.append(popt)
+		pcovs.append(pcov)
+	
+	# extrapolation starting point
+	xi = max(xs)
+	
+	# interpolation array for x, num in size
+	num = 1000 # points to integrate over
+	xs_interp = np.linspace(min(xs), xi, num)
+	
+	# compute interpolation array for y, num by num_iter in size
+	ys_interp_iter = np.array([[np.interp(xi, xs, ys_iter[:,i]) \
+							 for xi in xs_interp] for i in range(num_iter)])
+	
+	# integral from xi to infty
+	SR_extrapolations = np.array(popts)[:,0]*dwSpectra(xi, xstar)
+	FM_extrapolations = np.array(popts)[:,0]*wdwSpectra(xi, xstar)
+	
+	# for the integration, we first sum the interpolation, 
+	# then the extrapolation, then we add the analytic -5/2s portion
+	
+	# sumrule using each set
+	SR_distr = np.array([np.trapz(ys_interp_iter[i], x=xs_interp) \
+			+ SR_extrapolations[i] for i in range(num_iter)])
+	# first moment using each set	
+	FM_distr = np.array([np.trapz(ys_interp_iter[i]*xs_interp, x=xs_interp) \
+			+ FM_extrapolations[i] for i in range(num_iter)])
+	
+	# clock shift
+	# we need to do this sample by sample so we have correlated SR and FM
+	CS_distr = np.array([FM/SR for FM, SR in zip(FM_distr, SR_distr)])
+	
+	SR_mean, e_SR = (np.mean(SR_distr), np.std(SR_distr))
+	FM_mean, e_FM = (np.mean(FM_distr), np.std(FM_distr))
+	CS_mean, e_CS = (np.mean(CS_distr), np.std(CS_distr))
+	
+	# return everything
+	return SR_distr, SR_mean, e_SR, FM_distr, FM_mean, e_FM, CS_distr, \
+		CS_mean, e_CS, popts, pcovs
 
 
 # def MonteCarlo_trapz(xs, ys, yserr, num_iter=1000):
