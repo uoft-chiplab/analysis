@@ -116,7 +116,7 @@ def calc_A(B0, T, e_T, Bamp, e_Bamp):
 	return A, e_A
 
 # shitty hard-coded linear fit of C/kFN vs. B field [G]
-def calc_Ca(B0,Bamp):
+def calc_Ca(B0, Bamp):
 	m = -2.07499885
 	b = 420.18726779
 	Ca = np.abs(m*Bamp)
@@ -561,7 +561,7 @@ if plotting == True:
 if save == True:
 	save_results = pd.DataFrame() # df for storing results, to be pickled
 	for run in runs:
-		results = vars(run) # makes dict out of class attribues, this gives me goosebumps
+		results = vars(run) # makes dict out of class attributes, this gives me goosebumps
 		
 		# delete attributes from dict results that you don't want to save
 		for attr in del_attr:

@@ -240,14 +240,14 @@ class Data:
 		self.parameter_table = tabulate([['Values', *self.popt], ['Errors', *self.perr]], 
 								 headers=param_names)
 		print(self.parameter_table)
-		
-		if fit_func == TrapFreq:
-			freq = self.popt[2]*10**3/2/np.pi
-			er = self.perr[2]*10**3/2/np.pi
-			ot = self.popt[1]*self.popt[2]
-			print('The trap frequency is {:.6f} +/-{:.2}'.format(freq,er))
-			print('omega*tau is',ot)
-							
+# 		
+		if fit_func == TrapFreq2:
+ 			freq = self.popt[2]*10**3/2/np.pi
+ 			er = self.perr[2]*10**3/2/np.pi
+ 			ot = self.popt[1]*self.popt[2]
+ 			print('The trap frequency is {:.6f} +/-{:.2}'.format(freq,er))
+ 			print('omega*tau is',ot)
+ 							
 		if hasattr(self, 'ax'): # check for plot
 			num = 500
 			xlist = np.linspace(self.data[f"{names[0]}"].min(), 
