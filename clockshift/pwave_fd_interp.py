@@ -89,10 +89,10 @@ pGuessFD = np.array([[0.5,2e3],[0.38, 1.6e+03],[0.36, 1.4e+03],
                         [0.19, 0.8e+03],[0.15, 6.7e+02],[0.11, 5.6e+02],
                         [0.061, 4.2e+02],[0.036, 3.5e+02],[0.013, 2.3e+02]])
 
-import matplotlib.pyplot as plt
-fig, ax = plt.subplots()
-xx = np.linspace(0, 2, 100)
-ax.plot(xx, distRA_0p05intv(xx), '--')
-ax.plot(xx, distRA_0p30intv(xx), '--')
-ax.plot(xx, distRA_0p60intv(xx), '--')
-ax.plot(xx, distRA_1p00intv(xx), '--')
+# import matplotlib.pyplot as plt
+# fig, ax = plt.subplots()
+# xx = np.linspace(0, 2, 100)
+# ax.plot(xx, distRA_0p05intv(xx), '--')
+# ax.plot(xx, distRA_0p30intv(xx), '--')
+# ax.plot(xx, distRA_0p60intv(xx), '--')
+# ax.plot(xx, distRA_1p00intv(xx), '--')
