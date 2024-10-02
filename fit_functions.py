@@ -317,22 +317,50 @@ def TrapFreq2(data,guess=None):
 	mean_y = data[:,1].mean()
 	max_y = data[:,1].max()
 	
-	param_names = ['Amplitude','b','l','Center','Offset']
-	if guess is None: guess = [5, 20, 1  ,0 , 100]
+	param_names = ['Amplitude','b','l','phase','Offset']
+	if guess is None: guess = [5, 1e2, 2*3.14*0.2, 0, 100]
 	
 	def TrapFreq2(x, A, b, l, x0, C):
 		return A*np.exp(-x/b)*(np.sin(l * x - x0)) +  C 
 	return TrapFreq2, guess, param_names
 
+def TrapFreqCD(data,guess=None):
+	"""
+	Returns: A*np.exp(-x/b)*(np.sin(f * x)) +  C 
+	"""
+	x_ofmax = data[np.abs(data[:,1]).argmax(),0]
+	max_x = data[:,0].max()
+	min_x = data[:,0].min()
+	mean_y = data[:,1].mean()
+	max_y = data[:,1].max()
+	
+	param_names = ['A','b','f','C']
+	if guess is None: guess = [5, 1e2, 0.2, 100]
+	
+	def func(x, A, b, f, C):
+		return A*np.exp(-x/b)*(np.sin((2*3.14159)*f * x)) +  C 
+	return func, guess, param_names
+
 def RabiFreq(data):
 	"""
-	Returns:  A*(np.sin(b/2 * x - x0))**2 + C
+	Returns:  A*(np.sin(b * x - x0))**2 + C
 	"""
 	param_names = ['Amplitude','b','Center','Offset']
 	guess = [1,1,1,0]
 	
 	def RabiFreq(x, A, b, x0, C):
-		return A*(np.sin(b/2 * x - x0))**2 + C
+		return A*(np.sin(2*np.pi*b/2 * x - x0))**2 + C
+	return RabiFreq, guess, param_names
+
+def RabiFreqDecay(data):
+	"""
+	Returns:  A*np.exp(-t/tau)*(np.sin(b * x - x0))**2 + C
+	"""
+	param_names = ['Amplitude','b','tau','Center','offset']
+	guess = [1,1,1,0,0]
+	
+	def RabiFreq(x, A, b, tau, x0, C):
+		return A*np.exp(-x/tau)*(np.sin(b * x - x0))**2 + C
 	return RabiFreq, guess, param_names
 
 def Exponential(data):

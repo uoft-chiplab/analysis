@@ -13,7 +13,7 @@ import os
 from glob import glob
 import sys
 from library import *
-# from . import fit_functions
+from fit_functions import *
 from scipy.optimize import curve_fit
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -34,7 +34,8 @@ from tabulate import tabulate
 	
 #Holy moly thanks for writing this ^
 
-file = "2024-04-04_B_UHfit.dat"
+file = "2024-09-05_X_e.dat"
+guess = [8, 7, 2*3.14*0.4, 0, 95]
 drive = '\\\\UNOBTAINIUM\\E_Carmen_Santiago' 
 plt.rcParams.update(plt_settings)
 

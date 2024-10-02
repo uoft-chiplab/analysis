@@ -11,13 +11,16 @@ import matplotlib.pyplot as plt
 
 		
 def Bootstrap_spectra_fit_trapz(xs, ys, xfitlims, xstar, fit_func, 
-									trialsB=1000, pGuess=[1]):
+									trialsB=1000, pGuess=[1], debug=False):
 	""" """
 	def dwSpectra(xi, x_star):
 		return 2*(1/np.sqrt(xi)-np.arctan(np.sqrt(x_star/xi))/np.sqrt(x_star))
 
 	def wdwSpectra(xi, x_star):	
 		return 2*np.sqrt(x_star)*np.arctan(np.sqrt(x_star/xi))
+	
+	if debug == True:
+		trialsB = 10
 	
 	mincutoff = min(xs) # the 47MHz point
 	
@@ -34,28 +37,29 @@ def Bootstrap_spectra_fit_trapz(xs, ys, xfitlims, xstar, fit_func,
 	CS_distr = []
 	SR_extrap_distr = []
 	FM_extrap_distr = []
-	SR_raw_distr = []
-	CS_raw_distr = []
+	A_distr = []
 	extrapstart = []
 	
 	while (trialB < trialsB) and (fails < trialsB):
 		if (0 == trialB % (trialsB / 5)):
- 			print('   %d of %d @ %s' % (trialB, trialsB, time.strftime("%H:%M:%S", time.localtime())))
+ 			print('   %d of %d @ %s' % (trialB, trialsB, time.strftime("%H:%M:%S", time.localtime()))
+		  )
+		 
 		inds = np.random.choice(np.arange(0, nData), nChoose, replace=True)
-# 		print(len(inds))
-		xTrial = np.random.normal(np.take(xs, inds), 0.0001)
 		# we need to make sure there are no duplicate x values or the fit
-		# will fail to converge
-# 		print(xTrial)
+		# will fail to converge. do this by adding random offsets...
+		xTrial = np.random.normal(np.take(xs, inds), 0.0001)
+		
 		yTrial = np.take(ys, inds)
-# 		print(yTrial)
 		p = xTrial.argsort()
-# 		print(p)
 		xTrial = xTrial[p]
 		yTrial = yTrial[p]
 		
 		fitpoints = np.array([[xfit, yfit] for xfit, yfit in zip(xTrial, yTrial) \
 						if (xfit > xfitlims[0] and xfit < xfitlims[-1])])
+
+		if debug == True:
+			print([min(fitpoints[:,0]),max(fitpoints[:,0])])
 
 		try:
 			# pylint: disable=unbalanced-tuple-unpacking
@@ -76,9 +80,7 @@ def Bootstrap_spectra_fit_trapz(xs, ys, xfitlims, xstar, fit_func,
 	
 		# extrapolation starting point
 		xi = max(xTrial)
-# 		print(xi)
 	
-		
 		# select interpolation points to not have funny business
 		interp_points = np.array([[x, y] for x, y in zip(xTrial, yTrial) if (x > -2)])
 		
@@ -107,14 +109,11 @@ def Bootstrap_spectra_fit_trapz(xs, ys, xfitlims, xstar, fit_func,
 		# we need to do this sample by sample so we have correlated SR and FM
 		CS = FM/SR
 		
-		
 		if SR<0 or CS<0 or CS>100:
 			print("Integration out of bounds")
-			continue
+			continue # don't append trial to lists
 		
 		extrapstart.append(xi)
-		SR_raw_distr.append(SR)
-		CS_raw_distr.append(CS)
 	
 		SR_extrap_distr.append(SR_extrapolation)
 		FM_extrap_distr.append(FM_extrapolation)
@@ -122,11 +121,13 @@ def Bootstrap_spectra_fit_trapz(xs, ys, xfitlims, xstar, fit_func,
 		CS_distr.append(CS)
 		FM_distr.append(FM)
 		SR_distr.append(SR)
+		
+		A_distr.append(pFit[0])
 			
 	# return everything
 	return np.array(SR_distr), np.array(FM_distr), np.array(CS_distr), \
-				pFitB, np.array(SR_extrap_distr), np.array(FM_extrap_distr), \
-				np.array(SR_raw_distr), np.array(CS_raw_distr), extrapstart
+				np.array(A_distr), np.array(SR_extrap_distr), np.array(FM_extrap_distr), \
+					np.array(extrapstart)
 
 def DimerBootStrapFit(xs, ys, xfitlims, Ebfix, fit_func, 
 									trialsB=1000, pGuess=[0.04,0.7]):

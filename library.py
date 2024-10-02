@@ -5,7 +5,6 @@
 
 Functions to call in analysis scripts
 """
-# %%
 import os
 current_dir = os.path.dirname(__file__)
 
@@ -13,6 +12,9 @@ from scipy.constants import pi, hbar, h, c, k as kB
 from scipy.integrate import trapz, simps, cumtrapz
 from scipy.optimize import fsolve, curve_fit
 import numpy as np
+
+import matplotlib.pyplot as plt
+import pandas as pd
 
 uatom = 1.660538921E-27
 a0 = 5.2917721092E-11
@@ -25,31 +27,33 @@ gI = 0.000176490 # total nuclear g-factor
 
 # plt settings
 frame_size = 1.5
-markers = ["o", "s", "^", "D", "h", "x", "o", "s", "^", "D", "h"]
+markers = ["o", "s", "^", "D", "h",  "o", "s", "^", "D", "h"]
 	
 plt_settings = {"axes.linewidth": frame_size,
 				"axes.edgecolor":'black',
 				"scatter.edgecolors":'black',
 				"lines.linewidth":2,
-					 "font.size": 12,
-					 "legend.fontsize": 10,
-					 "legend.framealpha": 1.0,
-					 "xtick.major.width": frame_size,
-					 "xtick.minor.width": frame_size*0.75,
-					 "xtick.direction":'in',
-					 "xtick.major.size": 3.5*frame_size,
-					 "xtick.minor.size": 2.0*frame_size,
-					 "ytick.major.width": frame_size,
-					 "ytick.minor.width": frame_size*0.75,
-					 "ytick.major.size": 3.5*frame_size,
-					 "ytick.minor.size": 2.0*frame_size,
-					 "ytick.direction":'in',
-					 "lines.linestyle":'',
-					 "lines.marker":"o"}
+				 "font.size": 12,
+				 "legend.fontsize": 10,
+				 "legend.framealpha": 1.0,
+				 "xtick.major.width": frame_size,
+				 "xtick.minor.width": frame_size*0.75,
+				 "xtick.direction":'in',
+				 "xtick.major.size": 3.5*frame_size,
+				 "xtick.minor.size": 2.0*frame_size,
+				 "ytick.major.width": frame_size,
+				 "ytick.minor.width": frame_size*0.75,
+				 "ytick.major.size": 3.5*frame_size,
+				 "ytick.minor.size": 2.0*frame_size,
+				 "ytick.direction":'in',
+				 "lines.linestyle":'',
+				 "lines.marker":"o",
+				 "lines.markeredgewidth": 2,}
 
 # plot color and markers
 colors = ["blue", "orange", "green", "red", 
-		  "purple", "teal", "pink", "brown"]
+		  "purple", "teal", "pink", "brown",
+		  "khaki", "silver", "chocolate", "chartreuse"]
 
 	
 tintshade=0.6
@@ -74,6 +78,46 @@ def tint_shade_color(color, amount=0.5):
         c = color
     c = colorsys.rgb_to_hls(*mc.to_rgb(c))
     return colorsys.hls_to_rgb(c[0], max(0, min(1, amount * c[1])), c[2])
+
+def set_marker_color(color):
+	"""
+	Sets marker colors s.t. the face color is light and the edge color is like
+	a la standard published plot schemes.
+	"""
+	light_color = tint_shade_color(color, amount=1+tintshade)
+	dark_color = tint_shade_color(color, amount=1-tintshade)
+	plt.rcParams.update({"lines.markeredgecolor": dark_color,
+				   "lines.markerfacecolor": light_color,
+				   "lines.color": dark_color})
+	
+def VVAtoVppInterpolation(file):
+	"""Returns interpolation function based on VVA to Vpp file."""
+	VVAs, Vpps = np.loadtxt(file, unpack=True)
+	interp_func = lambda x: np.interp(x, VVAs, Vpps)
+	return interp_func
+	
+def save_to_Excel(filename, df, sheet_name='Sheet1', mode='replace'):
+	try: # to open save file, if it exists
+		if mode == 'replace':
+			# open file and write new df
+			with pd.ExcelWriter(filename, mode='a', if_sheet_exists='overlay', \
+					engine='openpyxl') as writer:
+				print("Saving results to " + filename)
+				df.to_excel(writer, index=False, sheet_name=sheet_name)
+				
+		if mode == 'overwrite':	
+			existing_df = pd.read_excel(filename, sheet_name=sheet_name)
+			raise ValueError(mode + " mode not implemented yet")
+						
+	except PermissionError:
+		 print("Can't write to Excel file " + filename + ".")
+		 print('Is the .xlsx file open?')
+		 print()
+	except FileNotFoundError: # there is no save file
+		 print("Save file does not exist.")
+		 print("Creating file " + filename + " and writing header")
+		 df.to_excel(filename, index=False, sheet_name=sheet_name)
+
 
 def OmegaRcalibration():
 	"""
@@ -189,5 +233,3 @@ def guessACdimer(field):
 
 def a97(B, B0=202.14, B0zero=209.07, abg=167.6*a0): 
 	return abg * (1 - (B0zero - B0)/(B - B0));
-
-# %%
