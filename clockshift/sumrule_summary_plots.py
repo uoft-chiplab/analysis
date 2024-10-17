@@ -23,7 +23,10 @@ pd.set_option('display.width', 9999)
 
 # save files 
 files = ['sumrule_analysis_results.xlsx',
-		 'loss_sumrule_analysis_results.xlsx']
+		 'loss_sumrule_analysis_results.xlsx',
+		 'acdimer_lineshape_results_c5.xlsx',
+		 'acdimer_lineshape_results_c9.xlsx',
+		 'acdimer_lineshape_results_sum95.xlsx']
 
 ### load analysis results
 # for file in files:
@@ -34,12 +37,14 @@ full_df = pd.concat((pd.read_excel(os.path.join(proj_path,f), engine='openpyxl')
 					for f in files))
 	
 Runs = ['2024-09-12_E_e.dat', '2024-09-18_F_e.dat', '2024-09-23_H_e.dat',
-       '2024-09-24_C_e.dat']
+       '2024-09-24_C_e.dat', '2024-09-27_B_e.dat', '2024-09-27_C_e.dat',
+	   '2024-10-01_F_e.dat','2024-10-02_C_e.dat',
+	      '2024-10-07_C_e.dat','2024-10-07_G_e.dat', '2024-10-08_F_e.dat']
 	
 df = full_df.loc[full_df.Run.isin(Runs)]
 
 # print df
-print(df[['ToTF', 'EF', 'SR_median', 'C_median', 'C_theory', 'CoSR_median', 'Run', 'Transfer']])
+print(df[['ToTF', 'EF', 'SR_median', 'CS_median', 'C_median', 'C_theory', 'CoSR_median', 'Run', 'Transfer']])
 
 ### select x_axis
 xname = "ToTF"
@@ -66,12 +71,14 @@ plt.rcParams.update({"figure.figsize": [12,8]})
 fig, axes = plt.subplots(2,3)
 axs = axes.flatten()
 
-transfer_types = ['loss', 'transfer']
+transfer_types = ['transfer', 'dimer_c9']#,'dimer_c5','dimer_sum95']
 # flip 'em
-colors = [colors[1], colors[0]]
-markers = [markers[1], markers[0]]
+# colors = [colors[2], colors[1]]
+# markers = [markers[1], markers[0]]
 
-for l, transfer in enumerate(transfer_types):
+scale_dimer = 1
+
+for l, transfer in enumerate(transfer_types):		
 	subdf = df.loc[df['Transfer'] == transfer]
 	
 	# labelToTF = r"ToTF"+"={:.3f}".format(ToTF)
@@ -87,18 +94,32 @@ for l, transfer in enumerate(transfer_types):
 	
 	
 	# Plot vs ToTF
-	j = 0 # ax counter
-	for ax, label_pair, df_pair in zip(axs, labels, df_names):
+	for j, (ax, label_pair, df_pair) in enumerate(zip(axs, labels, df_names)):
 		ax.set(xlabel=label_pair[0], ylabel=label_pair[1])
-		error = np.array(list(zip(subdf[df_pair[1]+"_median"]-subdf[df_pair[1]+"_lower"], 
+		if 'dimer' in transfer:
+			scale_dimer = 1
+			if j in [0, 1]:
+				continue
+			if df_pair[1] == 'CS':
+				scale_dimer = 1
+			if df_pair[1] == 'CoSR':
+				df_pair[1] = 'C' # 'C' for dimer is actually CoSR
+# 				scale_dimer=0.5
+			error = np.array(list(zip(subdf[df_pair[1]+"_median"]-subdf[df_pair[1]+"_lower"], 
+					   subdf[df_pair[1]+"_upper"]-subdf[df_pair[1]+"_median"]))).T*np.abs(scale_dimer)
+			ax.errorbar(subdf[df_pair[0]], subdf[df_pair[1]+"_median"]*scale_dimer, 
+				yerr=error, fmt=marker, label=transfer_types[l], ecolor=dark_color)
+		else:
+			error = np.array(list(zip(subdf[df_pair[1]+"_median"]-subdf[df_pair[1]+"_lower"], 
 							   subdf[df_pair[1]+"_upper"]-subdf[df_pair[1]+"_median"]))).T
-		ax.errorbar(subdf[df_pair[0]], subdf[df_pair[1]+"_median"], yerr=error, fmt=marker,
-			  label=transfer_types[l], ecolor=dark_color)
-		if j == 2 or j == 5:
+			ax.errorbar(subdf[df_pair[0]], subdf[df_pair[1]+"_median"], yerr=error, fmt=marker,
+			     label=transfer_types[l], ecolor=dark_color)
+	
+		if j == 2 or j == 5: # plotting against theoretical contact
 			ax.plot([0.7,2], [0.7,2], 'k--')
-		j += 1
-
-axs[-2].legend()
+		
+h, l = axs[-3].get_legend_handles_labels()
+axs[1].legend(h, l)
 
 ### generate table
 # axs[-1].axis('off')

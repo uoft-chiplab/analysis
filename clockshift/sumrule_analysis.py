@@ -5,14 +5,10 @@ Loads .dat with contact HFT scan and computes scaled transfer. Plots. Also
 computes the sumrule.
 
 To do:
-	Calculate EF for each shot
-	Check pulse area calculations
-	More commenting
-	Filter results when summary plotting
-	....
+	Error in x_star
 	
 """
-BOOTSRAP_TRAIL_NUM = 5000
+BOOTSRAP_TRAIL_NUM = 500
 
 # paths
 import os
@@ -22,12 +18,15 @@ data_path = os.path.join(proj_path, 'data')
 figfolder_path = os.path.join(proj_path, 'figures')
 
 from library import pi, h, hbar, mK, a0, plt_settings, GammaTilde, tintshade, \
-	 tint_shade_color, markers, colors
+	 tint_shade_color, markers, colors,  chi_sq
+from data_helper import check_for_col_name, bg_freq_formatter, remove_indices_formatter
+from save_df_to_xlsx import save_df_row_to_xlsx
 from data_class import Data
 from scipy.optimize import curve_fit
 from scipy.stats import sem
 from rfcalibrations.Vpp_from_VVAfreq import Vpp_from_VVAfreq
-from clockshift.MonteCarloSpectraIntegration import Bootstrap_spectra_fit_trapz
+from clockshift.MonteCarloSpectraIntegration import Bootstrap_spectra_fit_trapz, \
+					dist_stats, MonteCarlo_estimate_std_from_function
 from contact_correlations.UFG_analysis import calc_contact
 import numpy as np
 import pandas as pd
@@ -40,12 +39,16 @@ Save = True
 
 ### script options
 Analysis = True
-Talk = True
-BootstrapHists = True
+Bootstrap = True
 Correlations = True
 Debug = False
+Filter = True
+Talk = True
 
-transfer_selection = 'loss' #'transfer' or  'loss'
+Bg_Tracking = True
+Calc_CTheory_std = True
+
+transfer_selection = 'transfer' #'transfer' or  'loss'
 
 ### metadata
 metadata_filename = 'metadata_file.xlsx'
@@ -56,7 +59,7 @@ if transfer_selection == 'loss':
 	files =  ["2024-09-12_E_e",
 			   "2024-09-18_F_e",
 			   "2024-09-18_K_e"] # loss files
-files = ["2024-09-12_E_e"]
+# files = ["2024-09-18_K_e"]
 
 # Manual file select, comment out if exclude column should be used instead
 # files = ["2024-09-12_E_e"]
@@ -86,12 +89,16 @@ def a13(B):
 def xstar(B, EF):
 	return Eb/EF # hbar**2/mK/a13(B)**2 * (1-re/a13(Bfield))**(-1)
 
-def GenerateSpectraFit(xstar):
+def GenerateSpectraFit(xstar, bg=False):
 	def fit_func(x, A):
 		xmax = xstar
-	# 	print('xstar = {:.3f}'.format(xmax))
 		return A*x**(-3/2) / (1+x/xmax)
-	return fit_func
+	if bg == True:
+		return_func = lambda x: np.piecewise(x, [x<0, x>=0], [lambda z: b, 
+														fit_func(z, A) + b])
+		return return_func
+	else:
+		return fit_func
 
 def dwSpectraFit(xi, x_star, A):
 	return A*2*(1/np.sqrt(xi)-np.arctan(np.sqrt(x_star/xi))/np.sqrt(x_star))
@@ -99,22 +106,19 @@ def dwSpectraFit(xi, x_star, A):
 def wdwSpectraFit(xi, x_star, A):
 	return A*2*np.sqrt(x_star)*np.arctan(np.sqrt(x_star/xi))
 
-def dist_stats(dist, CI):
-	""" Computes the median, upper confidence interval (CI), lower CI, mean 
-		and standard deviation for a distribution named dist. Returns a dict."""
-	return_dict = {
-		'median': np.nanmedian(dist),
-		'upper': np.nanpercentile(dist, 100-(100.0-CI)/2.),
-		'lower': np.nanpercentile(dist, (100.0-CI)/2.),
-		'mean': np.mean(dist),
-		'std': np.std(dist)}
-	return return_dict
+def linear(x, a, b):
+	return a*x + b
 
 ### plot settings
 plt.rcParams.update(plt_settings) # from library.py
-color = '#1f77b4' # default matplotlib color (that blueish color)
+color = '#1f77b4'  # default matplotlib color (that blueish color)
+color2 = '#ff7f0e'  # second default (orange)
 light_color = tint_shade_color(color, amount=1+tintshade)
 dark_color = tint_shade_color(color, amount=1-tintshade)
+light_color2 = tint_shade_color(color2, amount=1+tintshade)
+dark_color2 = tint_shade_color(color2, amount=1-tintshade)
+light_red = tint_shade_color('r', amount=1+tintshade)
+dark_red = tint_shade_color('r', amount=1-tintshade)
 plt.rcParams.update({"figure.figsize": [12,8],
 					 "font.size": 14,
 					 "lines.markeredgecolor": dark_color,
@@ -151,6 +155,8 @@ for filename in files:
 	# create data structure
 	filename = filename + ".dat"
 	run = Data(filename, path=data_path)
+	runfolder = filename 
+	figpath = os.path.join(figfolder_path, runfolder)
 	
 	# initialize results dict to turn into df
 	results = {}
@@ -159,33 +165,61 @@ for filename in files:
 	results['Pulse Time (us)'] = meta_df['trf'][0]*1e6
 	results['Pulse Type'] = meta_df['pulsetype'][0]
 	results['ToTF'] = meta_df['ToTF'][0]
+	results['e_ToTF'] = meta_df['ToTF_sem'][0]
 	results['EF'] = EF
+	results['e_EF'] = meta_df['EF_sem'][0]
 	results['kF'] = np.sqrt(2*mK*EF*h*1e6)/hbar
 	results['barnu'] = meta_df['barnu'][0]
+	results['e_barnu'] = meta_df['barnu_sem'][0]
+	results['FourierWidth'] = 2/meta_df['trf'][0]/1e6
 	
 	# from Tilman's unitary gas harmonic trap averaging code
 	results['C_theory'] = calc_contact(results['ToTF'], results['EF'], 
 								results['barnu'])
+	
+	# sample C_theory from calibration values distributed normally to obtain std
+	if Calc_CTheory_std == True:
+		C_theory_mean, C_theory_std = MonteCarlo_estimate_std_from_function(calc_contact, 
+				[results['ToTF'], results['EF'], results['barnu']], 
+				[results['e_ToTF'], results['e_EF'], results['e_barnu']], num=200)
+		print("For nominal C_theory={:.2f}".format(results['C_theory']))
+		print("MC sampling of normal error gives mean={:.2f}±{:.2f}".format(
+									  C_theory_mean, C_theory_std))
+		results['C_theory_std'] = C_theory_dist_std
+	else:	
+		results['C_theory_std'] = 0.02
+		
 	# clock shift theory prediction from C_Theory
 	results['CS_theory'] = 1/(pi*results['kF']*a13(meta_df['Bfield'][0])) \
 							* results['C_theory']
+	# note this is missing kF uncertainty, would have to do the above again
+	results['CS_theory_std'] = 1/(pi*results['kF']*a13(meta_df['Bfield'][0])) \
+							* results['C_theory_std']
 	
-	# check if 'vva' is in .dat file
-	try:
-		run.data['vva']
-	except KeyError:
-		try:
-			run.data['vva'] = run.data['VVA']
-		except KeyError:
-			raise KeyError("No 'VVA' or 'vva' column in .dat")
+	# check if 'vva' is in .dat file, if not, check if an alternate is, and set it equal
+	check_for_col_name(run.data, 'vva', alternates=['VVA', 'amp', 'amplitude'])
 	
 	# remove indices if requested
-	if meta_df['remove_indices'][0] == meta_df['remove_indices'][0]: # nan check
-		if type(meta_df['remove_indices'][0]) != int:	
-			remove_list = meta_df['remove_indices'][0].strip(' ').split(',')
-			remove_indices = [int(index) for index in remove_list]
+	remove_indices = remove_indices_formatter(meta_df['remove_indices'][0])
+	if remove_indices is not None:
 		run.data.drop(remove_indices, inplace=True)
 	
+	# correct cloud size
+	size_names = ['two2D_sv1', 'two2D_sh1', 'two2D_sv2', 'two2D_sh2']
+	new_size_names = ['c5_sv', 'c5_sh', 'c9_sv', 'c9_sh']
+	for new_name, name in zip(new_size_names, size_names):
+		run.data[new_name] = np.abs(run.data[name])
+
+	# average H and V sizes
+	run.data['c5_s'] = (run.data['c5_sv']+run.data['c5_sh'])/2
+	run.data['c9_s'] = (run.data['c9_sv']+run.data['c9_sh'])/2
+
+	# data filtering:
+	if Filter == True:
+		# filter out cloud fits that are too large
+		filter_indices = run.data.index[run.data['c5_s'] > 50].tolist()
+		run.data.drop(filter_indices, inplace=True)
+		
 	# length of data set
 	num = len(run.data[xname])
 	
@@ -195,19 +229,37 @@ for filename in files:
 	# fudge the c9 counts using ff
 	run.data['c9'] = run.data['c9'] * meta_df['ff'][0]
 	
-	### compute bg c5, transfer, Rabi freq, etc.
-	results['FourierWidth'] = 2/meta_df['trf'][0]/1e6
-	if meta_df['bg_freq'][0] == meta_df['bg_freq'][0]: # nan check
-		results['bgc5'] = run.data[run.data[xname]==meta_df['bg_freq'][0]]['c5'].mean()
-		results['bgc9'] = run.data[run.data[xname]==meta_df['bg_freq'][0]]['c9'].mean()
-	else: # no bg point specified, just select past Fourier width
-		bg_cutoff = meta_df['res_freq'][0]-2*results['FourierWidth']
-		results['bgc5'] = run.data[run.data.detuning < bg_cutoff]['c5'].mean()
-		results['bgc9'] = run.data[run.data.detuning < bg_cutoff]['c9'].mean()
-		
-	run.data['N'] = run.data['c5']-results['bgc5']*np.ones(num)+run.data['c9']
-	run.data['transfer'] = (run.data['c5'] - results['bgc5']*np.ones(num))/run.data['N']
-	run.data['loss'] = (results['bgc9'] - run.data['c9'])/results['bgc9']
+	# determine bg freq to be int, list or range
+	bg_freq, bg_freq_type = bg_freq_formatter(meta_df['bg_freq'][0])
+	if bg_freq_type == 'single': # select bg at one freq
+		bgdf = run.data.loc[run.data['freq'] == bg_freq]
+	elif bg_freq_type == 'list': # select bg at a list of freqs
+		bgdf = run.data.loc[run.data['freq'].isin(bg_freq)]
+	elif bg_freq_type == 'range': # select freq in ranges
+		bgdf = pd.concat([run.data.loc[run.data['freq'].between(val[0], 
+											  val[1])] for val in bg_freq])
+	
+	### compute bg values for atom numbers
+	if Bg_Tracking == True: # track number drift over time
+		for spin in ['c5', 'c9']:
+			bg_popt, bg_pcov = curve_fit(linear, bgdf['cyc'], bgdf[spin])
+			run.data['bg'+spin] = linear(run.data.cyc, *bg_popt) 
+	else:
+		run.data['bgc5'] = bgdf.c5.mean()
+		run.data['bgc9'] = bgdf.c9.mean()
+	
+	# calculate numbers minus the bg
+	run.data['c5mbg'] = run.data['c5'] - run.data['bgc5']
+	run.data['c9mbg'] = run.data['c9'] - run.data['bgc9']
+	
+	# take N from c5 - bg and c9
+	run.data['N'] = run.data['c5mbg']+run.data['c9']
+	run.data['Nmbg'] = run.data['N'] - run.data['bgc9']
+	
+	# calculate number, transfer and loss
+# 	run.data['transferbgN'] = (run.data['c5mbg'])/run.data['bgc9']
+	run.data['transfer'] = (run.data['c5mbg'])/run.data['N']
+	run.data['loss'] = (-run.data['c9mbg'])/run.data['bgc9']
 	
 	# determine pulse area
 	if meta_df['pulsetype'][0] == 'Blackman':
@@ -223,6 +275,7 @@ for filename in files:
 													   x[xname]), axis=1)
 	
 	# compute scaled transfer and contact
+	results['x_star'] = xstar(meta_df['Bfield'][0], EF)
 	results['OmegaR_pk'] = max(run.data.loc[(run.data['detuning']>0) & (run.data['detuning']<0.1)]['OmegaR'])
 	OmegaR_max = 2*pi*1*OmegaR_from_VVAfreq(10, 47)
 	# here trf was in s so convert to ms, OmegaR is in kHz
@@ -230,10 +283,9 @@ for filename in files:
 	run.data['ScaledTransfer'] = run.data.apply(lambda x: GammaTilde(x[transfer_selection],
 									h*EF*1e6, x['OmegaR']*1e3, meta_df['trf'][0]), axis=1)
 	run.data['C'] = run.data.apply(lambda x: 2*np.sqrt(2)*pi**2*x['ScaledTransfer'] * \
-									   (np.abs(x['detuning'])/EF)**(3/2), axis=1)
+								(np.abs(x['detuning'])/EF)**(3/2)*\
+							(1+x['detuning']/EF/results['x_star']), axis=1)
 		
-	results['x_star'] = xstar(meta_df['Bfield'][0], EF)
-	
 	### now group by freq to get mean and stddev of mean
 	run.group_by_mean(xname)
 	
@@ -244,7 +296,7 @@ for filename in files:
 	# find fit bounds... min is roughly two Fourier widths up
 	xfitmin = 2*results['FourierWidth']/EF
 	# max is roughly the trap depth if using transfer, else just make it massive
-	if transfer_selection == 'transfer':	
+	if transfer_selection == 'transfer' or transfer_selection == 'transferbgN':	
 		xfitmax = meta_df['trap_depth'][0]/EF
 	else:
 		xfitmax = 10/EF # 10 MHz...
@@ -282,7 +334,7 @@ for filename in files:
 	# clock shift
 	results['CS'] = results['FM']/results['SR']
 	if Talk == True:
-		print('raw fit C = {:.2f} \pm {:.2f}'.format(pi**2*2**(3/2)*popt[0], 
+		print('raw fit C = {:.2f} ± {:.2f}'.format(pi**2*2**(3/2)*popt[0], 
 							   pi**2*2**(3/2)*np.sqrt(np.diag(pcov))[0]))
 		print("raw SR {:.3f}".format(results['SR']))
 		print("raw FM {:.3f}".format(results['FM']))
@@ -295,159 +347,306 @@ for filename in files:
 ##########################
 ##### Bootstrapping ######
 ##########################
-	### Bootstrap resampling for integral uncertainty
-	conf = 68.2689  # confidence level for CI
-	
-	# non-averaged data
-	x = np.array(run.data['detuning']/EF)
-	y = np.array(run.data['ScaledTransfer'])
-	
-	# sumrule, first moment and clockshift with analytic extension
-	
-	if Debug == True:
-		print(xfitlims)
-	
-	SR_BS_dist, FM_BS_dist, CS_BS_dist, A_dist, SR_extrap_dist, \
-		FM_extrap_dist, extrapstart = Bootstrap_spectra_fit_trapz(x, y, 
-		xfitlims, results['x_star'], fit_func, trialsB=BOOTSRAP_TRAIL_NUM, 
-		debug=Debug)
+	if Bootstrap == True:
+		### Bootstrap resampling for integral uncertainty
+		conf = 68.2689  # confidence level for CI
 		
-	# compute more distributions
-	C_dist = A_dist*2*np.sqrt(2)*np.pi**2
-	CoSR_dist = C_dist / ( 2  *SR_BS_dist) 
-	FM_interp_dist = FM_BS_dist - FM_extrap_dist
+		# non-averaged data
+		x = np.array(run.data['detuning']/EF)
+		y = np.array(run.data['ScaledTransfer'])
 		
-	# list all ditributions to compure stats on
-	dists = [SR_BS_dist, FM_BS_dist, CS_BS_dist, 
-			  SR_extrap_dist, FM_extrap_dist, FM_interp_dist,
-			  C_dist, CoSR_dist]
-	names = ['SR', 'FM', 'CS', 
-			  'SR_extrap', 'FM_extrap', 'FM_interp',
-			  'C', 'CoSR']
-	
-	# update results with all stats from dists
-	stats_dict = {}
-	for name, dist in zip(names, dists):
-		for key, value in dist_stats(dist, conf).items():
-			stats_dict[name+'_'+key] = value
-	results.update(stats_dict)
-	
-	# Clock Shift prediction from contact
-	results['CS_pred'] = 1/(pi*results['kF']*a13(meta_df['Bfield'][0])) * results['C_median']
-	results['CS_pred_lower'] = 1/(pi*results['kF']*a13(meta_df['Bfield'][0])) * results['C_upper'] 
-	results['CS_pred_upper'] = 1/(pi*results['kF']*a13(meta_df['Bfield'][0])) * results['C_lower']
+		# sumrule, first moment and clockshift with analytic extension
+		
+		if Debug == True:
+			print(xfitlims)
+		
+		SR_BS_dist, FM_BS_dist, CS_BS_dist, A_dist, SR_extrap_dist, \
+			FM_extrap_dist, extrapstart = Bootstrap_spectra_fit_trapz(x, y, 
+			xfitlims, results['x_star'], fit_func, trialsB=BOOTSRAP_TRAIL_NUM, 
+			debug=Debug)
+			
+		# compute more distributions
+		C_dist = A_dist*2*np.sqrt(2)*np.pi**2
+		CoSR_dist = C_dist / ( 2  *SR_BS_dist) 
+		FM_interp_dist = FM_BS_dist - FM_extrap_dist
+			
+		# list all ditributions to compure stats on
+		dists = [SR_BS_dist, FM_BS_dist, CS_BS_dist, 
+				  SR_extrap_dist, FM_extrap_dist, FM_interp_dist,
+				  C_dist, CoSR_dist]
+		names = ['SR', 'FM', 'CS', 
+				  'SR_extrap', 'FM_extrap', 'FM_interp',
+				  'C', 'CoSR']
+		
+		# update results with all stats from dists
+		stats_dict = {}
+		for name, dist in zip(names, dists):
+			for key, value in dist_stats(dist, conf).items():
+				stats_dict[name+'_'+key] = value
+		results.update(stats_dict)
+		
+		# Clock Shift prediction from contact
+		results['CS_pred_mean'] = 1/(pi*results['kF']*a13(meta_df['Bfield'][0])) \
+								* results['C_mean']
+		results['CS_pred_std'] = 1/(pi*results['kF']*a13(meta_df['Bfield'][0])) \
+								* results['C_std']
+		results['CS_pred_median'] = 1/(pi*results['kF']*a13(meta_df['Bfield'][0])) \
+								* results['C_median']
+		results['CS_pred_lower'] = 1/(pi*results['kF']*a13(meta_df['Bfield'][0])) \
+								* results['C_upper'] 
+		results['CS_pred_upper'] = 1/(pi*results['kF']*a13(meta_df['Bfield'][0])) \
+								* results['C_lower']
+								
+								
+		# Clock Shift from conatct theory 
+		results['CS_theory'] = 1/(pi*results['kF']*a13(meta_df['Bfield'][0])) \
+								* results['C_theory']
+								
+########################################
+####### Confidence Interval Plot #######
+########################################
+		# computing CI
+		numpts = 100
+		alpha = 0.5
+		xFit = np.linspace(xfitlims[0], 20, numpts)
+
+		A_mean = results['C_mean']/2/np.sqrt(2)/np.pi**2
+		
+		print('*** Plotting Confidence Band')
+		iis = range(0, len(A_dist))
+		ylo = 0*xFit
+		yhi = 0*xFit
+		for idx, xval in enumerate(xFit):
+			fvals = [fit_func(xval, Aval) for Aval in A_dist]
+			ylo[idx] = np.nanpercentile(fvals, (100.-conf)/2.)
+			yhi[idx] = np.nanpercentile(fvals, 100.-(100.-conf)/2.)
+
+		# plotting CI interval fit on data
+		title = f'{filename} at ' + r'$T/T_F=$'+'{:.3f}±{:.3f}'.format(results['ToTF'], results['e_ToTF']) +\
+			 ' using ' + transfer_selection
+		
+		fig_CI, axs = plt.subplots(1,2,figsize=[10,4.5])
+		xlabel = r"Detuning $\hbar\omega/E_F$"
+		x = run.avg_data['detuning'][fitmask]/EF
+		ylabel = r"Scaled Transfer $\tilde\Gamma$"
+		y = run.avg_data['ScaledTransfer'][fitmask]
+		yerr = run.avg_data['em_ScaledTransfer'][fitmask]
+		
+		bootstrap_chi2 = chi_sq(y, fit_func(x, A_mean), yerr, len(y)-len(popt))
+		raw_chi2 = chi_sq(y, fit_func(x, *popt), yerr, len(y)-len(popt))
+			
+		# confidence interval plot
+		ax = axs[0]
+		ax.plot(xFit, fit_func(xFit, *popt), '--', color='red', label='raw fit')
+		ax.plot(xFit, fit_func(xFit, A_mean), '--', color=dark_color, label='bootstrap')
+		ax.fill_between(xFit, ylo, yhi, color=color, alpha=alpha, label='68% CI')
+		ax.errorbar(x, y, yerr=yerr, fmt='o', color=dark_color)
+		ax.set(xlabel=xlabel, ylabel=ylabel, xscale='log', yscale='log', 
+			 xlim=[1, 20], ylim=[0.9*min(ylo), 1.1*max(yhi)])
+		ax.legend()
+		
+		# residuals
+		ax = axs[1]
+		ylabel = r"Residuals"
+		res_label = r'$\chi^2_{raw}$ = '+'{:.2f}'.format(raw_chi2)
+		ax.errorbar(x, y-fit_func(x, *popt), yerr=yerr, fmt='o', label=res_label, 
+			  mfc=light_red, mec=dark_red, color=dark_red)
+		res_label = r'$\chi^2_{BS}$ = '+'{:.2f}'.format(bootstrap_chi2)
+		ax.errorbar(x, y-fit_func(x, A_mean), yerr=yerr, fmt='o', label=res_label, 
+			  color=dark_color)
+		ax.plot(x, np.zeros(len(x)), 'k--')
+		ax.set(xlabel=xlabel, ylabel=ylabel, xscale='log')
+		ax.legend()
+		
+		fig_CI.suptitle(title)
+		fig_CI.tight_layout()
+		
+		if Save == True:
+			CI_figname = filename[:-6] + '_CIplot.pdf'
+			fig_CI.savefig(os.path.join(figpath, CI_figname))
 	
 ##########################
 ######## Plotting ########
 ##########################
-	title = f'{filename} at T/TF={meta_df["ToTF"][0]} using {transfer_selection}'
-	plt.rcParams.update({"figure.figsize": [12,8]})
-	fig, axs = plt.subplots(2,3)
+	plt.rcParams.update({"figure.figsize": [12,10]})
+	fig, axs = plt.subplots(3,3)
 	
-	xlabel = r"Detuning $\omega_{rf}-\omega_{res}$ (MHz)"
-	label = r"trf={:.0f} us, gain={:.2f}".format(meta_df['trf'][0]*1e6,meta_df['gain'][0])
+	x = run.avg_data['detuning']/EF
+	label = r"trf={:.0f} us, gain={:.2f}".format(meta_df['trf'][0]*1e6, meta_df['gain'][0])
 	
 	###
-	### plot transfer fraction
+	### (top left) plot transfer fraction
 	###
 	ax = axs[0,0]
-	x = run.avg_data['detuning']
 	y = run.avg_data['transfer']
+	y2 = run.avg_data['loss']
 	yerr = run.avg_data['em_transfer']
+	yerr2 = run.avg_data['em_loss']
 	ylabel = r"Transfer $\Gamma \,t_{rf}$"
 	
 	xlims = [-0.04,max(x)]
-	ylims = [min(run.data['transfer']),max(run.data['transfer'])]
+# 	ylims = [min(min(run.data['transfer']), min(run.data['loss'])),
+# 		  max(max(run.data['transfer']), max(run.data['loss']))]
 	
-	ax.set(xlabel=xlabel, ylabel=ylabel, xlim=xlims, ylim=ylims)
-	ax.errorbar(x, y, yerr=yerr, fmt='o')
+	ax.set(xlabel=xlabel, ylabel=ylabel, xlim=xlims)#, ylim=ylims)
+	ax.errorbar(x, y, yerr=yerr, fmt='o', label='transfer')
+	# loss 
+	ax.errorbar(x, y2, yerr=yerr2, fmt='s', color=dark_color2, 
+			 mfc=light_color2, mec=dark_color2, label='loss')
+	ax.vlines(meta_df['trap_depth'][0]/EF, 0, max(max(y), max(y2)), 
+		   linestyles='--', colors='k')
+	ax.legend()
 	
 	###
-	### plot scaled transfer
+	### (top centre) plot zoomed-in scaled transfer
 	###
 	ax = axs[0,1]
-	x = run.avg_data['detuning']/EF
 	y = run.avg_data['ScaledTransfer']
 	yerr = run.avg_data['em_ScaledTransfer']
-	xlabel = r"Detuning $\Delta$"
 	ylabel = r"Scaled Transfer $\tilde\Gamma$"
 	
-	xlims = [-2,max(x)]
-	ylims = [-0.5/20, max(run.data['ScaledTransfer'])]
-	xs = np.linspace(xlims[0], xlims[-1], len(y))
+# 	ylims = [-0.5/20, max(run.data['ScaledTransfer'])]
+	xlims = [-3,3]
 	
-	ax.set(xlabel=xlabel, ylabel=ylabel, xlim=xlims, ylim=ylims)
+	ax.set(xlabel=xlabel, ylabel=ylabel, xlim=xlims)#, ylim=ylims)
 	ax.errorbar(x, y, yerr=yerr, fmt='o', label=label)
 	ax.legend()
 	
 	###
-	### plot zoomed-in scaled transfer
+	### (top right) plot contact
 	###
 	ax = axs[0,2]
-	xlims = [-3,3]
-	ax.set(xlabel=xlabel, ylabel=ylabel, xlim=xlims, ylim=ylims)
+	y = run.avg_data['C']
+	yerr = run.avg_data['em_C']
+	ylabel = r"Contact $C/N$ [$k_F$]"
+	
+	xlims = [-2, max(x)]
+# 	ylims = [-0.1, max(run.data['C'])]
+	Cdetmin = 2 
+	xs = np.linspace(Cdetmin, xfitmax, num)
+	
+	ax.set(xlabel=xlabel, ylabel=ylabel, xlim=xlims)#, ylim=ylims)
 	ax.errorbar(x, y, yerr=yerr, fmt='o')
+	if Bootstrap == True:
+		ax.plot(xs, results['C_mean'] * np.ones(num), "--")
+		ax.fill_between(xs, results['C_mean']-results['C_std'],
+				 results['C_mean']+results['C_std'], color=color2, alpha=alpha)
+	ax.vlines(meta_df['trap_depth'][0]/EF, 0, max(y), linestyles='--', 
+		   colors='k')
 	
 	###
-	### plot extrapolated spectra
+	### (middle left) C5 and C9
 	###
 	ax = axs[1,0]
-	label = r"$A \frac{\Delta^{-3/2}}{1+\Delta/\Delta^*}$"
-	ax.errorbar(x, y, yerr=yerr, fmt='o')
+	y = run.avg_data['c5mbg']
+	y2 = run.avg_data['c9mbg']
+	yerr = run.avg_data['em_c5mbg']
+	yerr2 = run.avg_data['em_c9mbg']
+	ylabel = r"$N_\sigma - N_{\sigma, bg}$"
 	
-	# plot the fit -3/2 power law tail
-	xmax = 40/EF # 40 MHz, is ~ 3000 EF
-	xxfit = np.linspace(xfitlims[0], xmax, int(1e3))
-	yyfit = fit_func(xxfit, *popt)
-	ax.plot(xxfit, yyfit, 'r--', label=label)
+	xlims = [-2, max(x)]
+	ylims = [min(min(run.data['c5mbg']), 
+			  min(run.data['c9mbg'])),
+			  max(max(run.data['c5mbg']), 
+			 max(run.data['c9mbg']))]
+	xs = np.linspace(*xlims, num)
 	
-	mask = np.where(x < 2, True, False)
-	ax.fill_between(xxfit, yyfit, alpha=0.15, color = 'b')
-	ax.fill_between(x[mask], y[mask], alpha=0.15, color='b')
-	ax.set(ylabel=ylabel, xlabel=xlabel, yscale='log', xscale='log')
+	ax.set(xlabel=xlabel, ylabel=ylabel, xlim=xlims)#, ylim=ylims)
+	ax.errorbar(x, y, yerr=yerr, fmt='o', label='c5')
+	ax.errorbar(x, y2, yerr=yerr2, fmt='s', color=dark_color2, 
+			 mfc=light_color2, mec=dark_color2, label='c9')
+	ax.plot(xs, 0*np.ones(num), "--", color='k')
+ 	# ax.plot(xs, results['bgc9']*np.ones(num), "--", color=color2)
+	ax.vlines(meta_df['trap_depth'][0]/EF, min(min(y), min(y2)), 
+		   max(max(y), max(y2)), linestyles='--', colors='k')
 	ax.legend()
 	
 	###
-	### plot contact
+	### (middle centre) c5 cloud sizes
 	###
 	ax = axs[1,1]
-	x = run.avg_data['detuning']/EF
-	y = run.avg_data['C']
-	yerr = run.avg_data['em_C']
-	xlabel = r"Detuning $\Delta$"
-	ylabel = r"Contact $C/N$ [$k_F$]"
+	y = run.avg_data['c5_sv']
+	yerr = run.avg_data['em_c5_sv']
+	ylabel = r"c5 size [px]"
 	
-	xlims = [-2,max(x)]
-	ylims = [-0.1, max(run.data['C'])]
-	Cdetmin = 2 
-	Cdetmax = 10 # trap depth
-	xs = np.linspace(Cdetmin, Cdetmax, num)
+	xlims = [-2, max(x)]
+	ylims = [min(y), max(y)]
+	xs = np.linspace(*xlims, num)
 	
-	ax.set(xlabel=xlabel, ylabel=ylabel, xlim=xlims, ylim=ylims)
-	ax.errorbar(x, y, yerr=yerr, fmt='o')
-	ax.plot(xs, results['C_median']*np.ones(num), "--")
-
+	ax.set(xlabel=xlabel, ylabel=ylabel, xlim=xlims)
+	ax.errorbar(x, y, yerr=yerr, fmt='o', label='c5')
+	ax.vlines(meta_df['trap_depth'][0]/EF, min(y), max(y), linestyles='--', colors='k')
+# 	ax.legend()
+		
 	###
-	### generate table
+	### (middle right) c9 cloud sizes
 	###
 	ax = axs[1,2]
+	y = run.avg_data['c9_sv']
+	yerr = run.avg_data['em_c9_sv']
+	ylabel = r"c9 size [px]"
+	
+	xlims = [-2, max(x)]
+	
+	ax.set(xlabel=xlabel, ylabel=ylabel, xlim=xlims)
+	ax.errorbar(x, y, yerr=yerr, fmt='s', color=dark_color2, 
+			 mfc=light_color2, mec=dark_color2, label='c9')
+	ax.vlines(meta_df['trap_depth'][0]/EF, min(y), max(y), linestyles='--', colors='k')
+# 	ax.legend()
+	
+	###
+	### (bottom left) Total atom number vs. detuning
+	###
+	ax = axs[2,0]
+	y = run.avg_data['Nmbg']
+	yerr = run.avg_data['em_Nmbg']
+	ylabel = r"$N$"
+	
+	xlims = [-2, max(x)]
+ 	# ylims = [min(run.data['N']), max(run.data['N'])]
+	
+	ax.set(xlabel=xlabel, ylabel=ylabel, xlim=xlims)#, ylim=ylims)
+	ax.errorbar(x, y, yerr=yerr, fmt='o')
+	ax.plot(x, np.zeros(len(x)), "--", color=color)
+	ax.vlines(meta_df['trap_depth'][0]/EF, min(y), max(y), linestyles='--', colors='k')
+	
+	###
+	### (bottom center) Total atom number vs. time
+	###
+	ax = axs[2,1]
+	x = 31/60*run.data['cyc']  # time in ~ minutes
+	y = run.data['N']
+	xlabel = r"Time since scan start [~min]"
+	ylabel = r"$N$"
+	
+	xlims = [-0.1, max(x)]
+	ylims = [0.97*min(run.data['N']), 1.03*max(run.data['N'])]
+	
+	ax.set(xlabel=xlabel, ylabel=ylabel, xlim=xlims, ylim=ylims)
+	ax.plot(x, y, 'o')
+	ax.plot(x, run.data['bgc9'], "--", color=color)
+
+	###
+	### (bottom right) generate table
+	###
+	ax = axs[2,2]
 	ax.axis('off')
-	quantities = ["Run", "ToTF"]
+	quantities = ["Run", r"$T/T_F$", r"$E_F$", "barnu"]
 	values = [filename[:-6],
-			   "{:.3f}".format(meta_df['ToTF'][0])
+			   "{:.2f}±{:.2f}".format(results['ToTF'], results['e_ToTF']),
+			   "{:.1f}±{:.1f}kHz".format(results['EF']*1e3, results['e_EF']*1e3),
+			   "{:.0f}±{:.0f}Hz".format(results['barnu'], results['e_barnu'])
 			  ]
-	quantities += ["SR median", "C median", "C theory", "C/(2SR)",
-				"CS median", "CS predict", "CS theory",
-				'Transfer Scale', 'FM Extrap']
-	values += [r"{:.3f}".format(results['SR_median']),
-			  r"{:.2f}$k_F$".format(results['C_median']),
-			  r"{:.2f}$k_F$".format(results['C_theory']),
-			  r"{:.2f}$k_F$".format(results['CoSR_median']),
-			   r"{:.2f}".format(results['CS_median']),
-			   r"{:.2f}".format(results['CS_pred']),
-			   r"{:.2f}".format(results['CS_theory']),
-			  r"{:.4f}".format(results['pulsejuice']),
-			  r"{:.2f}".format(results['FM_extrap_median'])]
+	if Bootstrap == True:
+		quantities += ["SR mean", "C mean", "C theory", # "C/(2SR)",
+					"CS mean", "CS theory"]
+		values += [r"{:.3f}±{:.3f}".format(results['SR_mean'], results['SR_std']),
+				  r"{:.2f}±{:.2f}$k_F$".format(results['C_mean'], results['C_std']),
+				  r"{:.2f}±{:.2f}$k_F$".format(results['C_theory'], results['C_theory_std']),
+# 				  r"{:.2f}±{:.2f}$k_F$".format(results['CoSR_mean'], results['CoSR_std']),
+				   r"{:.2f}±{:.2f}".format(results['CS_mean'], results['CS_std']),
+# 				   r"{:.2f}±{:.2f}".format(results['CS_pred_mean'], results['CS_pred_std']),
+				   r"{:.2f}±{:.2f}".format(results['CS_theory'], results['C_theory_std'])]
 	
 	table = list(zip(quantities, values))
 	
@@ -459,10 +658,10 @@ for filename in files:
 	fig.suptitle(title)
 	fig.tight_layout()
 	
+	###
 	### save figure
+	###
 	if Save == True:
-		runfolder = filename 
-		figpath = os.path.join(figfolder_path, runfolder)
 		os.makedirs(figpath, exist_ok=True)
 		plots_figname = filename[:-6] + '_plots.pdf'
 		fig.savefig(os.path.join(figpath, plots_figname))
@@ -471,7 +670,7 @@ for filename in files:
 ####### Histograms ########
 ###########################
 
-	if BootstrapHists == True:
+	if Bootstrap == True:
 		plt.rcParams.update({"figure.figsize": [10,8]})
 		fig, axs = plt.subplots(2,3)
 		fig.suptitle(title)
@@ -502,7 +701,7 @@ for filename in files:
 ####### Correlations ########
 #############################
 		
-	if Correlations == True:
+	if Correlations == True and Bootstrap == True:
 		dists = np.vstack([C_dist, SR_BS_dist, FM_BS_dist, CS_BS_dist, FM_interp_dist])
 		labels = ['Contact','Sum Rule','First Moment','Clock Shift','FM Interp']
 		figure = corner.corner(dists.T, labels=labels)
@@ -516,48 +715,9 @@ for filename in files:
 ###############################
 	
 	if Save == True:
-		datatosavedf = pd.DataFrame(results, index=[save_df_index])
+		savedf = pd.DataFrame(results, index=[save_df_index])
 		save_df_index += 1
 		
-		try: # to open save file, if it exists
-			existing_data = pd.read_excel(savefile, sheet_name='Sheet1')
-			if len(datatosavedf.columns) == len(existing_data.columns) \
-					and filename in existing_data['Run'].values \
-					and transfer_selection in existing_data['Transfer'].values:
-				print()
-				print(f'{filename} has already been analyized and put into the summary .xlsx file')
-				print('and columns of summary data are the same')
-				print()
-			elif len(datatosavedf.columns) == len(existing_data.columns):
-				print('Columns of summary data are the same')
-				print("There is saved data, so adding rows to file.")
-				start_row = existing_data.shape[0] + 1
-			 
-			 # open file and write new results
-				with pd.ExcelWriter(savefile, mode='a', if_sheet_exists='overlay', \
-						engine='openpyxl') as writer:
-					datatosavedf.to_excel(writer, index=False, header=False, 
-					   sheet_name='Sheet1', startrow=start_row)
-			else:
-				print()
-				print('Columns of summary data are different')  
-				print("There is saved data, so adding rows to file.")
-				start_row = existing_data.shape[0] + 1
-				
-				datatosavedf.columns = datatosavedf.columns.to_list()
-			 # open file and write new results
-				with pd.ExcelWriter(savefile, mode='a', if_sheet_exists='overlay', \
-					   engine='openpyxl') as writer:
-					datatosavedf.to_excel(writer, index=False, 
-					   sheet_name='Sheet1', startrow=start_row)
-					
-		except PermissionError:
-			 print()
-			 print ('Is the .xlsx file open?')
-			 print()
-		except FileNotFoundError: # there is no save file
-			 print("Save file does not exist.")
-			 print("Creating file and writing header")
-			 datatosavedf.to_excel(savefile, index=False, sheet_name='Sheet1')
-	 
-	 
+		save_df_row_to_xlsx(savedf, savefile, filename)
+		
+		

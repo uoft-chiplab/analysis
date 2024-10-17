@@ -9,7 +9,18 @@ from scipy.optimize import curve_fit
 import time
 import matplotlib.pyplot as plt
 
-		
+def MonteCarlo_estimate_std_from_function(func, inputs, input_errors, num=100):
+	""" Sample output of function from calibration values distributed normally 
+	to obtain std"""
+	# sample output of function from calibration values distributed normally to obtain std
+	dist = []
+	i = 0
+	while i < num:
+		dist.append(func(*[np.random.normal(val, err) for val, err \
+					 in zip(inputs, input_errors)]))
+		i += 1
+	return np.array(dist).mean(), np.array(dist).std()
+	
 def Bootstrap_spectra_fit_trapz(xs, ys, xfitlims, fit_func, trialsB=1000, 
 								wave='p', pGuess=[1], debug=False):
 	""" """

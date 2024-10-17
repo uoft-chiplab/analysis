@@ -39,15 +39,15 @@ def Sinc2D(Delta, t): # takes dimensionless detuning
 # evaluation range
 # Ebguess = -3980 / EF # ~ -249 EF
 Ebguess=0
-xrange = 200 / EF # ~ 19 EF
-xnum = 1000
+xrange = 300 / EF # ~ 19 EF
+xnum = 2000
 xx = np.linspace(Ebguess-xrange, Ebguess+xrange, xnum)
 
 arbscale=1
 # these are all the TTFs BAO's lookup table works for, but we don't need all of them
 TTFs = [0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.40, 0.50, 0.60, 0.80, 1.00, 1.50]
-# trfs = np.arange(10, 400, 10)
-trfs = np.array([10, 20, 30, 40, 100, 200]) # testing
+# trfs = np.arange(10, 200, 10)
+trfs = np.array([10, 20, 30, 40, 50, 100, 150, 200]) # testing
 # trfs = np.arange(10,400,10)
 
 resultsTTF = []
@@ -55,7 +55,7 @@ resultstrf = []
 resultsls = []
 
 for idx, TTF in enumerate(TTFs):
-	if idx < 5 or idx > 8: continue
+	if idx < 4 or idx > 9: continue
 	print(str(idx), str(TTF))
 	
 	# transfer spectrum lineshape with FD dist at some TTF
@@ -71,7 +71,7 @@ for idx, TTF in enumerate(TTFs):
 		
 		# FT of the pulse shape
 		# evaluate and get the norm of the Sinc2 function
-		D = np.linspace(-10*1e3/trf / EF, 10*1e3/trf /EF, 1000)
+		D = np.linspace(-10*1e3/trf / EF, 10*1e3/trf /EF, 2000)
 		yD = Sinc2D(D, trf)
 		FTnorm = np.trapz(yD, D)
 		print('FTNORM: ' + str(FTnorm))
@@ -101,8 +101,7 @@ for idx, TTF in enumerate(TTFs):
 		convnorm = np.trapz(yyconv,xx)
 		print('Conv norm: ' + str(convnorm))
 		# create the convolution lineshape for current iteration
-		convinterp = interp1d(xx, yyconv)
-# 		convinterp = lambda x: np.interp(x, xx, yyconv)
+		convinterp = interp1d(xx, yyconv, bounds_error=False, fill_value=0)
 
 		# show convs explicitly
 		if plot_convs:

@@ -8,13 +8,15 @@ Functions to call in analysis scripts
 import os
 current_dir = os.path.dirname(__file__)
 
-from scipy.constants import pi, hbar, h, c, k as kB
-from scipy.integrate import trapz, simps, cumtrapz
-from scipy.optimize import fsolve, curve_fit
+from scipy.constants import pi, hbar, h, k as kB
+from scipy.integrate import simps, cumtrapz
+from scipy.optimize import fsolve
 import numpy as np
 
 import matplotlib.pyplot as plt
 import pandas as pd
+import matplotlib.colors as mc
+import colorsys
 
 uatom = 1.660538921E-27
 a0 = 5.2917721092E-11
@@ -48,7 +50,8 @@ plt_settings = {"axes.linewidth": frame_size,
 				 "ytick.direction":'in',
 				 "lines.linestyle":'',
 				 "lines.marker":"o",
-				 "lines.markeredgewidth": 2,}
+				 "lines.markeredgewidth": 2,
+				 "figure.dpi": 300}
 
 # plot color and markers
 colors = ["blue", "orange", "green", "red", 
@@ -89,6 +92,14 @@ def set_marker_color(color):
 	plt.rcParams.update({"lines.markeredgecolor": dark_color,
 				   "lines.markerfacecolor": light_color,
 				   "lines.color": dark_color})
+	
+def adjust_lightness(color, amount=0.5):
+    try:
+        c = mc.cnames[color]
+    except:
+        c = color
+    c = colorsys.rgb_to_hls(*mc.to_rgb(c))
+    return colorsys.hls_to_rgb(c[0], max(0, min(1, amount * c[1])), c[2])
 	
 def VVAtoVppInterpolation(file):
 	"""Returns interpolation function based on VVA to Vpp file."""

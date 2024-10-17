@@ -16,7 +16,7 @@ from scipy.integrate import quad, tplquad
 from scipy.optimize import root_scalar
 import pickle
 import os
-from library import c, plt_settings, tint_shade_color, tintshade, pi, mK, hbar
+from library import plt_settings, tint_shade_color, tintshade, pi, mK, hbar
 from contact_correlations.contact_tabulated import ContactInterpolation
 from contact_correlations.baryrat import BarycentricRational
 

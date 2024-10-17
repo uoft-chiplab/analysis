@@ -3,15 +3,36 @@
 Created on Wed Jun 26 16:04:26 2024
 @author: Chip Lab
 """
-
 import numpy as np
 from scipy.optimize import curve_fit
 import time
-import matplotlib.pyplot as plt
 
-		
+def MonteCarlo_estimate_std_from_function(func, inputs, input_errors, num=100):
+	""" Sample output of function from calibration values distributed normally 
+	to obtain std"""
+	# sample output of function from calibration values distributed normally to obtain std
+	dist = []
+	i = 0
+	while i < num:
+		dist.append(func(*[np.random.normal(val, err) for val, err \
+					 in zip(inputs, input_errors)]))
+		i += 1
+	return np.array(dist).mean(), np.array(dist).std()
+
+
+def dist_stats(dist, CI):
+	""" Computes the median, upper confidence interval (CI), lower CI, mean 
+		and standard deviation for a distribution named dist. Returns a dict."""
+	return_dict = {
+		'median': np.nanmedian(dist),
+		'upper': np.nanpercentile(dist, 100-(100.0-CI)/2.),
+		'lower': np.nanpercentile(dist, (100.0-CI)/2.),
+		'mean': np.mean(dist),
+		'std': np.std(dist)}
+	return return_dict
+
 def Bootstrap_spectra_fit_trapz(xs, ys, xfitlims, xstar, fit_func, 
-									trialsB=1000, pGuess=[1], debug=False):
+									trialsB=100, pGuess=[1], debug=False):
 	""" """
 	def dwSpectra(xi, x_star):
 		return 2*(1/np.sqrt(xi)-np.arctan(np.sqrt(x_star/xi))/np.sqrt(x_star))
@@ -21,8 +42,6 @@ def Bootstrap_spectra_fit_trapz(xs, ys, xfitlims, xstar, fit_func,
 	
 	if debug == True:
 		trialsB = 10
-	
-	mincutoff = min(xs) # the 47MHz point
 	
 	num = 5000 # points to integrate over
 	
@@ -129,12 +148,9 @@ def Bootstrap_spectra_fit_trapz(xs, ys, xfitlims, xstar, fit_func,
 				np.array(A_distr), np.array(SR_extrap_distr), np.array(FM_extrap_distr), \
 					np.array(extrapstart)
 
-def DimerBootStrapFit(xs, ys, xfitlims, Ebfix, fit_func, 
-									trialsB=1000, pGuess=[0.04,0.7]):
-		
-	def lineshapefit_fixedEb(xi, sigma, Ebfix):
-		x0 = Ebfix
-		return np.sqrt(-xi+x0) * np.exp((xi - x0)/sigma) * np.heaviside(-xi+x0,1)
+def DimerBootStrapFit(xs, ys, int_bounds, fit_func, trialsB=100, 
+					  pGuess=[0.02, -260], interp_data=False):
+	""""""
 	
 	num = 5000 # points to integrate over
 	
@@ -143,96 +159,73 @@ def DimerBootStrapFit(xs, ys, xfitlims, Ebfix, fit_func,
 	fails = 0 # failed fits counter
 	nData = len(xs)
 	nChoose = nData # number of points to choose
-	pFitB = np.zeros([trialsB, len(pGuess)]) # array of fit params
 	SR_distr = []
 	FM_distr = []
-	CS_idl_distr = []
-	CS_exp_distr = []
-	SR_extrap_distr = []
-	FM_extrap_distr = []
+	CS_distr = []
 	
 	while (trialB < trialsB) and (fails < trialsB):
 		if (0 == trialB % (trialsB / 5)):
- 			print('   %d of %d @ %s' % (trialB, trialsB, time.strftime("%H:%M:%S", time.localtime())))
+ 			print('   %d of %d @ %s' % (trialB, trialsB, 
+							time.strftime("%H:%M:%S", time.localtime())))
 		inds = np.random.choice(np.arange(0, nData), nChoose, replace=True)
-# 		print(len(inds))
 		xTrial = np.random.normal(np.take(xs, inds), 0.0001)
 		# we need to make sure there are no duplicate x values or the fit
 		# will fail to converge
-# 		print(xTrial)
 		yTrial = np.take(ys, inds)
-# 		print(yTrial)
 		p = xTrial.argsort()
-# 		print(p)
 		xTrial = xTrial[p]
-# 		print(xTrial)
 		yTrial = yTrial[p]
-		
-		fitpoints = np.array([[xfit, yfit] for xfit, yfit in zip(xTrial, yTrial) \
-						if (xfit > xfitlims[0] and xfit < xfitlims[-1])])
-		# print(pGuess)
-
-		try:
-			pFit, cov = curve_fit(fit_func, fitpoints[:,0], 
-						 fitpoints[:,1], pGuess)
-		except Exception:
-			print("Failed to converge")
-			fails += 1
-			continue
-		
-		if np.sum(np.isinf(trialB)) or pFit[0]<0:
-			print('Fit params out of bounds')
-			print(pFit)
-			continue
+	
+		# ignore fit and integrate interpolated data, check if results in bounds
+		if interp_data == True:
+			# interpolation array for x, num in size
+			x_interp = np.linspace(min(xTrial), max(xTrial), num)
+			# compute interpolation array for y, num by num_iter in size
+			y_interp = np.array([np.interp(x, xTrial, yTrial) for x in x_interp])
+			# sumrule using each set
+			SR = np.trapz(y_interp, x=x_interp) 
+			# first moment using each set	
+			FM = np.trapz(y_interp*x_interp, x=x_interp) 
+			# clock shift
+			CS = FM / 0.5
+			
+			if SR < 0:
+				print("SR out of bounds", SR)
+				fails += 1
+				continue
+			else:
+				trialB += 1
+			
+		# fit data and check fit params within bounds
 		else:
-			pFitB[trialB, :] = pFit
-			trialB += 1
-	
-		# extrapolation starting point
-		xi = min(xTrial)
-	
-		# interpolation array for x, num in size
-		x_interp = np.linspace(xi, max(xTrial), num)
-	
-		# compute interpolation array for y, num by num_iter in size
-		y_interp = np.array([np.interp(x, xTrial, yTrial) for x in x_interp])
-		# print(x_interp)
-	
-		# integral from xi to infty
-		SR_extrapolation = pFit[0]*lineshapefit_fixedEb(xi, pFit[1],Ebfix)
-# 		print(SR_extrapolation)
-		FM_extrapolation = pFit[0]*lineshapefit_fixedEb(xi, pFit[1], Ebfix)
+			try:
+				popt_BS, pcov_BS = curve_fit(fit_func, xTrial, 
+							 yTrial, pGuess)
+			except Exception:
+				print("Failed to converge")
+				fails += 1
+				continue
+			
+			if np.sum(np.isinf(trialB)) or popt_BS[0]<0:
+				print('Fit params out of bounds', popt_BS)
+				continue
+			
+			else:
+				# compute SR, FM and CS
+				xeval = np.linspace(*int_bounds, num)
+				SR = np.trapz(fit_func(xeval, *popt_BS), x=xeval)
+				FM = np.trapz(xeval*fit_func(xeval, *popt_BS), x=xeval)
+				CS = FM/0.5
+				
+				trialB += 1
+				
 		
-		# sumrule using each set
-		SR = np.trapz(y_interp, x=x_interp) 
-		# SRlineshape = np.trapz(fit_func(xi, *pFit, Ebfix), x=x_interp) 
-
-# 		print(np.trapz(y_interp, x=x_interp))
-		# first moment using each set	
-		FM = np.trapz(y_interp*x_interp, x=x_interp) 
-		# FMlineshape = np.trapz(fit_func(xi, *pFit, Ebfix)*x_interp, x=x_interp) 
-		# print(fit_func(xi, *pFit, Ebfix))
-		# print(y_interp)
-		# clock shift
-		HFTsumrule = 0.25
-		idealSumrule = 0.5
-		CS_exp = FM/(SR+HFTsumrule)
-		CS_idl = FM / idealSumrule
-		
-# 		if SR<0 or CS<0 or CS>100:
-# 			print("Integration out of bounds")
-# 			continue
-	
-		SR_extrap_distr.append(SR_extrapolation)
-		FM_extrap_distr.append(FM_extrapolation)
-		
-		CS_idl_distr.append(CS_idl)
-		CS_exp_distr.append(CS_exp)
+		CS_distr.append(CS)
 		FM_distr.append(FM)
 		SR_distr.append(SR)
 	
 	# return everything
-	return SR_distr, FM_distr, CS_idl_distr, CS_exp_distr, pFitB, SR, FM, CS_idl, CS_exp
+	return SR_distr, FM_distr, CS_distr
 
 def MonteCarlo_spectra_fit_trapz(xs, ys, yserr, fitmask, xstar, fit_func, 
 									num_iter=1000):

@@ -18,9 +18,9 @@ import matplotlib.pyplot as plt
 
 plt.rcParams.update({"figure.figsize": [5,3.5]})
 
-FB = True
-guess = -2.88
-files = ["2024-09-25_G_e.dat"]
+FB = False
+guess = 7.13
+files = ["2024-10-02_I_e.dat"]
 fit_func = Sinc2
 
 if FB == True:
@@ -28,7 +28,7 @@ if FB == True:
 	guess = [0.5, guess, 0.1, 0]
 else:
 	names = ['VVA', 'fraction95']
-	guess = [0.1, guess, 1, 0]
+	guess = [0.1, 2, 1, 0]
 
 for file in files:
 	print("--------------------------")

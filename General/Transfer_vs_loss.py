@@ -28,7 +28,7 @@ OmegaRat2p3VVA = 17.05
 VppFrom2p3VVA = 0.70725
 VpptoOmegaR = 24107  # Hz
 
-file = "2024-07-05_C_e.dat"
+file = "2024-09-24_C_e.dat"
 xname = 'freq'  # is in MHz
 
 ff = 1.03
@@ -64,10 +64,10 @@ bgtot = bgc5 + bgc9
 
 run.data['N'] = run.data['c5']-bgc5*np.ones(num)+run.data['c9']
 
-try: # sigh
-	run.data['VVA'] = run.data['vva']
-except KeyError():
-	run.data['vva'] = run.data['VVA']
+# try: # sigh
+# 	run.data['VVA'] = run.data['vva']
+# except KeyError():
+# 	run.data['vva'] = run.data['VVA']
 	
 run.data['transfer'] = (run.data['c5'] - bgc5*np.ones(num))/run.data['N']
 

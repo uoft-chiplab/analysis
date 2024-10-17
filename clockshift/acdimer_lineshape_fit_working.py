@@ -1,22 +1,12 @@
 #-*- coding: utf-8 -*-
 
 """
-Created on Thu Jun  6 20:12:51 2024
+AC dimer association spectra analysis script.
 
-@author: coldatoms
+@author: Chip Lab
 """
 
 # %%
-# import os
-# proj_path = os.path.dirname(os.path.realpath(__file__))
-# root = os.path.dirname(proj_path)
-# data_path = os.path.join(proj_path, 'data')
-# figfolder_path = os.path.join(proj_path, 'figures')
-
-# import imp 
-# library = imp.load_source('library',os.path.join(root,'library.py'))
-# data_class = imp.load_source('data_class',os.path.join(root,'data_class.py'))
-# =======
 import os
 import sys
 # this is a hack to access modules in the parent directory
@@ -29,30 +19,40 @@ if parent_dir not in sys.path:
 	sys.path.append(parent_dir)
 
 from data_class import Data
+from save_df_to_xlsx import save_df_row_to_xlsx
 from scipy.optimize import curve_fit
 from scipy.integrate import quad
 import matplotlib.colors as mc
 import colorsys
 import pandas as pd
 import numpy as np
+import corner
 import matplotlib.pyplot as plt
 from library import GammaTilde, pi, h
 
-from clockshift.MonteCarloSpectraIntegration import DimerBootStrapFit
-from scipy.stats import sem
-import pwave_fd_interp as FD # FD distribution data for interpolation functions, Ben Olsen
+from clockshift.MonteCarloSpectraIntegration import DimerBootStrapFit, dist_stats
+import clockshift.pwave_fd_interp as FD # FD distribution data for interpolation functions, Ben Olsen
 
 ## paths
 proj_path = os.path.dirname(os.path.realpath(__file__))
 data_path = os.path.join(proj_path, "data")
 root = os.path.dirname(proj_path)
+figfolder_path = os.path.join(proj_path, 'figures')
+
+# bootstrap iterations
+BOOTSRAP_TRAIL_NUM = 100
+
+# print statements
+Talk = True
 
 ## Bootstrap switches
 Bootstrap = True
 Bootstrapplots = True
+Correlations = True
 
 # save dataframe of convolutions
-saveConv = False
+Save = True
+# saveConv = False
 
 # determines whether convolved lineshape fit to data has offset parameter
 fitWithOffset = False
@@ -114,14 +114,24 @@ def convint(t, t0, mu):
 	qrangehigh= Ebfix + sliderange
 	return quad(convfunc, qrangelow, qrangehigh, args=(t,t0,mu))
 
+def GenerateSpectraFit(Ebfix):
+		def fit_func(x, A, sigma):
+			x0 = Ebfix
+			return A*np.sqrt(-x+x0) * np.exp((x - x0)/sigma) * np.heaviside(-x+x0,1)
+		return fit_func
+
+### save file name
+savefile = 'acdimer_lineshape_results.xlsx'
+
 ### metadata
 metadata_filename = 'metadata_dimer_file.xlsx'
 metadata_file = os.path.join(proj_path, metadata_filename)
 metadata = pd.read_excel(metadata_file)
 # if no filename selected, code will run over all files described in metadata (TO DO)
-filenames = ['2024-07-17_J_e']
+# filenames = ['2024-10-01_F_e']
 # filenames = ['2024-06-12_S_e']
 # filenames=[]
+filenames = False
 ### if the filenames list is empty, run over all available files in metadata
 if not filenames:
 	filenames = metadata.filename
@@ -150,13 +160,17 @@ if plot_VVAcal:
 	ax.plot(xx, calInterp(xx), '--')
 	ax.plot(cal.VVA, cal.Vpp, 'o')
 	ax.set(xlabel='VVA', ylabel='Vpp')
-
-# %% START OF ANALYSIS LOOP
+	
+##############################
+######### Analysis ###########
+##############################
+save_df_index = 0
 for filename in filenames:
 	df = metadata.loc[metadata.filename == filename].reset_index()
 	if df.empty:
 		print("Dataframe is empty! The metadata likely needs updating." )
 	
+	runfolder = filename 
 	xname = df['xname'][0]
 	ff = df['ff'][0]
 	trf = df['trf'][0] #s
@@ -344,6 +358,38 @@ for filename in filenames:
 		print('Convolution CS: ' + str(CS_convls))
 		print('Convolution Ctilde: ' + str(Ctilde_convls))
 		
+	### time for clock shift analysis I guess
+		
+	# Ctilde_est = 1.44
+	Ctilde_est = 1.8 # ToTF ~ 0.3
+	cs_pred = -2/(pi*kF*a13(Bfield))*Ctilde_est
+	print("predicted dimer clock shift [Eq. (5)]: "+ str(cs_pred))
+	
+	
+	cstot_pred_zerorange = -1/(pi*kF*a13(Bfield)) * Ctilde_est
+	print("Predicted total clock shift w/o eff. range term [Eq. (1)]: "+ str(cstot_pred_zerorange))
+	csHFT_pred = 1/(pi*kF*a13(Bfield)) *Ctilde_est
+	print("Predicted HFT clock shift w/o eff. range term: " + str(csHFT_pred))
+	
+	cstot_pred = -1/(pi*kF*a13(Bfield)) * (1- pi**2/8*re/a13(Bfield)) * Ctilde_est
+	print("Predicted total clock shift w/ eff. range term [Eq. (1)]: "+ str(cstot_pred))
+	csHFT_pred_corr = 1/(pi*kF*a13(Bfield))* (1/(np.sqrt(1-re/a13(Bfield)))) *Ctilde_est
+	print("Predicted HFT clock shift w/ eff. range term: " + str(csHFT_pred_corr))
+	kappa = 1.2594*1e8
+	I_d = kF*Ctilde_est / (pi * kappa) * (1/(1+re/a13(Bfield)))
+	print("Predicted dimer spectral weight [Eq. 6]: " + str(I_d))
+	
+	correctionfactor = 1/(kappa*a13(Bfield))*(1/(1+re/a13(Bfield)))
+	print("Eff. range correction: "+ str(correctionfactor))
+	
+	re_range = np.linspace(re_i/a0, re_f/a0, 100)
+	CS_HFT_CORR = 1/(pi*kF*a13(Bfield))* (1/(np.sqrt(1-re_range*a0/a13(Bfield)))) *Ctilde_est
+	CS_TOT_CORR = -1/(pi*kF*a13(Bfield)) * (1- pi**2/8*re_range*a0/a13(Bfield)) * Ctilde_est
+	CS_DIM_CORR = CS_TOT_CORR - CS_HFT_CORR
+	print("CS_HFT_CORR bounds = ({:.1f}, {:.1f})".format(min(CS_HFT_CORR), max(CS_HFT_CORR)))
+	print("CS_TOT_CORR bounds = ({:.1f}, {:.1f})".format(min(CS_TOT_CORR), max(CS_TOT_CORR)))
+	print("CS_DIM_CORR bounds = ({:.1f}, {:.1f})".format(min(CS_DIM_CORR), max(CS_DIM_CORR)))
+		
 	
 	### final plotting touches
 	ax_ls.legend()
@@ -361,10 +407,10 @@ for filename in filenames:
 	
 	plt.tight_layout()
 	
-	d = {'filename':filename,'ToTF': ToTFs, 'mu': mus, 'popt':popt_FDGs, 'perr':perr_FDGs,
+	results = {'filename':filename,'ToTF': ToTFs, 'mu': mus, 'popt':popt_FDGs, 'perr':perr_FDGs,
 		 'SR':SRs, 'FM':FMs, 'CS':CSs, 'Ctilde':Cts, 'chi2':chi2s,'FDnorm':FDnorms, 
 		 'Convnorm':convnorms}
-	df = pd.DataFrame(data=d)
+	df = pd.DataFrame(data=results)
 	
 	fig_results, axs = plt.subplots(2,3)
 	xplot = 'mu'
@@ -387,44 +433,12 @@ for filename in filenames:
 	ax_CV.plot(df[xplot], df.mu)
 	ax_CV.set(xlabel=xplot,ylabel='mu')
 	fig_results.tight_layout()
-	
-	### save results
-	if saveConv == True:
-		save_filename = 'acdimer_lineshape_results.csv'
-		if os.path.isfile(save_filename):
-			old_df = pd.read_csv(save_filename, index_col=0)
-			new_df = pd.concat([old_df, df])
-			new_df.to_csv(save_filename)
-		else:
-			df.to_csv(save_filename)
-		
-		file_directory = os.path.join('figures',filename)
-		if not os.path.exists(file_directory):
-			os.makedirs(file_directory)
-		if fitWithOffset:
-			str_ender = 'offset.png'
-		else: 
-			str_ender = 'nooffset.png'
-		fig_file = os.path.join(file_directory, 'lineshape_fits_' + str_ender)
-		fig_ls.savefig(os.path.join(proj_path, fig_file))
-		fig_file = os.path.join(file_directory,'convolutions_' + str_ender)
-		fig_CVs.savefig(os.path.join(proj_path, fig_file))
-		fig_file = os.path.join(file_directory, 'residuals_' + str_ender)
-		fig_rs.savefig(os.path.join(proj_path, fig_file))
-		fig_file = os.path.join(file_directory,'results_' + str_ender)
-		fig_results.savefig(os.path.join(proj_path, fig_file))
 
-	
-	# %% BOOT STRAPPING
-	def GenerateSpectraFit(Ebfix):
-		def fit_func(x, A, sigma):
-			x0 = Ebfix
-			return A*np.sqrt(-x+x0) * np.exp((x - x0)/sigma) * np.heaviside(-x+x0,1)
-		return fit_func
-	
+##########################
+##### Bootstrapping ######
+##########################
 	# %%
 	if Bootstrap == True:
-		BOOTSRAP_TRAIL_NUM = 100
 		xfitlims = [min(x), max(x)]
 		fit_func = GenerateSpectraFit(Ebfix)
 		
@@ -438,45 +452,26 @@ for filename in filenames:
 		y = np.array(run.data['ScaledTransfer'])
 		
 		# sumrule, first moment and clockshift with analytic extension
-		SR_BS_dist, FM_BS_dist, CS_BS_idl_dist, CS_BS_exp_dist, pFits, SR, FM, CS_idl, CS_exp  = \
+		SR_BS_dist, FM_BS_dist, CS_BS_idl_dist, CS_BS_exp_dist, pFits = \
 			DimerBootStrapFit(x, y, xfitlims, Ebfix, fit_func, trialsB=BOOTSRAP_TRAIL_NUM)
-		# print(SRlineshape)
-		# print(SR)
-		# print(FMlineshape)
-		# print(FM)
-		SR_BS_mean, e_SR_BS = (np.mean(SR_BS_dist), np.std(SR_BS_dist))
-		FM_BS_mean, e_FM_BS = (np.mean(FM_BS_dist), np.std(FM_BS_dist))
-		CS_BS_idl_mean, e_CS_BS_idl = (np.mean(CS_BS_idl_dist), np.std(CS_BS_idl_dist))
-		CS_BS_exp_mean, e_CS_BS_exp = (np.mean(CS_BS_exp_dist), np.std(CS_BS_exp_dist))
-		# SR_extrap_mean, e_SR_extrap = (np.mean(SR_extrap_dist), np.std(SR_extrap_dist))
-		# FM_extrap_mean, e_FM_extrap = (np.mean(FM_extrap_dist), np.std(FM_extrap_dist))
-		CS_BS_idl_mean, e_CS_BS_idl = (np.mean(CS_BS_idl_dist), sem(CS_BS_idl_dist))
-		CS_BS_exp_mean, e_CS_BS_exp = (np.mean(CS_BS_exp_dist), sem(CS_BS_exp_dist))
-		print(r"SR BS mean = {:.3f}$\pm$ {:.3f}".format(SR_BS_mean, e_SR_BS))
-		print(r"FM BS mean = {:.3f}$\pm$ {:.3f}".format(FM_BS_mean, e_FM_BS))
-		print(r"CS BS mean = {:.2f}$\pm$ {:.2f}".format(CS_BS_idl_mean, e_CS_BS_idl))
-		print(r"CS BS mean = {:.2f}$\pm$ {:.2f}".format(CS_BS_exp_mean, e_CS_BS_exp))
-		median_SR = np.nanmedian(SR_BS_dist)
-		upper_SR = np.nanpercentile(SR_BS_dist, 100-(100.0-conf)/2.)
-		lower_SR = np.nanpercentile(SR_BS_dist, (100.0-conf)/2.)
+			
+		# list all ditributions to compure stats on
+		dists = [SR_BS_dist, FM_BS_dist, CS_BS_idl_dist, CS_BS_exp_dist]
+		names = ['SR', 'FM', 'CS_idl', 'CS_exp']
 		
-		median_FM = np.nanmedian(FM_BS_dist)
-		upper_FM = np.nanpercentile(FM_BS_dist, 100-(100.0-conf)/2.)
-		lower_FM = np.nanpercentile(FM_BS_dist, (100.0-conf)/2.)
+		# update results with all stats from dists
+		stats_dict = {}
+		for name, dist in zip(names, dists):
+			for key, value in dist_stats(dist, conf).items():
+				stats_dict[name+'_'+key] = value
+		results.update(stats_dict)
 		
-		median_CS_idl = np.nanmedian(CS_BS_idl_dist)
-		upper_CS_idl = np.nanpercentile(CS_BS_idl_dist, 100-(100.0-conf)/2.)
-		lower_CS_idl = np.nanpercentile(CS_BS_idl_dist, (100.0-conf)/2.)
-		median_CS_exp = np.nanmedian(CS_BS_exp_dist)
-		upper_CS_exp = np.nanpercentile(CS_BS_exp_dist, 100-(100.0-conf)/2.)
-		lower_CS_exp = np.nanpercentile(CS_BS_exp_dist, (100.0-conf)/2.)
-		print(r"SR BS median = {:.3f}+{:.3f}-{:.3f}".format(median_SR,
-													  upper_SR-SR, SR-lower_SR))
-		print(r"FM BS median = {:.3f}+{:.3f}-{:.3f}".format(median_FM, 
-													  upper_FM-FM, FM-lower_FM))
-		print(r"CS BS idl median = {:.2f}+{:.3f}-{:.3f}".format(median_CS_idl, 
-													  upper_CS_idl-median_CS_idl, median_CS_idl-lower_CS_idl))
-	
+		if Talk == True:
+			for names in names:
+				print(r"{} BS median = {:.3f}+{:.3f}-{:.3f}".format(name, 
+											results[name+'_median'],
+						   results[name+'_upper']-results[names+'_median'], 
+						        results['SR_median']-results['SR_lower']))
 	
 	if (Bootstrapplots == True and Bootstrap == True):
 		plt.rcParams.update({"figure.figsize": [10,8]})
@@ -485,86 +480,28 @@ for filename in filenames:
 		
 		bins = 20
 		
-	# fits
-		
-		# sumrule distribution
-		ax = axs[0,0]
-		xlabel = "Sum Rule"
 		ylabel = "Occurances"
-		ax.set(xlabel=xlabel, ylabel=ylabel)
-		ax.hist(SR_BS_dist, bins=bins)
-		ax.axvline(x=lower_SR, color='red', alpha=0.5, linestyle='--', marker='')
-		ax.axvline(x=upper_SR, color='red', alpha=0.5, linestyle='--', marker='')
-		ax.axvline(x=median_SR, color='red', linestyle='--', marker='')
-		ax.axvline(x=SR_BS_mean, color='k', linestyle='--', marker='')
+		xlabels = ["Sum Rule", "First Moment", "Clock Shift Idl", 
+				 "Clock Shift Exp"]
+		dists = [SR_BS_dist, FM_BS_dist, CS_BS_idl_dist, CS_BS_exp_dist]
 		
-		# first moment distribution
-		ax = axs[0,1]
-		xlabel = "First Moment"
-		ax.set(xlabel=xlabel, ylabel=ylabel)
-		ax.hist(FM_BS_dist, bins=bins)
-		ax.axvline(x=lower_FM, color='red', alpha=0.5, linestyle='--', marker='')
-		ax.axvline(x=upper_FM, color='red', alpha=0.5, linestyle='--', marker='')
-		ax.axvline(x=median_FM, color='red', linestyle='--', marker='')
-		ax.axvline(x=FM_BS_mean, color='k', linestyle='--', marker='')
+		for ax, xlabel, dist, name in zip(axs.flatten(), xlabels, dists, names):
+			ax.set(xlabel=xlabel, ylabel=ylabel)
+			ax.hist(dist, bins=bins)
+			ax.axvline(x=results[name+'_lower'], color='red', alpha=0.5, linestyle='--', marker='')
+			ax.axvline(x=results[name+'_upper'], color='red', alpha=0.5, linestyle='--', marker='')
+			ax.axvline(x=results[name+'_median'], color='red', linestyle='--', marker='')
+			ax.axvline(x=results[name+'_mean'], color='k', linestyle='--', marker='')
+		fig.tight_layout()	
 		
-		# clock shift distribution
-		ax = axs[1,0]
-		xlabel = "Clock Shift (ideal SR)"
-		ax.set(xlabel=xlabel, ylabel=ylabel)
-		ax.hist(CS_BS_idl_dist, bins=bins)
-		ax.axvline(x=lower_CS_idl, color='red', alpha=0.5, linestyle='--', marker='')
-		ax.axvline(x=upper_CS_idl, color='red', alpha=0.5, linestyle='--', marker='')
-		ax.axvline(x=median_CS_idl, color='red', linestyle='--', marker='')
-		ax.axvline(x=CS_BS_idl_mean, color='k', linestyle='--', marker='')
+		if Save == True:
+			hist_figname= filename[:-6] + '_hist.pdf'
+			figpath = os.path.join(figfolder_path, runfolder)
+			fig.savefig(os.path.join(figpath, hist_figname))
 	
-		ax = axs[1,1]
-		xlabel = "Clock Shift (exp SR)"
-		ax.set(xlabel=xlabel, ylabel=ylabel)
-		ax.hist(CS_BS_exp_dist, bins=bins)
-		ax.axvline(x=lower_CS_exp, color='red', alpha=0.5, linestyle='--', marker='')
-		ax.axvline(x=upper_CS_exp, color='red', alpha=0.5, linestyle='--', marker='')
-		ax.axvline(x=median_CS_exp, color='red', linestyle='--', marker='')
-		ax.axvline(x=CS_BS_exp_mean, color='k', linestyle='--', marker='')
-	
-		
-		# make room for suptitle
-		fig.tight_layout(rect=[0, 0.03, 1, 0.95])	
+		fig.tight_layout()	
 		# %%	
-		
-		### time for clock shift analysis I guess
-		
-		# Ctilde_est = 1.44
-		Ctilde_est = 1.8 # ToTF ~ 0.3
-		cs_pred = -2/(pi*kF*a13(Bfield))*Ctilde_est
-		print("predicted dimer clock shift [Eq. (5)]: "+ str(cs_pred))
-		
-		
-		cstot_pred_zerorange = -1/(pi*kF*a13(Bfield)) * Ctilde_est
-		print("Predicted total clock shift w/o eff. range term [Eq. (1)]: "+ str(cstot_pred_zerorange))
-		csHFT_pred = 1/(pi*kF*a13(Bfield)) *Ctilde_est
-		print("Predicted HFT clock shift w/o eff. range term: " + str(csHFT_pred))
-		
-		cstot_pred = -1/(pi*kF*a13(Bfield)) * (1- pi**2/8*re/a13(Bfield)) * Ctilde_est
-		print("Predicted total clock shift w/ eff. range term [Eq. (1)]: "+ str(cstot_pred))
-		csHFT_pred_corr = 1/(pi*kF*a13(Bfield))* (1/(np.sqrt(1-re/a13(Bfield)))) *Ctilde_est
-		print("Predicted HFT clock shift w/ eff. range term: " + str(csHFT_pred_corr))
-		kappa = 1.2594*1e8
-		I_d = kF*Ctilde_est / (pi * kappa) * (1/(1+re/a13(Bfield)))
-		print("Predicted dimer spectral weight [Eq. 6]: " + str(I_d))
-		
-		correctionfactor = 1/(kappa*a13(Bfield))*(1/(1+re/a13(Bfield)))
-		print("Eff. range correction: "+ str(correctionfactor))
-		
-		re_range = np.linspace(re_i/a0, re_f/a0, 100)
-		CS_HFT_CORR = 1/(pi*kF*a13(Bfield))* (1/(np.sqrt(1-re_range*a0/a13(Bfield)))) *Ctilde_est
-		CS_TOT_CORR = -1/(pi*kF*a13(Bfield)) * (1- pi**2/8*re_range*a0/a13(Bfield)) * Ctilde_est
-		CS_DIM_CORR = CS_TOT_CORR - CS_HFT_CORR
-		print("CS_HFT_CORR bounds = ({:.1f}, {:.1f})".format(min(CS_HFT_CORR), max(CS_HFT_CORR)))
-		print("CS_TOT_CORR bounds = ({:.1f}, {:.1f})".format(min(CS_TOT_CORR), max(CS_TOT_CORR)))
-		print("CS_DIM_CORR bounds = ({:.1f}, {:.1f})".format(min(CS_DIM_CORR), max(CS_DIM_CORR)))
-				  
-		
+
 		### generate table
 		fig, axs = plt.subplots(2)
 		axpred = axs[0]
@@ -613,11 +550,15 @@ for filename in filenames:
 		DIMER_CS_EXP = -8.7
 		values = [
 			"{:.1f}".format(DIMER_CS_EXP),
-			"{:.1f} +{:.1f}-{:.1f}".format(median_CS_idl, upper_CS_idl-median_CS_idl, median_CS_idl-lower_CS_idl),
-			"{:.1f} +{:.1f}-{:.1f}".format(median_CS_exp, upper_CS_exp-median_CS_exp, median_CS_exp-lower_CS_exp),
+			"{:.1f} +{:.1f}-{:.1f}".format(results['CS_idl_median'], 
+						  results['CS_idl_upper']-results['CS_idl_median'], 
+						  results['CS_idl_median']-results['CS_idl_lower']),
+			"{:.1f} +{:.1f}-{:.1f}".format(results['CS_exp_median'], 
+						  results['CS_exp_upper']-results['CS_exp_median'], 
+						  results['CS_exp_median']-results['CS_exp_lower']),
 			"{:.1f}".format(HFT_CS_EXP), 
 			"{:.1f}".format(DIMER_CS_EXP + HFT_CS_EXP),
-			"{:.1f}".format(CS_BS_idl_mean + HFT_CS_EXP)]
+			"{:.1f}".format(results['CS_BS_idl_median'] + HFT_CS_EXP)]
 		table = list(zip(quantities, values))
 		
 		the_table = axexp.table(cellText=table, loc='center')
@@ -626,4 +567,44 @@ for filename in filenames:
 		the_table.scale(1,1.5)
 		axexp.set(title='Experimental clock shifts [EF]')
 		
-							
+#############################
+####### Correlations ########
+#############################
+		
+	if Correlations == True and Bootstrap == True:
+		dists = np.vstack(dists)
+		fig_cor = corner.corner(dists.T, labels=xlabels)
+		
+###############################
+####### Saving Results ########
+###############################
+	if Save == True:
+		savedf = pd.DataFrame(results, index=[save_df_index])
+		save_df_index += 1
+		
+		save_df_row_to_xlsx(savedf, savefile, filename)
+
+# 	if saveConv == True:
+# 		save_filename = 'acdimer_lineshape_results.csv'
+# 		if os.path.isfile(save_filename):
+# 			old_df = pd.read_csv(save_filename, index_col=0)
+# 			new_df = pd.concat([old_df, df])
+# 			new_df.to_csv(save_filename)
+# 		else:
+# 			df.to_csv(save_filename)
+# 		
+# 		file_directory = os.path.join('figures',filename)
+# 		if not os.path.exists(file_directory):
+# 			os.makedirs(file_directory)
+# 		if fitWithOffset:
+# 			str_ender = 'offset.png'
+# 		else: 
+# 			str_ender = 'nooffset.png'
+# 			
+# 		figs = [fig_ls, fig_CVs, fig_rs, fig_results, fig_cor]
+# 		fig_names = ['lineshape_fits_', 'convolutions_', 'residuals_',
+# 				'results_', 'correlations_']
+# 		
+# 		for fig, name in zip(figs, fig_names):
+# 			fig_file = os.path.join(file_directory, name + str_ender)
+# 			fig.savefig(os.path.join(proj_path, fig_file))	
