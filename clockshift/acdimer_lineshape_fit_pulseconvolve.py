@@ -20,6 +20,7 @@ from data_class import Data
 from data_helper import remove_indices_formatter, bg_freq_formatter
 from save_df_to_xlsx import save_df_row_to_xlsx
 from scipy.optimize import curve_fit
+from scipy.integrate import quad
 import pandas as pd
 import numpy as np
 import corner
@@ -42,29 +43,26 @@ BOOTSRAP_TRAIL_NUM = 1000
 Talk = True
 
 ## Diagnostic plots
-plotraw = False
-plotconvs = False
+plotraw = True
+plotconvs = True
 
 ## Bootstrap switches
 Bootstrap = True
 Bootstrapplots = True
 Correlations = True
 
-# save dataframe of convolutions
-Save = False
+# save results
+Save = True
 
 # determines whether convolved lineshape fit to data has offset parameter
 fitWithOffset = False
 
-# load a pre-made lineshape
-loadlineshape = True
-
 # select spin states to analyze
 spins = ['c5','c9','sum95']
-spin = spins[1]
+spin = spins[2]
 
 ### save file name
-savefile = 'acdimer_lineshape_results_' + spin + '.xlsx'
+savefile = './clockshift/acdimer_lineshape_results_' + spin + '.xlsx'
 
 ### metadata
 metadata_filename = 'metadata_dimer_file.xlsx'
@@ -75,7 +73,10 @@ metadata = pd.read_excel(metadata_file)
 # filenames = ['2024-08-09_M_e','2024-08-11_P_e','2024-07-17_J_e',
 # 				'2024-08-11_O_e','2024-09-27_B_e','2024-09-27_C_e', '2024-10-04_H_e']
 
-filenames = ['2024-10-02_C_e']
+
+filenames = ['2024-07-17_I_e','2024-07-17_J_e', '2024-08-08_J_e', '2024-09-27_B_e', 
+			 '2024-09-27_C_e', '2024-10-01_F_e', '2024-10-02_C_e', '2024-10-03_C_e',
+			 '2024-10-04_H_e', '2024-10-07_C_e', '2024-10-07_G_e']
 
 # if the filenames list is empty, run over all available files in metadata
 if not filenames:
@@ -155,10 +156,11 @@ for filename in filenames:
 	pulsetype = metadf['pulsetype'][0]
 	gain = metadf['gain'][0]
 	remove_indices = metadf['remove_indices'][0]
-	track_bg = metadf['trackbg'][0]
+	track_bg = metadf['track_bg'][0]
+	load_lineshape = metadf['load_lineshape'][0]
 	Vppscope = metadf['Vpp'][0]
 	
-	if loadlineshape:
+	if load_lineshape:
 		df_ls = pd.read_pickle('./clockshift/convolutions.pkl')
 		TTF = round(ToTF,1)
 		if TTF == 0.7:
@@ -263,12 +265,12 @@ for filename in filenames:
 		fig_raw, axs_raw = plt.subplots(2,2)
 		xlims = [run.avg_data.Delta.min()*EF,run.avg_data.Delta.max()*EF ]
 		x_plot = run.avg_data.Delta*EF
-		axs_raw[0,0].errorbar(x_plot, run.avg_data.transfer, run.avg_data.em_transfer)
-		axs_raw[0,0].set(ylabel='avg', xlim=xlims)
-		axs_raw[0,1].errorbar(x_plot, run.avg_data.transferLow, run.avg_data.em_transferLow)
-		axs_raw[0,1].set(ylabel='lo', xlim=xlims)
-		axs_raw[1,0].errorbar(x_plot, run.avg_data.transferHigh, run.avg_data.em_transferHigh)
-		axs_raw[1,0].set(ylabel='high', xlim=xlims)
+		axs_raw[0,0].errorbar(x_plot, run.avg_data.c5, run.avg_data.em_c5)
+		axs_raw[0,0].set(ylabel='c5', xlim=xlims)
+		axs_raw[0,1].errorbar(x_plot, run.avg_data.c9, run.avg_data.em_c9)
+		axs_raw[0,1].set(ylabel='c9', xlim=xlims)
+		axs_raw[1,0].errorbar(x_plot, run.avg_data.sum95, run.avg_data.em_sum95)
+		axs_raw[1,0].set(ylabel='sum95', xlim=xlims)
 		axs_raw[1,1].errorbar(x_plot, run.avg_data.transfer, run.avg_data.em_transfer)
 		axs_raw[1,1].set(ylabel='Transfer', xlim=xlims)
 		fig_raw.tight_layout()
@@ -298,95 +300,78 @@ for filename in filenames:
 	Ebfix = -3.98 * 1e3/EF
 	
 	### prepping evaluation ranges
-	xrange = 0.3*1e3/EF
+	xrange = np.abs(x.min() - x.max())
 	xlow = Ebfix-xrange
 	xhigh = Ebfix + xrange
 	xnum = 1000
 	xx = np.linspace(xlow, xhigh, xnum)
+	xxC = np.linspace(-xrange, xrange, xnum)
 
-# 	# t in us
-# 	def Sincw(w, t): # used Mathematica to get an exact FT
-# 		return 0.797885 * np.sin(t/2*w)/w
-# 	def Sincf(f,t): # kHz
-# 		return Sincw(2*pi*f/1000, t)
-# 	def SincD(Delta, t): # takes dimensionless detuning
-# 		return Sincw(2*pi*EF*Delta/1000, t)	
-# 	def Sinc2D(Delta, t): # takes dimensionless detuning
-# 		return Sincw(2*pi*EF*Delta/1000, t)**2
-# 	
-# 	def Blackmanw(w,t):
-# 		if t == 160:
-# 			return (3*pi**(3/2) * (7*pi**2 - 4800*w**2) * np.sin(80*w))/ \
-# 					 	(25*np.sqrt(2)*w*(pi**4 -8000*pi**2*w**2 + 10240000*w**4))
-# 		elif t == 80:
-# 			return (3*pi**(3/2) * (7*pi**2 - 1200*w**2) * np.sin(40*w))/ \
-# 					 	(25*np.sqrt(2)*w*(pi**4 -2000*pi**2*w**2 + 640000*w**4))
-# 		elif t == 40:
-# 			return (3*pi**(3/2) * (7*pi**2 - 300*w**2) * np.sin(20*w))/ \
-# 					 	(25*np.sqrt(2)*w*(pi**4 -500*pi**2*w**2 + 40000*w**4))
-# 	
-# 	def Blackmanf(f,t):
-#  			return Blackmanw(2*pi*f/1000,t)
-# 	
-# 	def BlackmanD(Delta, t):
-#  			return Blackmanw(2*pi*EF*Delta/1000, t)
-# 	def Blackman2D(Delta, t):
-#  			return Blackmanw(2*pi*EF*Delta/1000, t)**2
-# 	
-# 	D = np.linspace(-10*1000/(trf*1e6) / EF, 10*1000/(trf*1e6) /EF, 1000)
-# 	
-# 	if pulsetype == 'square':
-# 		yD = Sinc2D(D, trf*1e6)
-# 	elif pulsetype=='blackman':
-#  			yD = Blackman2D(D, trf*1e6)
-# # 	norm = 397.932 # FROM MATHEMATICA
-# 	norm = np.trapz(yD, D)
-# 	if plotconvs:
-# 		fig_conv, ax=plt.subplots()
-# 		ax.plot(D, yD/norm, '-')
-# 		ax.set(xlabel='Detuning [EF]', ylabel='Magnitude')
-# 	print('FT[pulse] norm: ' + str(norm))
-# 	
-# 	arbscale=1
-# 	qrange=xnum
-# 	# create FD lineshapes -- only use ToTF=0.3 for now
-# 	ToTFround = round(ToTF, 1)
-# 	if ToTFround == 0.3:
-# 		FDnum = 5
-# 	elif ToTFround == 0.4:
-# 		FDnum = 6
-# 	elif ToTFround == 0.5:
-# 		FDnum = 7
-# 	elif ToTFround == 0.6:
-# 		FDnum = 8
-
-# 	FDinterp = lambda x: np.interp(x, xx, lsFD(xx, Ebfix, arbscale, FDnum))
-# 	FDnorm = quad(FDinterp, -qrange, qrange, points=xx, limit=2*xx.shape[0])
-# 	
-# 	def convfunc(tau, t):
-# 		if pulsetype == 'square':
-# 			return FDinterp(tau)/FDnorm[0] * (Sinc2D(t-tau, trf*1e6)/norm)
-# 		elif pulsetype=='blackman':
-# 			return FDinterp(tau)/FDnorm[0] * (Blackman2D(t-tau, trf*1e6)/norm)
-# 	def convint(t):
-# 		# the integral converges better when ranges don't go to infinity
-# 		sliderange=30
-# 		qrangelow = Ebfix - sliderange
-# 		qrangehigh= Ebfix + sliderange
-# 		return quad(convfunc, qrangelow, qrangehigh, args=(t,))
-
-# 	yyconv = []
-# 	e_yyconv = []
-# 	for xconv in xx:
-# 		a, b = convint(xconv)
-# 		yyconv.append(a)
-# 		e_yyconv.append(b)
-# 	convnorm = np.trapz(yyconv,xx)
-# 	print('Conv norm: ' + str(convnorm))
-# 	# create the convolution lineshape for current iteration
-# 	convinterp = lambda x: np.interp(x, xx, yyconv)
-	# I hate this
+	if not load_lineshape:
+		def Sincw(w, t): # used Mathematica to get an exact FT
+			return 0.797885 * np.sin(t/2*w)/w
+		def Sincf(f,t): # kHz
+			return Sincw(2*pi*f/1000, t)
+		def SincD(Delta, t): # takes dimensionless detuning
+			return Sincw(2*pi*EF*Delta/1000, t)	
+		def Sinc2D(Delta, t): # takes dimensionless detuning
+			return Sincw(2*pi*EF*Delta/1000, t)**2
+		
+	 	
+		D = np.linspace(-10*1000/(trf*1e6) / EF, 10*1000/(trf*1e6) /EF, 1000)
+	 	
+		if pulsetype == 'square':
+			yD = Sinc2D(D, trf*1e6)
 	
+	# 	norm = 397.932 # FROM MATHEMATICA
+		norm = np.trapz(yD, D)
+		if plotconvs:
+			fig_conv, ax=plt.subplots()
+			ax.plot(D, yD/norm, '-')
+			ax.set(xlabel='Detuning [EF]', ylabel='Magnitude')
+		print('FT[pulse] norm: ' + str(norm))
+	 	
+		arbscale=1
+		qrange=xnum
+	 	# create FD lineshapes
+
+		ToTFround = round(ToTF, 1)
+		if ToTFround == 0.3:
+			FDnum = 5
+		elif ToTFround == 0.4:
+			FDnum = 6
+		elif ToTFround == 0.5:
+			FDnum = 7
+		elif ToTFround == 0.6:
+			FDnum = 8
+	
+		FDinterp = lambda x: np.interp(x, xxC, lsFD(xxC, 0, arbscale, FDnum))
+		FDnorm = quad(FDinterp, -qrange, qrange, points=xxC, limit=2*xxC.shape[0])
+		print('FDNORM: ' + str(FDnorm))
+		def convfunc(tau, t):
+			if pulsetype == 'square':
+	 			return FDinterp(tau)/FDnorm[0] * (Sinc2D(t-tau, trf*1e6)/norm)
+			
+
+		def convint(t):
+			# the integral converges better when ranges don't go to infinity
+			sliderange=20
+			qrangelow = - sliderange
+			qrangehigh=  sliderange
+			return quad(convfunc, qrangelow, qrangehigh, args=(t,))
+	
+		yyconv = []
+		e_yyconv = []
+		for xconv in xxC:
+			a, b = convint(xconv)
+			yyconv.append(a)
+			e_yyconv.append(b)
+		convnorm = np.trapz(yyconv,xxC)
+		print('Conv norm: ' + str(convnorm))
+	 	# create the convolution lineshape for current iteration
+
+		lineshape = lambda x: np.interp(x, xxC, yyconv)
+		
 	
 # 	if fitWithOffset:
 # 		guess_FDG = [0.02, -250, 0]
@@ -405,8 +390,8 @@ for filename in filenames:
 	else:
 		def convls(x, A, x0):
 			return A*lineshape(x-x0)
-		guess_FDG = [0.01, Ebfix]
-		bounds = ([0, -600],[np.inf, 0])
+		guess_FDG = [200, Ebfix]
+		bounds = ([0, -600],[1000, 0])
 	
 	# fit the lineshape onto the data
 	popt, pcov = curve_fit(convls, x, y, sigma=yerr, p0=guess_FDG, bounds=bounds)
@@ -417,16 +402,15 @@ for filename in filenames:
 	perrlo = np.sqrt(np.diag(pcovlo))
 
 # 	# show convs explicitly
-# 	if plotconvs:
-# 		fig_CVs, ax_CV = plt.subplots()
-# 		ax_CV.plot(xx, FDinterp(xx), '-')
-# 		if pulsetype == 'square':
-# 			ax_CV.plot(xx, Sinc2D(xx-Ebfix, trf*1e6)/norm, '-', label='FT')
-# 		elif pulsetype == 'blackman':
-# 			ax_CV.plot(xx, Blackman2D(xx-Ebfix, trf*1e6)/norm, '-', label='FT')
-# 		ax_CV.plot(xx, yyconv, '-', label='conv')
-# 		ax_CV.set(xlabel = 'Detuning [EF]', ylabel = 'Magnitude')
-# 		ax_CV.legend()
+
+	if plotconvs:
+		fig_CVs, ax_CV = plt.subplots()
+		ax_CV.plot(xxC, FDinterp(xxC), '-')
+		if pulsetype == 'square':
+ 			ax_CV.plot(xxC, Sinc2D(xxC, trf*1e6)/norm, '-', label='FT')
+		ax_CV.plot(xxC, yyconv, '-', label='conv')
+		ax_CV.set(xlabel = 'Detuning [EF]', ylabel = 'Magnitude')
+		ax_CV.legend()
 
  	### evaluate and plot on ax_ls
 	yyconvls = convls(xx, *popt)
