@@ -15,6 +15,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import time
+from scipy.optimize import curve_fit
+from pastamarkers import markers as pastamarkers
 
 from library import colors, markers, tintshade, tint_shade_color, plt_settings
 
@@ -45,6 +47,7 @@ df = full_df.loc[full_df.Run.isin(Runs)]
 
 # print df
 print(df[['ToTF', 'EF', 'SR_median', 'CS_median', 'C_median', 'C_theory', 'CoSR_median', 'Run', 'Transfer']])
+
 
 ### select x_axis
 xname = "ToTF"
@@ -105,15 +108,18 @@ for l, transfer in enumerate(transfer_types):
 			if df_pair[1] == 'CoSR':
 				df_pair[1] = 'C' # 'C' for dimer is actually CoSR
 # 				scale_dimer=0.5
-			error = np.array(list(zip(subdf[df_pair[1]+"_median"]-subdf[df_pair[1]+"_lower"], 
-					   subdf[df_pair[1]+"_upper"]-subdf[df_pair[1]+"_median"]))).T*np.abs(scale_dimer)
-			ax.errorbar(subdf[df_pair[0]], subdf[df_pair[1]+"_median"]*scale_dimer, 
-				yerr=error, fmt=marker, label=transfer_types[l], ecolor=dark_color)
+				error = np.array(list(zip(subdf[df_pair[1]+"_median"]-subdf[df_pair[1]+"_lower"], 
+						   subdf[df_pair[1]+"_upper"]-subdf[df_pair[1]+"_median"]))).T*np.abs(scale_dimer)
+				ax.errorbar(subdf[df_pair[0]], subdf[df_pair[1]+"_median"]*scale_dimer, 
+					yerr=error, fmt=marker, label=transfer_types[l], ecolor=dark_color)
 		else:
-			error = np.array(list(zip(subdf[df_pair[1]+"_median"]-subdf[df_pair[1]+"_lower"], 
-							   subdf[df_pair[1]+"_upper"]-subdf[df_pair[1]+"_median"]))).T
-			ax.errorbar(subdf[df_pair[0]], subdf[df_pair[1]+"_median"], yerr=error, fmt=marker,
-			     label=transfer_types[l], ecolor=dark_color)
+			try:
+				error = np.array(list(zip(subdf[df_pair[1]+"_median"]-subdf[df_pair[1]+"_lower"], 
+								   subdf[df_pair[1]+"_upper"]-subdf[df_pair[1]+"_median"]))).T
+				ax.errorbar(subdf[df_pair[0]], subdf[df_pair[1]+"_median"], yerr=error, fmt=marker,
+				     label=transfer_types[l], ecolor=dark_color)
+			except:
+				continue
 	
 		if j == 2 or j == 5: # plotting against theoretical contact
 			ax.plot([0.7,2], [0.7,2], 'k--')
@@ -147,3 +153,41 @@ os.makedirs(summaryfig_path, exist_ok=True)
 summaryfig_name = timestr = time.strftime("%Y%m%d-%H%M%S")+'summary.png'
 summaryfig_path = os.path.join(summaryfig_path, summaryfig_name)
 fig.savefig(summaryfig_path)
+
+fig1, ax1 = plt.subplots()
+
+transfer_df = df[df['Transfer'] == 'transfer']
+dimerc5_df = df[df['Transfer'] == 'dimer_c5']
+
+sorted_transfer_df = transfer_df.sort_values(by='ToTF')
+sorted_dimerc5_df = dimerc5_df.sort_values(by='ToTF')
+
+x = sorted_transfer_df['C_median']
+y = sorted_dimerc5_df['CS_median']
+
+sorted_transfer_df['x'] = x
+sorted_dimerc5_df['y'] = y
+
+print(sorted_transfer_df[['ToTF','C_median','Transfer','x']])
+print(sorted_dimerc5_df[['ToTF','CS_median','Transfer','y']])
+	
+y = np.array(y)
+x = np.array(x)
+
+newy = np.array([y[0],y[1],(y[2]+y[3])/2,(y[4]+y[5])/2])
+newx = np.array([x[0],x[1],x[3],x[4]])
+
+newxy_df = pd.DataFrame({'New x': newx, 'New y': newy})
+print(newxy_df)
+
+ax1.plot(newx,newy,marker=pastamarkers.farfalle, markersize=25)
+
+def Linear(x,m,b):
+	return m*x + b
+
+popt, pcov = curve_fit(Linear, newx,newy)
+xlist = np.linspace(newx.min(), newx.max(),100)
+ax1.plot(xlist, Linear(xlist,*popt),marker='',linestyle='-',color='b')
+print(f'y = {popt[0]:.2f}x + {popt[1]:.2f}')
+
+ax1.set(ylabel='Dimer c5 CS',xlabel='HFT C')

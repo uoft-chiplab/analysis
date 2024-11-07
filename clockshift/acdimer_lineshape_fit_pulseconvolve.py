@@ -75,7 +75,7 @@ metadata = pd.read_excel(metadata_file)
 # filenames = ['2024-08-09_M_e','2024-08-11_P_e','2024-07-17_J_e',
 # 				'2024-08-11_O_e','2024-09-27_B_e','2024-09-27_C_e', '2024-10-04_H_e']
 
-filenames = ['2024-10-10_D_e']
+filenames = ['2024-10-02_C_e']
 
 # if the filenames list is empty, run over all available files in metadata
 if not filenames:
@@ -185,7 +185,8 @@ for filename in filenames:
 	
 	# remove indices if requested
 	remove_list = remove_indices_formatter(remove_indices)
-	run.data.drop(remove_list, inplace=True)
+	if remove_list is not None:
+		run.data.drop(remove_list, inplace=True)
 	num = len(run.data[xname])
 	
 	### process data

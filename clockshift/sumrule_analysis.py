@@ -8,7 +8,7 @@ To do:
 	Error in x_star
 	
 """
-BOOTSRAP_TRAIL_NUM = 500
+BOOTSRAP_TRAIL_NUM = 1000
 
 # paths
 import os
@@ -48,7 +48,7 @@ Talk = True
 Bg_Tracking = True
 Calc_CTheory_std = True
 
-transfer_selection = 'transfer' #'transfer' or  'loss'
+transfer_selection = 'loss' #'transfer' or  'loss'
 
 ### metadata
 metadata_filename = 'metadata_file.xlsx'
@@ -185,7 +185,7 @@ for filename in files:
 		print("For nominal C_theory={:.2f}".format(results['C_theory']))
 		print("MC sampling of normal error gives mean={:.2f}±{:.2f}".format(
 									  C_theory_mean, C_theory_std))
-		results['C_theory_std'] = C_theory_dist_std
+		results['C_theory_std'] = C_theory_std
 	else:	
 		results['C_theory_std'] = 0.02
 		

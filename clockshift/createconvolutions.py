@@ -11,7 +11,7 @@ Created on Thu Oct  3 12:26:31 2024
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-import pwave_fd_interp as FD # FD distribution data for interpolation functions, Ben Olsen
+import clockshift.pwave_fd_interp as FD # FD distribution data for interpolation functions, Ben Olsen
 from scipy.optimize import curve_fit
 from scipy.integrate import quad
 from scipy.interpolate import interp1d
@@ -19,7 +19,10 @@ from library import pi, h
 
 plot_convs=True
 save_pickle=True
+load_pickle=True
 EF = 16 # [kHz], stand-in value
+
+pickle_file = "clockshift/convolutions.pkl"
 
 # transfer lineshape w/ FD distribution
 def lsFD(x, x0, A, numDA):
@@ -46,8 +49,9 @@ xx = np.linspace(Ebguess-xrange, Ebguess+xrange, xnum)
 arbscale=1
 # these are all the TTFs BAO's lookup table works for, but we don't need all of them
 TTFs = [0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.40, 0.50, 0.60, 0.80, 1.00, 1.50]
-# trfs = np.arange(10, 200, 10)
+TTFs = [1.00]
 trfs = np.array([10, 20, 30, 40, 50, 100, 150, 200]) # testing
+trfs = np.array([10])
 # trfs = np.arange(10,400,10)
 
 resultsTTF = []
@@ -55,7 +59,7 @@ resultstrf = []
 resultsls = []
 
 for idx, TTF in enumerate(TTFs):
-	if idx < 4 or idx > 9: continue
+# 	if idx < 4 or idx > 9: continue
 	print(str(idx), str(TTF))
 	
 	# transfer spectrum lineshape with FD dist at some TTF
@@ -119,9 +123,15 @@ for idx, TTF in enumerate(TTFs):
 		resultsls.append(convinterp)
 		
 	results = {'TTF':resultsTTF, 'TRF':resultstrf, 'LS':resultsls}
+	
 	df = pd.DataFrame(data=results)
+	
+	if load_pickle:
+		loaded_df = pd.read_pickle(pickle_file)
+		df = pd.concat([loaded_df, df], ignore_index=True, sort=False)
+	
 	if save_pickle:
-		df.to_pickle("convolutions.pkl")
+		df.to_pickle(pickle_file)
 		
 	
 	

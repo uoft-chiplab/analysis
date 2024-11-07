@@ -84,7 +84,13 @@ class Data:
 		sem = self.data.groupby([scan_name]).sem().reset_index().add_prefix("em_")
 		std = self.data.groupby([scan_name]).std().reset_index().add_prefix("e_")
 		self.avg_data = pd.concat([mean, std, sem], axis=1)
-
+		
+	# group by scan name, compute mendian 
+	def group_by_median(self, scan_name):
+		med = self.data.groupby([scan_name]).median().reset_index()
+		upper = self.data.groupby([scan_name]).quantile(0.68).reset_index().add_prefix("upper_")
+		lower = self.data.groupby([scan_name]).quantile(0.32).reset_index().add_prefix("lower_")
+		self.med_data = pd.concat([med, upper, lower], axis=1)
 				
 # plot raw data or average
 	def plot(self, names, label=None, axes_labels=None):

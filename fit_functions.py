@@ -224,7 +224,7 @@ def Sinc2(data, guess=None):
 	guess = [max_y-mean_y, x_ofmax, (max_x-min_x)/2, mean_y]
 	
 	def sinc2(x, A, x0, sigma, C):
-		return A*(np.sinc((x-x0) / sigma)**2) + C
+		return np.abs(A)*(np.sinc((x-x0) / sigma)**2) + C
 	return sinc2, guess, param_names
 
 def FixedSinc2(data):

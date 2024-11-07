@@ -58,6 +58,12 @@ colors = ["blue", "orange", "green", "red",
 		  "purple", "teal", "pink", "brown",
 		  "khaki", "silver", "chocolate", "chartreuse"]
 
+# matplotlib default colors
+colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
+ '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
+
+light_colors = []
+dark_colors = []
 	
 tintshade=0.6
 
@@ -81,6 +87,10 @@ def tint_shade_color(color, amount=0.5):
         c = color
     c = colorsys.rgb_to_hls(*mc.to_rgb(c))
     return colorsys.hls_to_rgb(c[0], max(0, min(1, amount * c[1])), c[2])
+
+for color in colors:
+	light_colors.append(tint_shade_color(color, amount=1+tintshade))
+	dark_colors.append(tint_shade_color(color, amount=1-tintshade))
 
 def set_marker_color(color):
 	"""

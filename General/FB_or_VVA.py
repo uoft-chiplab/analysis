@@ -15,21 +15,27 @@ if root not in sys.path:
 from data_class import Data
 from fit_functions import Sinc2
 import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
+
+import numpy as np
 
 plt.rcParams.update({"figure.figsize": [5,3.5]})
 
 FB = False
-guess = 7.13
-files = ["2024-10-02_I_e.dat"]
+guesses = [2]
+files = ["2024-11-04_G_e.dat"]
+
 fit_func = Sinc2
+
 
 if FB == True:
 	names = ['FB', 'fraction95']
-	guess = [0.5, guess, 0.1, 0]
+	guess = [0.5, guesses, 0.1, 0]
 else:
 	names = ['VVA', 'fraction95']
-	guess = [0.1, 2, 1, 0]
+# 	guess = [1, 2, 1, 0]
 
-for file in files:
+for file, guess in zip(files, guesses):
 	print("--------------------------")
+	guess = [0.5, guess, 0.1, 0]
 	Data(file).fit(fit_func, names, guess=guess)
