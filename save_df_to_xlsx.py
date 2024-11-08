@@ -14,7 +14,7 @@ def save_df_row_to_xlsx(savedf, savefile, filename):
 		if len(savedf.columns) == len(existing_data.columns) \
 				and filename in existing_data['Run'].values:
 			print()
-			print(f'{filename} has already been analyized and put into the summary .xlsx file')
+			print(f'{filename} has already been analyzed and put into the summary .xlsx file')
 			print('and columns of summary data are the same')
 			print()
 		elif len(savedf.columns) == len(existing_data.columns):

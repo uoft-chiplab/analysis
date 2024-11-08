@@ -7,7 +7,7 @@ import numpy as np
 from scipy.optimize import curve_fit
 import time
 
-def MonteCarlo_estimate_std_from_function(func, inputs, input_errors, num=100):
+def MonteCarlo_estimate_std_from_function(func, inputs, input_errors, num=100, **kwargs):
 	""" Sample output of function from calibration values distributed normally 
 	to obtain std"""
 	# sample output of function from calibration values distributed normally to obtain std
@@ -15,7 +15,7 @@ def MonteCarlo_estimate_std_from_function(func, inputs, input_errors, num=100):
 	i = 0
 	while i < num:
 		dist.append(func(*[np.random.normal(val, err) for val, err \
-					 in zip(inputs, input_errors)]))
+					 in zip(inputs, input_errors)], **kwargs))
 		i += 1
 	return np.array(dist).mean(), np.array(dist).std()
 

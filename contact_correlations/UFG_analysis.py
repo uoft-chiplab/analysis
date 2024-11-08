@@ -312,7 +312,7 @@ class BulkViscTrap:
 		if print_results == True:
 			print("Found betamutrap={:.2f} in {} iterations".format(self.betamutrap, no_iter))
 			print("From initial guess {:.2f}".format(betamutrap_guess))
-				
+		
 		if a0 is None:
 			a0 = self.lambda_T # put actual amplitude of scattering length drive, in meters
 			
@@ -414,7 +414,7 @@ def calc_contact(ToTF, EF, barnu, mutrap_guess=None):
 	Ctrap =  C_trap(betamutrap, betabaromega, weight_harmonic)/(kF*lambda_T)* \
 				(3*pi**2)**(1/3)/Ns/2
 				
-	return Ctrap
+	return Ctrap, Ns, EF, Theta
 			
 
 def contact_from_Edot(Edot, freq, T, kF):
@@ -523,11 +523,11 @@ if __name__ == "__main__":
 		ax_zeta.plot(BVU.nus[nu_small:]/BVU.EF, BVU.zetasC[nu_small:], '--', 
 			   label=label_C, color=color)
 		
-		ax_phase.plot(BVU.nus/BVU.EF, BVU.phaseshifts, ':', 
+		ax_phase.plot(BVU.nus/BVU.T, BVU.phaseshifts, ':', 
 				label=label_Drude, color=color)
-		ax_phase.plot(BVU.nus[nu_small:]/BVU.EF, BVU.phaseshiftsC[nu_small:], '--', 
+		ax_phase.plot(BVU.nus[nu_small:]/BVU.T, BVU.phaseshiftsC[nu_small:], '--', 
 				label=label_C, color=color)
-		ax_phase.plot(BVU.nus/BVU.EF, BVU.phaseshiftsQcrit, '-.', label=label_Qcrit,color=color)
+		ax_phase.plot(BVU.nus/BVU.T, BVU.phaseshiftsQcrit, '-.', label=label_Qcrit,color=color)
 		
 		#these plot versions were for omega/T on the x-axis
 # 		ax_phase.plot(BVU.nus/BVU.T, BVU.phaseshifts, ':', 
