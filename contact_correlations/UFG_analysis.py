@@ -278,8 +278,7 @@ def sumrule_trap(betamu, betabaromega, weight_func):
 
 def C_trap(betamu, betabaromega,weight_func):
     """compute Contact Density averaged over the trap"""
-    Ctrap,Ctraperr = quad(lambda v: weight_func(v,
-			   betabaromega)*eos_ufg(betamu-v)**(4/3)*ContactInterpolation(Theta(betamu-v)),0,np.inf,epsrel=eps)
+    Ctrap,Ctraperr = quad(lambda v: weight_func(v,betabaromega)*eos_ufg(betamu-v)**(4/3)*ContactInterpolation(Theta(betamu-v)),0,np.inf,epsrel=eps)
     return Ctrap
 
 

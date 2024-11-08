@@ -56,11 +56,10 @@ Save = False
 
 # determines whether convolved lineshape fit to data has offset parameter
 fitWithOffset = False
-fitRaw = False
 
 # select spin states to analyze
 spins = ['c5','c9','sum95']
-spin = spins[2]
+spin = spins[0]
 
 ### save file name
 savefile = './clockshift/acdimer_lineshape_results_' + spin + '.xlsx'
@@ -72,7 +71,7 @@ metadata = pd.read_excel(metadata_file)
 
 # if no filename selected, code will run over all files described in metadata (TO DO)
 
-filenames = ['2024-10-02_C_e', '2024-10-03_C_e', '2024-10-07_C_e', '2024-10-01_F_e']
+filenames = ['2024-10-02_C_e']
 
 # if the filenames list is empty, run over all available files in metadata
 if not filenames:
@@ -152,7 +151,7 @@ for filename in filenames:
 	pulsetype = metadf['pulsetype'][0]
 	gain = metadf['gain'][0]
 	remove_indices = metadf['remove_indices'][0]
-	track_bg = metadf['track_bg'][0]
+	track_bg = 0 # turn off this feature
 	load_lineshape = metadf['load_lineshape'][0]
 	Vppscope = metadf['Vpp'][0]
 	
@@ -190,9 +189,7 @@ for filename in filenames:
 	
 	### process data
 	run.data['detuning'] = (run.data.freq - res_freq) # MHz
-	# get the geometric mean of the cloud gaussian width
-	run.data['width_b'] = np.sqrt(run.data['two2D_sh1'] * run.data['two2D_sv1'])
-	run.data['width_a'] = np.sqrt(run.data['two2D_sh2'] * run.data['two2D_sv2'])
+	
 	# determine bg freq to be int, list or range
 	bg_freq, bg_freq_type = bg_freq_formatter(metadf['bg_freq'][0])
 	if bg_freq_type == 'int': # select bg at one freq
@@ -231,17 +228,12 @@ for filename in filenames:
 		run.data['bg'] = np.polyval(pfit, run.data['cyc'])
 		ax_bg.plot(run.data['cyc'], run.data['bg'], '--')
 		run.data['transfer'] = 1 - run.data[spin]/run.data['bg']
-		# have to make these entries
 		run.data['transferLow'] = 1 - run.data[spin]/(run.data['bg'])
 		run.data['transferHigh'] = 1 - run.data[spin]/(run.data['bg'])
-		
 		
 	# calculate scaled detuning
 	run.data['Delta'] = run.data.detuning * 1e3/EF
 	
-	# have to do this...
-	run.data[spin+'Low'] = run.data[spin]
-	run.data[spin+'High'] = run.data[spin]
 	# calculate Scaled transfer
 	run.data['ScaledTransfer']= run.data.apply(lambda x: GammaTilde(x['transfer'],
 									h*EF*1e3, OmegaR*1e3, trf), axis=1)
@@ -249,12 +241,10 @@ for filename in filenames:
 									h*EF*1e3, OmegaR*1e3, trf), axis=1)
 	run.data['ScaledTransferHigh'] = run.data.apply(lambda x: GammaTilde(x['transferHigh'],
 									h*EF*1e3, OmegaR*1e3, trf), axis=1)
-	
 	run.group_by_mean('detuning') # averaging
 	mti = run.avg_data['ScaledTransfer'].idxmax()
 	maxt, maxterr = run.avg_data.loc[mti]['transfer'], run.avg_data.loc[mti]['em_transfer']
 	maxsctrans, maxsctranserr = run.avg_data.loc[mti]['ScaledTransfer'], run.avg_data.loc[mti]['em_ScaledTransfer']
-	
 	
 	# plot something
 	fig_data, axs = plt.subplots(2,2, figsize=(8,8))
@@ -268,45 +258,33 @@ for filename in filenames:
 	
 	### plot raw data
 	if plotraw:
-		fig_raw, axs_raw = plt.subplots(3,2)
-# 		xlims = [run.avg_data.Delta.min()*EF,run.avg_data.Delta.max()*EF ]
-		xlims = [-4500, -3500]
+		fig_raw, axs_raw = plt.subplots(2,2)
+		xlims = [run.avg_data.Delta.min()*EF,run.avg_data.Delta.max()*EF ]
 		x_plot = run.avg_data.Delta*EF
 		axs_raw[0,0].errorbar(x_plot, run.avg_data.c5, run.avg_data.em_c5)
 		axs_raw[0,0].set(ylabel='c5', xlim=xlims)
 		axs_raw[0,1].errorbar(x_plot, run.avg_data.c9, run.avg_data.em_c9)
 		axs_raw[0,1].set(ylabel='c9', xlim=xlims)
-		axs_raw[1,0].errorbar(x_plot, run.avg_data.width_b, run.avg_data.em_width_b)
-		axs_raw[1,0].set(ylabel='width_b', xlim=xlims)
-		axs_raw[1,1].errorbar(x_plot, run.avg_data.width_a, run.avg_data.em_width_a)
-		axs_raw[1,1].set(ylabel='width_a', xlim=xlims)
-		axs_raw[2,0].plot(x_plot, run.avg_data.em_c5)
-		axs_raw[2,0].set(ylabel='scatter_b', xlim=xlims)
-		axs_raw[2,1].plot(x_plot, run.avg_data.em_c9)
-		axs_raw[2,1].set(ylabel='scatter_a', xlim=xlims)
+		axs_raw[1,0].errorbar(x_plot, run.avg_data.sum95, run.avg_data.em_sum95)
+		axs_raw[1,0].set(ylabel='sum95', xlim=xlims)
+		axs_raw[1,1].errorbar(x_plot, run.avg_data.transfer, run.avg_data.em_transfer)
+		axs_raw[1,1].set(ylabel='Transfer', xlim=xlims)
 		fig_raw.tight_layout()
 	
 	### arbitrary cutoff in case some points look strange
-	if fitRaw:
-		cutoffLow = -10*1e3/EF # arbitrary to select all data
-		cutoffHigh = -1*1e3/EF 
-	else:
-		cutoffLow = -4.5*1e3/EF
-		cutoffHigh = -3.5*1e3/EF
+	cutoffLow = -6*1e3/EF # arbitrary to select all data
+	cutoffHigh = -2*1e3/EF 
 	run.avg_data['filter'] = np.where((run.avg_data['Delta'] > cutoffLow) & (run.avg_data['Delta']<cutoffHigh), 1, 0)
 
 	filtdf = run.avg_data[run.avg_data['filter']==1]
 	x = filtdf['Delta']
-	if fitRaw:
-		yparam = spin
-	else:
-		yparam = 'ScaledTransfer'
+	yparam = 'Transfer'
 	y = filtdf[yparam]
 	yerr = filtdf['em_' + yparam]
-	ylo = filtdf[yparam + 'Low']
-	yerrlo = filtdf['em_' + yparam +'Low']
-	yhi = filtdf[yparam + 'High']
-	yerrhi = filtdf['em_' + yparam + 'High']
+	ylo = filtdf['TransferLow']
+	yerrlo = filtdf['em_TransferLow']
+	yhi = filtdf['TransferHigh']
+	yerrhi = filtdf['em_TransferHigh']
 	
 	nfiltdf = run.avg_data[run.avg_data['filter']==0]
 	xnfilt = nfiltdf['Delta']
@@ -318,7 +296,7 @@ for filename in filenames:
 	Ebfix = -3.98 * 1e3/EF
 	
 	### prepping evaluation ranges
-	xrange = 10
+	xrange = np.abs(x.min() - x.max())
 	xlow = Ebfix-xrange
 	xhigh = Ebfix + xrange
 	xnum = 1000
@@ -390,30 +368,19 @@ for filename in filenames:
 
 		lineshape = lambda x: np.interp(x, xxC, yyconv)
 		
-		# show convs explicitly
-		if plotconvs:
-			fig_CVs, ax_CV = plt.subplots()
-			ax_CV.plot(xxC, FDinterp(xxC), '-')
-			if pulsetype == 'square':
-	 			ax_CV.plot(xxC, Sinc2D(xxC, trf*1e6)/norm, '-', label='FT')
-			ax_CV.plot(xxC, yyconv, '-', label='conv')
-			ax_CV.set(xlabel = 'Detuning [EF]', ylabel = 'Magnitude')
-			ax_CV.legend()
+	
+# 	if fitWithOffset:
+# 		guess_FDG = [0.02, -250, 0]
+# 		def convls(x, A, x0, C):
+#  			return A*convinterp(x-x0) + C
+# 	else:
+# 		def convls(x, A, x0):
+# 			return A*convinterp(x-x0)
+# 		guess_FDG = [0.02, -250]
 
-		
-	################
-	### FITTING ####
-	################
 	if fitWithOffset:
 		guess_FDG = [0.01, Ebfix, 0]
 		bounds = ([0, -600, -np.inf],[np.inf, 0, np.inf])
-		def convls(x, A, x0, C):
-			return A*lineshape(x-x0)+C
-	elif fitRaw:
-		amp = y.min() - y.max()
-		offs = y.mean()
-		guess_FDG = [amp, Ebfix, offs]
-		bounds = ([-np.inf, -600, 0],[0, 0, 30000])
 		def convls(x, A, x0, C):
 			return A*lineshape(x-x0)+C
 	else:
@@ -429,6 +396,17 @@ for filename in filenames:
 	perrhi = np.sqrt(np.diag(pcovhi))
 	poptlo, pcovlo = curve_fit(convls, x, ylo, sigma=yerrlo, p0=guess_FDG, bounds=bounds)
 	perrlo = np.sqrt(np.diag(pcovlo))
+
+# 	# show convs explicitly
+
+	if plotconvs:
+		fig_CVs, ax_CV = plt.subplots()
+		ax_CV.plot(xxC, FDinterp(xxC), '-')
+		if pulsetype == 'square':
+ 			ax_CV.plot(xxC, Sinc2D(xxC, trf*1e6)/norm, '-', label='FT')
+		ax_CV.plot(xxC, yyconv, '-', label='conv')
+		ax_CV.set(xlabel = 'Detuning [EF]', ylabel = 'Magnitude')
+		ax_CV.legend()
 
  	### evaluate and plot on ax_ls
 	yyconvls = convls(xx, *popt)
@@ -455,19 +433,10 @@ for filename in filenames:
 			SR_convls_lo = np.trapz(yyconvls_lo - poptlo[-1], xx)
 			FM_convls_lo = np.trapz((yyconvls_lo - poptlo[-1])* xx, xx)
 		fitdof = 3
-	elif fitRaw:
-		Transfer = 1 - yyconvls/popt[2]
-		ScaledTransfer = GammaTilde(Transfer, h*EF*1e3, OmegaR*1e3, trf)
-		SR_convls = np.trapz(ScaledTransfer, xx)
-		FM_convls = np.trapz(ScaledTransfer * xx, xx)
-		FM_convls_hi = 0
-		FM_convls_lo = 0
-		SR_convls_hi = 0
-		SR_convls_lo = 0
-		fitdof = 3
 	else:
 		SR_convls = np.trapz(yyconvls, xx)
 		FM_convls = np.trapz(yyconvls*xx, xx)
+
 		SR_convls_hi = np.trapz(yyconvls_hi, xx)
 		FM_convls_hi = np.trapz(yyconvls_hi* xx, xx)
 		SR_convls_lo = np.trapz(yyconvls_lo, xx)
