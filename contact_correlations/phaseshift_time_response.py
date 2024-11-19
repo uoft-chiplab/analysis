@@ -16,9 +16,9 @@ pickle_file = 'time_delay_BVTs.pkl'
 load = True
 
 # parameters
-ToTFs = [#0.2, 
+ToTFs = [0.2, 
 		 0.3, 0.4, 0.5, 0.6]
-EFs = [#13e3, 
+EFs = [13e3, 
 	   14e3, 15e3, 16e3, 18e3]
 barnu = 377
 num = 100

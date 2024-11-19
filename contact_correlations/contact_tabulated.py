@@ -19,7 +19,7 @@ import os
 # paths
 proj_path = os.path.dirname(os.path.realpath(__file__))
 root = os.path.dirname(proj_path)
-data_path = os.path.join(proj_path, 'tabulated')
+data_path = os.path.join(proj_path, 'theory')
 
 
 # Thermodynamics of unitary Fermi gas

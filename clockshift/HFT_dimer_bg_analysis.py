@@ -43,6 +43,8 @@ Talk = True
 
 Calc_CTheory_std = False
 
+lineshape = 'sinc2'
+
 # select spin state imaging for analysis
 state_selection = '97'
 
@@ -82,10 +84,27 @@ savefile = os.path.join(proj_path, savefilename)
 VpptoOmegaR47 = 17.05/0.703 # kHz/Vpp - 2024-09-16 calibration with 4GS/s scope measure of Vpp
 VpptoOmegaR43 = 14.44/0.656 # kHz/Vpp - 2024-09-25 calibration 
 phaseO_OmegaR = lambda VVA, freq: 2*pi*VpptoOmegaR47 * Vpp_from_VVAfreq(VVA, freq)
+
+
+correct_spinloss = True
+saturation_correction = True
+
+# Omega^2 1/e saturation value fit from 09-26_F
+dimer_x0 = 4071 * (2*np.pi)**2
+dimer_e_x0 = 1058 * (2*np.pi)**2
+
+HFT_x0 = 31791.6655 * (2*np.pi)**2
+HFT_e_x0 = 778.4360 * (2*np.pi)**2
+
+def saturation_scale(x, x0):
+	""" x is OmegaR^2 and x0 is fit 1/e Omega_R^2 """
+	return x/x0*1/(1-np.exp(-x/x0))
 	
-### contants
+### constants
 re = 107 * a0 # ac dimer range estimate
 Eb = 3.98 # MHz # I guesstimated this from recent ac dimer spectra
+kF = 1.1e7
+kappa = np.sqrt((Eb*h*10**6) *mK/hbar**2) # convert Eb back to kappa
 
 def a13(B):
 	''' ac scattering length '''
@@ -102,6 +121,12 @@ def linear(x, a, b):
 
 def GammaTilde(transfer, EF, OmegaR, trf):
 	return EF/(hbar * pi * OmegaR**2 * trf) * transfer
+
+def sinc2(x, trf):
+	"""sinc^2 normalized to sinc^2(0) = 1"""
+	t = x*trf
+	return np.piecewise(t, [t==0, t!=0], [lambda t: 1, 
+					   lambda t: (np.sin(np.pi*t)/(np.pi*t))**2])
 
 ### plot settings
 plt.rcParams.update(plt_settings) # from library.py
@@ -230,6 +255,13 @@ for filename in files:
 	OmegaR_dimer = micrO_OmegaR  # in kHz
 	OmegaR_HFT = phaseO_OmegaR(HFT_df.VVA.values[0], HFT_df.freq.values[0]) * np.sqrt(0.31)
 	
+	if saturation_correction:
+		sat_scale_HFT = saturation_scale(OmegaR_HFT**2, HFT_x0)
+		sat_scale_dimer = saturation_scale(OmegaR_dimer**2, dimer_x0)
+	else:
+		sat_scale_HFT = 1
+		sat_scale_dimer = 1
+	
 	### HFT
 	# detuning in HFT
 	HFT_detuning = HFT_df.detuning.values[0]
@@ -244,6 +276,9 @@ for filename in files:
 			transfer = np.mean((c5-bg)/(c5-bg+c9))
 		elif measure == 'loss':
 			transfer = np.mean(np.ones(len(c9))-c9/bg)
+		
+		transfer = transfer * sat_scale_HFT
+		
 		scaledtransfer = GammaTilde(transfer, h*EF*1e6, OmegaR_HFT*1e3, 
 							  results['trf_blackman']/1e6)
 		C = 2*np.sqrt(2)*pi**2*scaledtransfer*(HFT_detuning/EF)**(3/2) * \
@@ -295,19 +330,30 @@ for filename in files:
 			 ' using states ' + state_selection
 	dimer_freq = dimer_df.freq.values[0] - meta_df['res_freq'][0]
 	
-	# load lineshape
-	df_ls = pd.read_pickle('./clockshift/convolutions.pkl')
-	TTF = round(results['ToTF'], 1)
-	if TTF == 0.2:
-		TTF = 0.25
-	if TTF == 0.7:
-		TTF = 0.6
-	TRF = results['trf_dimer']
-	lineshape = df_ls.loc[(df_ls['TTF']==TTF) & (df_ls['TRF']==TRF)]['LS'].values[0]
+	if lineshape == 'conv':
+		# load lineshape
+		df_ls = pd.read_pickle('./clockshift/convolutions.pkl')
+		TTF = round(results['ToTF'], 1)
+		if TTF == 0.2:
+			TTF = 0.25
+		if TTF == 0.7:
+			TTF = 0.6
+		TRF = results['trf_dimer']
+		# input is hf/EF
+		conv_lineshape = df_ls.loc[(df_ls['TTF']==TTF) & (df_ls['TRF']==TRF)]['LS'].values[0]
+		
+		# turn convolution lineshape into function
+		def conv_func(x, A, x0):
+			return A*conv_lineshape(x-x0)/conv_lineshape(0)
 	
-	# turn convolution lineshape into function
-	def convls(x, A, x0):
-		return A*lineshape(x-x0)/lineshape(0)
+		lineshape_func = conv_func
+	
+	else: # default to sinc2
+		def sinc2_func(x, A, x0):
+			# input is hf/EF
+			return A*sinc2((x-x0)*results['EF'], results['trf_dimer'])
+		
+		lineshape_func = sinc2_func
 	
 	# prepping evaluation ranges
 	xrange = 0.6
@@ -382,12 +428,26 @@ for filename in files:
 		transfer = (1 - counts/bg_counts)
 		e_transfer = counts/bg_counts * np.sqrt((e_counts/counts)**2 + \
 								  (e_bg_counts/bg_counts)**2)
-			
+		
+		# correct spin b
+		if correct_spinloss:
+			if spin == 'c5':
+				transfer = transfer/2
+				e_transfer = e_transfer/2
+		
+		# correct transfer from fit saturation scaling
+		transfer = transfer * sat_scale_dimer
+		e_transfer = e_transfer * sat_scale_dimer
+		
+		# put in results dict
+		results['transfer_'+spin] = transfer
+		results['e_transfer_'+spin] = e_transfer
+		
 		scaledtransfer = GammaTilde(transfer, h*results['EF']*1e6, OmegaR_dimer*1e3, 
 							  results['trf_dimer']/1e6)
 		e_scaledtransfer = e_transfer/transfer * scaledtransfer
 		
-		yy = convls(xx, scaledtransfer, dimer_freq/results['EF'])
+		yy = lineshape_func(xx, scaledtransfer, dimer_freq/results['EF'])
 		results['SR_'+spin] = np.trapz(yy, xx)
 		results['e_SR_'+spin] = e_scaledtransfer/scaledtransfer*results['SR_'+spin]
 		results['FM_'+spin] = np.trapz(yy*xx, xx)
@@ -402,11 +462,14 @@ for filename in files:
 	# generate table
 	ax_table = axes[-1]
 	ax_table.axis('off')
-	quantities = [r'$T/T_F$', r'$\Delta T/T_F$', r'$E_F$', 'conv $T/T_F$']
+	quantities = [r'$T/T_F$', r'$\Delta T/T_F$', r'$E_F$', 'conv $T/T_F$', 
+			   'sat_scale HFT', 'sat_scale dimer']
 	values = ["{:.3f}({:.0f})".format(results['ToTF'], results['e_ToTF']*1e3),
 		   "{:.3f}({:.0f})".format(results['ToTF_diff'], results['e_ToTF']*1e3*2),
 		   "{:.1f}({:.0f}) kHz".format(results['EF']*1e3, results['e_EF']*1e4),
-		   "{:.3f}".format(TTF)
+		   "{:.3f}".format(TTF),
+		   "{:.4f}".format(sat_scale_HFT),
+		   "{:.4f}".format(saturation_scale(OmegaR_dimer**2, dimer_x0))
 		   ]
 	table = list(zip(quantities, values))
 	the_table = ax_table.table(cellText=table, loc='center')
@@ -434,24 +497,44 @@ for filename in files:
 ###############################	
 
 	results_list.append(results)
-	
+
 # get all keys form reecnt results dict, make a new summary dict
 keys = results.keys()
 values = [[result[key] for result in results_list] for key in results.keys()]	
 summary = dict(zip(keys, values))
 
 spins = ['c9', 'c5']
+
+# calculate theoretical sum rule and first moment vs contact
+Bfield=202.14
+theory_fudge = 1
+C = np.linspace(0, max(summary['C_HFT']), 50)
+I_d = theory_fudge * kF/(pi*kappa) * 1/(1+re/a13(Bfield)) * C
+CS_d = -2*kappa/(pi*kF) * (1/1+re/a13(Bfield)) * C 
+# CS_d = -2/(pi*kF*a13(Bfield)) *C # first order expansion but this assumes  re/a13 is small
+FM_d = theory_fudge * CS_d / 2 # assumes ideal SR=0.5
  	
-fig, axs = plt.subplots(2,2, figsize=[10,7])
+fig, axs = plt.subplots(2,3, figsize=[14,7])
 axes = axs.flatten()
 
-#-- Sumrule vs. C	
+
+#-- spectral weight vs. C	
 ax = axes[0]
 ax.set(xlabel=r"Contact (kF/N)",
- 		   ylabel=r"Sum Rule")
+ 		   ylabel=r"Spectra Weight")
+
+# sty = list(styles)[2]
+# x = [C_interp(TTF) for TTF in summary['ToTF']]
+# y = summary['SR_c9']
+# yerr = np.abs(summary['e_SR_c9'])
+# ax.errorbar(x, y, yerr=yerr, label='$C_{theory}$', **sty)
 
 i = 0
 label = 'C ratio'
+
+theory_label = r'Dimer weight $I_d$ (Eq. 6)'
+ax.plot(C, I_d, '-', color=colors[2], label=r'(Eq. 6)')
+
 for spin, sty in zip(spins, styles):
 	x = summary['C_HFT']
 	xerr = summary['C_HFT_std']
@@ -464,8 +547,11 @@ for spin, sty in zip(spins, styles):
 	
 	# fit to linear
 	popt, pcov = curve_fit(linear, x, y, sigma=yerr)
+	perr = np.sqrt(np.diag(pcov))
 	xs = np.linspace(0, max(x), 100)
 	ax.plot(xs, linear(xs, *popt), '--', color=colors[i], label='fit')
+	print(spin+" y-intercept = {:.3f}({:.0f})".format(popt[0], 1e3*perr[0]))
+	
 	# theory (i.e. 0 intercept)
 	popt, pcov = curve_fit(lambda xx, a: linear(xx, a, 0), x, y, sigma=yerr)
 	ax.plot(xs, linear(xs, popt[0], 0), ':', color=colors[i], label='fix (0,0)')
@@ -480,48 +566,151 @@ ax.set(xlabel=r"Contact (kF/N)",
 
 i = 0
 label = 'C ratio'
+
+# sty = list(styles)[2]
+# x = [C_interp(TTF) for TTF in summary['ToTF']]
+# y = summary['FM_c9']
+# yerr = np.abs(summary['e_FM_c9'])
+# ax.errorbar(x, y, yerr=yerr, label='$C_{theory}$', **sty)
+ax.plot(C, FM_d, '-', color=colors[2], label='1st moment (Eq. 7)/2')
 for spin, sty in zip(spins, styles):
-	x = summary['C_HFT']
-	xerr = summary['C_HFT_std']
-	y = summary['FM_'+spin]
-	yerr = np.abs(summary['e_FM_'+spin])
+	x = np.array(summary['C_HFT'])
+	xerr = np.array(summary['C_HFT_std']) 
+	y = np.array(summary['FM_'+spin]) 
+	yerr = np.array(np.abs(summary['e_FM_'+spin]))
 	
 	ax.errorbar(x, y, yerr=yerr, xerr=xerr, label=spin_map(spin), **sty)
+	ax.legend()
 	
 	# fit to linear
 	popt, pcov = curve_fit(linear, x, y, sigma=yerr)
 	xs = np.linspace(0, max(x), 100)
 	ax.plot(xs, linear(xs, *popt), '--', color=colors[i])
+	
 	# theory (i.e. 0 intercept)
 	popt, pcov = curve_fit(lambda xx, a: linear(xx, a, 0), x, y, sigma=yerr)
 	ax.plot(xs, linear(xs, popt[0], 0), ':', color=colors[i])
-	
+
 	i += 1
 	
-#-- C vs. ToTF
+	
+#-- Transfer fraction vs. ToTF
+# ax = axes[2]
+# ax.set(xlabel=r"Temperature,  ($T_F$)",
+#  		   ylabel=r"Transfer,  $1-N/N_{bg}$")
+
+# i = 0
+# for spin, sty in zip(spins, styles):
+# 	x = summary['ToTF']
+# 	# this is supposed to be the std dev of a uniform distribution of ToTFs that occur
+# 	# when the ToTF is changing linearly during the data run
+# 	xerr = np.abs(np.array(summary['ToTF_diff'])*0.68) 
+# 	y = summary['transfer_'+spin]
+# 	yerr = np.abs(summary['e_transfer_'+spin])
+# 	
+# 	ax.errorbar(x, y, yerr=yerr, xerr=xerr, label=spin_map(spin), **sty)
+# 	ax.legend()
+# 	i += 1
+# Rescaling and plotting spectra weight vs. first moment
 ax = axes[2]
+ax.set(xlabel=r"Contact (kF/N)",
+ 		   ylabel=r"Spectra Weight or First Moment [arb.]")
+i = 0
+for spin, sty in zip(spins, styles):
+	# spectra weight
+	x = np.array(summary['C_HFT'])
+	xerr = np.array(summary['C_HFT_std'])
+	y_sw = np.array(summary['SR_'+spin])
+	yerr_sw = np.array(np.abs(summary['e_SR_'+spin]))
+	ax.errorbar(x, y_sw, yerr=yerr_sw, xerr=summary['C_HFT_std'],
+		 label=spin_map(spin), **sty)
+	
+	ax.legend()
+	
+	# fit to linear
+	popt, pcov = curve_fit(linear, x, y_sw, sigma=yerr_sw)
+	perr = np.sqrt(np.diag(pcov))
+	xs = np.linspace(0, max(x), 100)
+	ax.plot(xs, linear(xs, *popt), '--', color=colors[i], label='fit')
+	print(spin+" y-intercept = {:.3f}({:.0f})".format(popt[0], 1e3*perr[0]))
+	
+	# theory (i.e. 0 intercept)
+	popt, pcov = curve_fit(lambda xx, a: linear(xx, a, 0), x, y_sw, sigma=yerr_sw)
+	ax.plot(xs, linear(xs, popt[0], 0), ':', color=colors[i], label='fix (0,0)')
+	A_sw = popt
+	
+	# now rescale first moment and plot
+	y_fm = np.array(summary['FM_'+spin]) 
+	yerr_fm = np.array(np.abs(summary['e_FM_'+spin]))
+	
+	# fit to linear
+	popt, pcov = curve_fit(linear, x, y_fm, sigma=yerr_fm)
+	xs = np.linspace(0, max(x), 100)
+	#ax.plot(xs, linear(xs, *popt), '--', color=colors[i])
+	
+	# theory (i.e. 0 intercept)
+	popt, pcov = curve_fit(lambda xx, a: linear(xx, a, 0), x, y_fm, sigma=yerr_fm)
+	#ax.plot(xs, linear(xs, popt[0], 0), ':', color=colors[i])
+	st= iter(styles)
+	next(st)
+	next(st)
+	ax.errorbar(x, A_sw*(y_fm/popt[0]), yerr=np.abs(A_sw*(yerr_fm/popt[0])), xerr=xerr, label=spin_map(spin), **next(st))
+	ax.legend()
+	i += 1
+	
+	
+#-- C vs. ToTF
+ax = axes[3]
 ax.set(ylabel=r"Contact ($k_F/N$)",
  		   xlabel=r"Temperature ($T_F$)")
 
 i = 2
 label = 'C ratio'
 sty = list(styles)[i]
-
 x = summary['ToTF']
-
 # this is supposed to be the std dev of a uniform distribution of ToTFs that occur
 # when the ToTF is changing linearly during the data run
 xerr = np.abs(np.array(summary['ToTF_diff'])*0.68) 
-
 y = summary['C_HFT']
 yerr = summary['C_HFT_std']
-
 ax.errorbar(x, y, yerr=yerr, xerr=xerr, **sty)
 
 # plot trap-averaged contact
 xs = np.linspace(min(x), max(x), 100)
 ax.plot(xs, C_interp(xs), ':', color=colors[i], label='Tilman Theory')
 ax.legend()
+
+
+#-- Transfer fraction vs. ToTF
+ax = axes[4]
+ax.set(xlabel=r"Temperature,  ($T_F$)",
+ 		   ylabel=r"Transfer fraction,  $\Gamma_a/(\Gamma_a+\Gamma_b)$")
+
+i = 3
+sty = list(styles)[i]
+y = np.array(summary['transfer_c5'])/(np.array(summary['transfer_c9'])+np.array(summary['transfer_c5']))
+yerr = y*np.sqrt((np.array(summary['e_transfer_c5'])/np.array(summary['transfer_c5']))**2 + \
+						(np.sqrt(np.array(summary['e_transfer_c9'])**2+np.array(summary['e_transfer_c5'])**2) \
+	   /(np.array(summary['transfer_c9'])+np.array(summary['transfer_c5'])))**2)
+
+ax.errorbar(x, y, yerr=yerr, xerr=xerr, **sty)
+ax.legend()
+
+
+#-- Transfer ratio vs. ToTF
+ax = axes[-1]
+ax.set(xlabel=r"Temperature,  ($T_F$)",
+ 		   ylabel=r"Transfer ratio,  $\Gamma_b/\Gamma_a$")
+
+i = 4
+sty = list(styles)[i]
+y = np.array(summary['transfer_c5'])/np.array(summary['transfer_c9'])
+yerr = y*np.sqrt((np.array(summary['e_transfer_c5'])/np.array(summary['transfer_c5']))**2 + \
+						(np.array(summary['e_transfer_c9'])/np.array(summary['transfer_c9']))**2)
+
+ax.errorbar(x, y, yerr=yerr, xerr=xerr, **sty)
+ax.legend()
+
 
 # final plot settings
 fig.tight_layout()

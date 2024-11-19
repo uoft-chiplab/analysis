@@ -139,9 +139,9 @@ class BulkViscUniform:
 		#
 		self.T = T
 		self.mubulk = mubulk
-		lambda_T = np.sqrt(hbar/(mK*T)) # thermal wavelength (unit of length, in meters)
-		a0 = lambda_T # put actual amplitude of scattering length drive, in meters
-		self.A = lambda_T/a0 # dimensionless amplitude of drive
+		self.lambda_T = np.sqrt(hbar/(mK*T)) # thermal wavelength (unit of length, in meters)
+		a0 = self.lambda_T # put actual amplitude of scattering length drive, in meters
+		self.A = self.lambda_T/a0 # dimensionless amplitude of drive
 		self.nus = nus
 # 		self.nus = np.linspace(0.,nu_max,num+1) # choose frequency grid for drive frequency nu (in Hz, without the 2pi)
 		
@@ -188,7 +188,7 @@ class BulkViscUniform:
 		#
 		
 		if print_results == True:
-			print("drive parameters: amplitude 1/a0=%g 1/m, lambda_T=%g m, dimensionless A=%f" % (1/a0,lambda_T,self.A))
+			print("drive parameters: amplitude 1/a0=%g 1/m, lambda_T=%g m, dimensionless A=%f" % (1/a0,self.lambda_T,self.A))
 			print("homogeneous system: phase space density %f, local T/TF=%f, pressure %f, energy density %f" % (f_n,self.Theta,f_p,self.Ebulk))
 
 #
@@ -211,6 +211,12 @@ def number_per_spin(betamu,betabaromega,weight_func):
        N_sigma = int_0^infty dv w(v) f_n_sigma*lambda^3(mu-v)"""
     N_sigma,Nerr = quad(lambda v: weight_func(v,betabaromega)*eos_ufg(betamu-v)/2,0,np.inf,epsrel=eps)
     return N_sigma
+
+def psd_trap(betamu,betabaromega,weight_func):
+ 	"""compute density averaged over the trap"""
+ 	psd,psd_traperr = quad(lambda v: weight_func(v,betabaromega)*\
+						(eos_ufg(betamu-v)/2)**2,0,np.inf,epsrel=1e-4)
+ 	return psd
 
 def Epot_trap(betamu,betabaromega,weight_func):
     """compute trapping potential energy (in units of T):
@@ -327,6 +333,8 @@ class BulkViscTrap:
 		# but we have to decide if we want to normalize the trap heating rate by the total or by the internal energy
 		self.EdotDrude = self.A**2*np.array([heating_trap(self.T,self.betamutrap,
 						betaomega,self.betabaromega,self.weight_func) for betaomega in betaomegas])
+		
+		self.ns = psd_trap(self.betamutrap,self.betabaromega,self.weight_func)/self.lambda_T**3
 	
 		self.Ctrap =  C_trap(self.betamutrap, self.betabaromega, self.weight_func)/(self.kF*self.lambda_T)*(3*pi**2)**(1/3)/self.Ns/2
 		self.EdotC = self.A**2*np.array([heating_C(self.T,betaomega,

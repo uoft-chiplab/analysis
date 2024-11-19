@@ -164,7 +164,7 @@ for filename in filenames:
 		lineshape = df_ls.loc[(df_ls['TTF']==TTF) & (df_ls['TRF']==TRF)]['LS'].values[0]
 	
 	# calculate theoretical contact from Tilman's trap averaging code
-	C_theory = calc_contact(ToTF, EF, barnu)
+	C_theory = calc_contact(ToTF, EF*1e3, barnu)[0]
 	
 	# create data structure
 	fn = filename + ".dat"
@@ -278,13 +278,13 @@ for filename in filenames:
 
 	filtdf = run.avg_data[run.avg_data['filter']==1]
 	x = filtdf['Delta']
-	yparam = 'Transfer'
+	yparam = 'transfer'
 	y = filtdf[yparam]
 	yerr = filtdf['em_' + yparam]
-	ylo = filtdf['TransferLow']
-	yerrlo = filtdf['em_TransferLow']
-	yhi = filtdf['TransferHigh']
-	yerrhi = filtdf['em_TransferHigh']
+	ylo = filtdf['transferLow']
+	yerrlo = filtdf['em_transferLow']
+	yhi = filtdf['transferHigh']
+	yerrhi = filtdf['em_transferHigh']
 	
 	nfiltdf = run.avg_data[run.avg_data['filter']==0]
 	xnfilt = nfiltdf['Delta']
@@ -368,6 +368,17 @@ for filename in filenames:
 
 		lineshape = lambda x: np.interp(x, xxC, yyconv)
 		
+		# 	# show convs explicitly
+
+		if plotconvs:
+			fig_CVs, ax_CV = plt.subplots()
+	# 		ax_CV.plot(xxC, FDinterp(xxC), '-')
+			if pulsetype == 'square':
+	 			ax_CV.plot(xxC, Sinc2D(xxC, trf*1e6)/norm, '-', label='FT')
+			ax_CV.plot(xxC, yyconv, '-', label='conv')
+			ax_CV.set(xlabel = 'Detuning [EF]', ylabel = 'Magnitude')
+			ax_CV.legend()
+		
 	
 # 	if fitWithOffset:
 # 		guess_FDG = [0.02, -250, 0]
@@ -397,16 +408,6 @@ for filename in filenames:
 	poptlo, pcovlo = curve_fit(convls, x, ylo, sigma=yerrlo, p0=guess_FDG, bounds=bounds)
 	perrlo = np.sqrt(np.diag(pcovlo))
 
-# 	# show convs explicitly
-
-	if plotconvs:
-		fig_CVs, ax_CV = plt.subplots()
-		ax_CV.plot(xxC, FDinterp(xxC), '-')
-		if pulsetype == 'square':
- 			ax_CV.plot(xxC, Sinc2D(xxC, trf*1e6)/norm, '-', label='FT')
-		ax_CV.plot(xxC, yyconv, '-', label='conv')
-		ax_CV.set(xlabel = 'Detuning [EF]', ylabel = 'Magnitude')
-		ax_CV.legend()
 
  	### evaluate and plot on ax_ls
 	yyconvls = convls(xx, *popt)
@@ -671,6 +672,10 @@ for filename in filenames:
 		the_table.set_fontsize(12)
 		the_table.scale(1,1.5)
 		axexp.set(title='Experimental clock shifts [EF]')
+		
+		fig_table2.tight_layout()
+		
+		
 		
 	
 ###########################
