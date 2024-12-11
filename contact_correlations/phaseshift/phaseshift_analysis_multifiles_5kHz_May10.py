@@ -8,9 +8,9 @@ Analyse wiggle phase shift measurements from Oct 27 2023, where binding energies
 """
 import sys
 # module_folder = 'E:\\Analysis Scripts\\analysis'
-module_folder = '//Users//kevinxie//Documents//GitHub//analysis//'
-if module_folder not in sys.path:
-    sys.path.insert(0, module_folder)
+# module_folder = '//Users//kevinxie//Documents//GitHub//analysis//'
+# if module_folder not in sys.path:
+#     sys.path.insert(0, module_folder)
 import re
 import os
 import matplotlib.pyplot as plt
@@ -27,16 +27,16 @@ import colorsys
 run = '2024-05-10_V'
 boxsize = 'midbox'
 run_fn = run + '_e_time=0.(\d+).dat'
-meta_df = pd.read_excel('phaseshift_summary.xlsx')
+meta_df = pd.read_excel('./contact_correlations/phaseshift/phaseshift_summary.xlsx')
 meta_df = meta_df.loc[meta_df['filename'] == '2024-04-30_K_e.dat']
 run_freq = meta_df.freq.values[0]
 run_period = 1/run_freq * 1000 # us
 x_name = "freq"
-y_name = "sum95"
+y_name = "c9"
 # y_name = 'sum95'
 fit_func = Gaussian
 guess = [-5000, 43.2, 0.02, 30000]  # A, x0, sigma, C
-data_folder = 'data/'
+data_folder = './contact_correlations/phaseshift/data/'
 title_pre = run+'_' + y_name
 # run = Data(run_fn, path=data_folder)
 regex = re.compile(run_fn)
@@ -326,3 +326,5 @@ ax2.set_title(title_str)
 fig.tight_layout()  # otherwise the right y-label is slightly clipped
 # plt.savefig('phaseshift_Anorm_comp.png', dpi=300)
 plt.show()
+
+print(f'Run: {run}, freq: {run_freq}, A_popt: {A_popt}, PS: {ps}+/-{e_ps}')

@@ -19,23 +19,23 @@ import sys
 import matplotlib.colors as mc
 import colorsys
 # module_folder = 'E:\\Analysis Scripts\\analysis'
-module_folder = '//Users//kevinxie//Documents//GitHub//analysis//phaseshift'
-if module_folder not in sys.path:
-    sys.path.insert(0, module_folder)
+# module_folder = '//Users//kevinxie//Documents//GitHub//analysis//phaseshift'
+# if module_folder not in sys.path:
+#     sys.path.insert(0, module_folder)
 
 # load data and set up
 run = '2024-04-30_K'
 boxsize = 'midbox'
 run_fn = run + '_e_' + boxsize+'_time=0.(\d+).dat'
-meta_df = pd.read_excel('phaseshift_summary.xlsx')
+meta_df = pd.read_excel('./contact_correlations/phaseshift/phaseshift_summary.xlsx')
 meta_df = meta_df.loc[meta_df['filename'] == '2024-04-30_K_e.dat']
 run_freq = meta_df.freq.values[0]
 x_name = "freq"
-y_name = "sum95"
+y_name = "c9"
 # y_name = 'sum95'
 fit_func = Gaussian
 guess = [-5000, 43.2, 0.02, 30000]  # A, x0, sigma, C
-data_folder = 'data/'
+data_folder = './contact_correlations/phaseshift/data/'
 title_pre = run+ '_' + y_name
 
 regex = re.compile(run_fn)
@@ -158,7 +158,7 @@ plt.xlabel('time [us]')
 title_str =title_pre+ ' Phase: {:.2f} +/- {:.2f}, {}, {}, {}'.format(
     f0_popt[1], f0_perr[1], y_name, fit_func.__name__, boxsize)
 plt.title(title_str)
-plt.savefig(title_pre+'_Peak frequency.png', dpi=300)
+#plt.savefig(title_pre+'_Peak frequency.png', dpi=300)
 
 # plot field results
 fig, ax = plt.subplots()
@@ -170,7 +170,7 @@ plt.xlabel('time [us]')
 title_str = title_pre+' Phase: {:.2f} +/- {:.2f}, {}, {}, {}'.format(
     dB_popt[1], dB_perr[1], y_name, fit_func.__name__, boxsize)
 plt.title(title_str)
-plt.savefig(title_pre+'_magneticfield.png', dpi=300)
+#plt.savefig(title_pre+'_magneticfield.png', dpi=300)
 
 # plot amplitude results
 fig, ax = plt.subplots()
@@ -183,7 +183,7 @@ plt.xlabel('time [us]')
 title_str = title_pre+' Phase: {:.2f} +/- {:.2f}, {}, {}, {}'.format(
     A_popt[1], A_perr[1], y_name, fit_func.__name__, boxsize)
 plt.title(title_str)
-plt.savefig(title_pre+'Amplitude.png', dpi=300)
+#plt.savefig(title_pre+'Amplitude.png', dpi=300)
 
 fig, ax = plt.subplots()
 ax.plot(xx, yyAnorm, 'g-')
@@ -194,7 +194,7 @@ plt.xlabel('time [us]')
 title_str = title_pre+' Phase: {:.2f} +/- {:.2f}, {}, {}, {}'.format(
     Anorm_popt[1], Anorm_perr[1], y_name, fit_func.__name__, boxsize)
 plt.title(title_str)
-plt.savefig(title_pre+'_AmplitudeNorm.png', dpi=300)
+#plt.savefig(title_pre+'_AmplitudeNorm.png', dpi=300)
 
 #plot offset results
 fig, ax = plt.subplots()
@@ -203,7 +203,7 @@ ax.errorbar(df.time.unique(), df.C.unique(), yerr=df.e_C.unique(), marker='o', l
 plt.ylabel('C')
 plt.xlabel('time [us]')
 plt.title(title_pre)
-plt.savefig(title_pre+'_offset.png',dpi=300)
+#plt.savefig(title_pre+'_offset.png',dpi=300)
 
 # ps = A_popt[1] - f0_popt[1]
 # e_ps = np.sqrt(A_perr[1]**2 + f0_perr[1]**2)
@@ -226,13 +226,13 @@ ax1.set_xlabel('time [us]')
 plt.setp(ax1.spines.values(), linewidth=2)
 ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
 color = 'tab:red'
-ax2.plot(xx, yyA, color=color)
+ax2.plot(xx, yyA, color=color, ls='-')
 ax2.tick_params(axis='y', labelcolor=color)
 ax2.set_ylabel('Amplitude [arb.]', color=color)
 ax2.set_title(title_str)
 ax.tick_params(width=2)
 fig.tight_layout()  # otherwise the right y-label is slightly clipped
-plt.savefig('phaseshift_comp.png', dpi=300)
+#plt.savefig('phaseshift_comp.png', dpi=300)
 plt.show()
 
 fig, ax1 = plt.subplots()
@@ -247,14 +247,14 @@ ax1.set_xlabel('time [us]')
 plt.setp(ax1.spines.values(), linewidth=2)
 ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
 color = 'tab:red'
-ax2.plot(xx, yyAnorm, color=color)
+ax2.plot(xx, yyAnorm, color=color, ls='-')
 ax2.tick_params(axis='y', labelcolor=color)
 ax2.set_ylabel('Amplitude [arb.]', color=color)
 ax2.set_title(title_str)
 ax1.tick_params(width=2)
 fig.tight_layout()  # otherwise the right y-label is slightly clipped
 # plt.savefig('phaseshift_Anorm_comp.png', dpi=600)
-plt.savefig('phaseshift_Anorm_comp.pdf', format='pdf', bbox_inches="tight", dpi=600)
+#plt.savefig('phaseshift_Anorm_comp.pdf', format='pdf', bbox_inches="tight", dpi=600)
 plt.show()
 
 

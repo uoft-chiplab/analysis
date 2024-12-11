@@ -27,18 +27,18 @@ import colorsys
 run = '2024-06-14_D'
 boxsize = 'largebox'
 run_fn = run + '_e_time=0.(\d+).dat'
-meta_df = pd.read_excel('phaseshift_summary.xlsx')
+meta_df = pd.read_excel('./contact_correlations/phaseshift/phaseshift_summary.xlsx')
 meta_df = meta_df.loc[meta_df['filename'] == '2024-06-14_D_e.dat']
 run_freq = meta_df.freq.values[0]
 run_period = 1/run_freq * 1000 # us
 x_name = "freq"
-y_name = "sum95"
+y_name = "c9"
 # y_name = 'sum95'
 fit_func = Gaussian
 # fit_func = Dimerlineshape
 # fit_func = Lorentzian
 guess = [-5000, 43.2, 0.05, 25000]  # A, x0, sigma, C
-data_folder = 'data/'
+data_folder = './contact_correlations/phaseshift/data/'
 title_pre = run+'_' + y_name
 # run = Data(run_fn, path=data_folder)
 regex = re.compile(run_fn)
@@ -340,3 +340,5 @@ axcompnamp2.set_title(title_str)
 # plt.show()
 
 plt.rcParams.update({'font.size': 14})
+
+print(f'Run: {run}, freq: {run_freq}, A_popt: {A_popt}, PS: {ps}+/-{e_ps}')
