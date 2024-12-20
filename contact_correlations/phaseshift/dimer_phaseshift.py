@@ -405,13 +405,11 @@ for filename in files:
 					e_bg = perr[-1]
 				
 				except RuntimeError as e:
-    # Handle the exception (e.g., print a message or assign default values)
-				    print(f"Error in curve fitting: {e}")
+				# Handle the exception (e.g., print a message or assign default values)
+				    print(f"Error in curve fitting Bfield: {e}, time {time}")
 				    # You can assign default values to the variables in case of failure
-				    amp, e_amp, f0, e_f0, bg, e_bg = np.nan, np.nan, np.nan, np.nan, np.nan, np.nan
+				    amp, e_amp, f0, e_f0, bg, e_bg = 0.01,0.01,0.01,0.01,0.01,0.01
 
-			
-				
 				### the popt[1] used later on to find the FM needs to be the fit from the 
 				### detuning_EF not Bfield 
 				freq_name_for_FM_etc = 'detuning_EF'
@@ -428,11 +426,10 @@ for filename in files:
 							  p0 = guess)
 				except RuntimeError as e:
     # Handle the exception (e.g., print a message or assign default values)
-				    print(f"Error in curve fitting: {e}")
+				    print(f"Error in curve fitting frequency for FM etc: {e} at time {time}")
 				    # You can assign default values to the variables in case of failure
-				    amp, e_amp, f0, e_f0, bg, e_bg = np.nan, np.nan, np.nan, np.nan, np.nan, np.nan
-				
-				
+				    amp, e_amp, f0, e_f0, bg, e_bg = 0.01,0.01,0.01,0.01,0.01,0.01
+								
 			else:
 				x = sub_df[freq_name]
 				x0_guess = sub_df.loc[sub_df[spin].idxmin(),freq_name]  ### dim det associated with
@@ -489,11 +486,10 @@ for filename in files:
 			ax_scl[j].plot(xx, yy ,'--')
 			ax_scl[j].set(title=f'{time} us', ylim=[-0.01, 0.03])
 			
-			x = sub_df['detuning_EF'] ### to find the correct FM and CS x needs to be this 
-									  ### not Bfield 
-									  
-			xx = np.linspace(x.min(),x.max(), 100)
 			if freq_name == 'freq':
+				x_for_FM_etc = sub_df['detuning_EF'] ### to find the correct FM and CS x needs to be this 
+										  ### not Bfield 						  
+				xx = np.linspace(x_for_FM_etc.min(),x_for_FM_etc.max(), 100)
 				popt = popt_for_FM_etc	
 				yy = lineshape_func(xx, scaledtransfer, popt[1],0)
 			### SAVE RESULTS FOR THIS TIME SPECTRA
@@ -566,27 +562,32 @@ for filename in files:
 				resp_name2 = 'counts_'
 				y = inter_df[resp_name+spin]/inter_df[resp_name2+spin]**2 ### this is the y axis on the right of the plt 
 									         ### for the orange-y points on c9 plt and blue on c5
+			
+				sigma = inter_df['e_'+resp_name+spin]/inter_df['e_'+resp_name2+spin]**2
+				title = 'Ctilde/counts'
+			
 			else:
 				y = inter_df[resp_name+spin] ### this is the y axis on the right of the plt 
-									         ### for the orange-y points and blue on c5
+				sigma = inter_df['e_'+resp_name+spin]   ### for the orange-y points and blue on c5
+				title = resp_name
 				
 			guess = [y.max()-y.min(),
 			  0, 
 			 y.mean()]
-			popt_response, pcov_response = curve_fit(FixedSinkHz, inter_df['time'], y, sigma=inter_df['e_'+resp_name+spin],
+			popt_response, pcov_response = curve_fit(FixedSinkHz, inter_df['time'], y, sigma=sigma,
 							p0=guess, bounds=bounds)
 			perr_response = np.sqrt(np.diag(pcov_response))
 			
 			xx = np.linspace(0, inter_df['time'].max()+5)
 			yy_drive = FixedSinkHz(xx, *popt_drive)
-			ax[j].errorbar(inter_df['time'],inter_df[drive_name+spin],# BfromFmEB(run.data['freq']), #inter_df[drive_name+spin], 
+			ax[j].errorbar(inter_df['time'],inter_df[drive_name+spin],
 				  yerr=inter_df['e_'+drive_name+spin], mfc='black', mec='black',ecolor='black' )
 			ax[j].plot(xx, yy_drive, 'k-') #plotting fit  of drive (black pts)
-			ax[j].set(title=resp_name, xlabel='time [us]')
+			ax[j].set(title=title, xlabel='time [us]')
 			
 			ax2 = ax[j].twinx()
 			yy_response = FixedSinkHz(xx, *popt_response)
-			ax2.errorbar(inter_df['time'], inter_df[resp_name+spin], yerr=inter_df['e_'+resp_name+spin], **sty)
+			ax2.errorbar(inter_df['time'], y , yerr=sigma, **sty)
 			ax2.plot(xx, yy_response, '--')
 			
 			results['PS_' + resp_name+spin] = popt_response[1] - popt_drive[1]
