@@ -6,13 +6,24 @@
 """
 from data_class import Data
 from scipy.optimize import curve_fit
-from library import plt_settings, markers, tint_shade_color, tintshade, pi
+from library import plt_settings, pi, styles, colors
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 import os
+import pickle as pkl
 
 from rfcalibrations.Vpp_from_VVAfreq import Vpp_from_VVAfreq
+
+# paths
+proj_path = os.path.dirname(os.path.realpath(__file__))
+data_path = os.path.join(proj_path, 'saturation_data')
+root = os.path.dirname(proj_path)
+
+# plot error bands for saturation curves
+fill_between = True
+save = True
+
+pkl_file = os.path.join(data_path, "100kHz_saturation_curves.pkl")
 
 ### Fit functions
 def Linear(x,m,b):
@@ -27,133 +38,278 @@ def Saturation(x, A, x0):
 def satratio(x, x0):
 	return x/x0*1/(1-np.exp(-x/x0))
 
-# paths
-proj_path = os.path.dirname(os.path.realpath(__file__))
-root = os.path.dirname(proj_path)
-
-### filenames
-file = "2024-09-17_C_e.dat"
-
-### Omega Rabi calibrations
-# VpptoOmegaR = 27.5833 # kHz/Vpp, older calibration
-VpptoOmegaR47 = 17.05/0.703 # kHz/Vpp - 2024-09-16 calibration with 4GS/s scope measure of Vpp
-VpptoOmegaR43 = 14.44/0.656 # kHz/Vpp - 2024-09-25 calibration 
-phaseO_OmegaR = lambda VVA, freq: 2*pi*VpptoOmegaR47 * Vpp_from_VVAfreq(VVA, freq)
-
-# ff from Sept 17th
-ff = 0.93
-
-#### PLOTTING #####
-# initialize plots
-fig, ax = plt.subplots(figsize=(6,5))
-
-### plot settings
-plt.rcParams.update(plt_settings) # from library.py
-color = '#1f77b4' # default matplotlib color (that blueish color)
-marker = markers[0]
-light_color = tint_shade_color(color, amount=1+tintshade)
-dark_color = tint_shade_color(color, amount=1-tintshade)
-plt.rcParams.update({"figure.figsize": [12,8],
-					 "font.size": 14,
-					 "lines.markeredgecolor": dark_color,
-					 "lines.markerfacecolor": light_color,
-					 "lines.color": dark_color,
-					 "lines.markeredgewidth": 2,
-					 "errorbar.capsize": 0})
-
-### ANALYSIS ###
-xname = 'VVA'
-plot_name = "Omega Rabi Squared (1/ms^2)"
-bg_freq = 46.323
-
-print("Analyzing", file)
-run = Data(file)
-
-run.data['c9'] = ff * run.data['c9']
-
-bg_df = run.data.loc[(run.data.freq==bg_freq)]
-run.data = run.data.drop(bg_df.index)
-
-bg_c5 = bg_df.c5.mean()
-e_bg_c5 = bg_df.c5.sem()
-bg_c9 = bg_df.c9.mean()
-e_bg_c9 = bg_df.c9.sem()
-
-run.data['N'] = run.data.c5 - bg_c5 + run.data.c9*ff
-run.data['transfer'] = (run.data.c5 - bg_c5)/(run.data.N)
+def quotient_propagation(f, A, B, sA, sB, sAB):
+	return f* (sA**2/A**2 + sB**2/B**2 - 2*sAB/A/B)**(1/2)
 
 
-run.data['OmegaR'] = phaseO_OmegaR(run.data.VVA, run.data.freq) * np.sqrt(0.31)
-run.data['OmegaR2'] = (run.data['OmegaR'])**2
-xname = 'OmegaR2'
+if __name__ == '__main__':
+	
+	results_list = []
+	
+	detunings = [
+				25,
+				50,
+				100,
+				150,
+				]
+	
+	files = [
+ 			"2024-11-28_P_e_detuning=25.dat",
+ 			"2024-11-28_P_e_detuning=50.dat",
+ 			"2024-11-28_O_e.dat",
+			"2024-11-28_P_e_detuning=150.dat",
+			  ]
+	
+	fudge_factors = [
+ 					0.98, 
+				  0.98, 
+				  0.98, 
+				  0.98,
+				  ]
+	
+	ToTF = 0.616  # from the next day, but should be roughly right
+	EF = 19.4  # same as above
+	
+	pulse_time = 0.2  # ms
+	
+	popts = []
+	perrs = []
+	popts_l = []
+	perrs_l = []
+	
+	#### PLOTTING #####
+	# initialize plots
+	fig, axes = plt.subplots(2, 2, figsize=(12,10))
+	axs = axes.flatten()
+	
+	### plot settings
+	plt.rcParams.update(plt_settings) # from library.py
+	plt.rcParams.update({"figure.figsize": [12,8],
+						 "font.size": 14,
+						 "lines.markeredgewidth": 2,
+						 "errorbar.capsize": 0})
+	
+	fig.suptitle("200us Blackman HFT transfer saturation")
+	
+	### ANALYSIS ###
+	xname = 'VVA'
+	plot_name = "Omega Rabi Squared (1/ms^2)"
+	
+	
+	axs[0].set(xlabel=r'rf power $\Omega_R^2$ (kHz$^2$)', ylabel='Transfer',
+			   ylim=[-0.05, 0.55])
+	axs[1].set(xlabel=r'rf power $\Omega_R^2$ (kHz$^2$)', ylabel='Loss',
+		   ylim=[-0.05, 0.65])
+	axs[2].set(xlabel='Measured transfer', 
+			ylabel='Calibrated linear transfer')
+	axs[3].set(xlabel='Measured loss', 
+			ylabel='Calibrated linear loss')
+	
+	for i in range(len(detunings)):
+		results = {}
+		file = files[i]
+		detuning = detunings[i]
+		ff = fudge_factors[i]
+		
+		
+		### Omega Rabi calibrations
+		# VpptoOmegaR = 27.5833 # kHz/Vpp, older calibration
+		VpptoOmegaR47 = 17.05/0.703 # kHz/Vpp - 2024-09-16 calibration with 4GS/s scope measure of Vpp
+		VpptoOmegaR43 = 14.44/0.656 # kHz/Vpp - 2024-09-25 calibration 
+		phaseO_OmegaR = lambda VVA, freq: VpptoOmegaR47 * Vpp_from_VVAfreq(VVA, freq)
+				
+		print("Analyzing", file)
+		run = Data(file, path=data_path)
+		run.data['ToTF'] = ToTF
+		run.data['pulse_time'] = pulse_time
+		run.data['EF'] = EF
+		run.data['c9'] = ff * run.data['c9']
+		
+		# get bg data
+		bg_df = run.data.loc[(run.data.VVA == 0)]
+		run.data = run.data.drop(bg_df.index)
+		
+		# calculate bg values
+		bg_c5 = bg_df.c5.mean()
+		e_bg_c5 = bg_df.c5.sem()
+		bg_c9 = bg_df.c9.mean()
+		e_bg_c9 = bg_df.c9.sem()
+		
+		# calculate atom number, transfer and loss
+		run.data['N'] = run.data.c5 - bg_c5 + run.data.c9
+		run.data['transfer'] = (run.data.c5 - bg_c5)/(run.data.N)
+		run.data['loss'] = (bg_c9 - run.data.c9)/bg_c9
+		
+		if detuning == 100: # for this dataset, we had to add the VVA to df
+			run.data['OmegaR'] = phaseO_OmegaR(run.data.VVA, 47.3227) * np.sqrt(0.31)
+		else:
+			run.data['OmegaR'] = phaseO_OmegaR(run.data.VVA, run.data.freq) * np.sqrt(0.31)
+		run.data['OmegaR2'] = (run.data['OmegaR'])**2
+		xname = 'OmegaR2'
+		
+		run.group_by_mean(xname)
+		
+		
+		### PLOTTING ###
+		# transfer
+		sty = styles[i]
+		color = colors[i]
+		label = f'det = {detuning} kHz'
+		x = run.avg_data[xname]
+		y = run.avg_data['transfer']
+		yerr = run.avg_data['em_transfer']
+		
+		xs = np.linspace(0, max(x), 1000)  # linspace of rf powers
+		
+		ax = axs[0]
+		ax.errorbar(x, y, yerr=yerr, **sty)
+		
+		# fit to saturation curve
+		p0 = [0.5, 10000]
+		popt, pcov = curve_fit(Saturation, x, y, p0=p0, sigma=yerr)
+		perr = np.sqrt(np.diag(pcov))
+		ax.plot(xs, Saturation(xs, *popt), '-', label=label, color=color)
+		ax.plot(xs, Linear(xs, popt[0]/popt[1], 0), '--', color=color)
+		
+		
+		print(r"transfer: A = {:.4f} ± {:.4f}, x_0 = {:.4f} ± {:.4f}".format(popt[0], 
+												  perr[0], popt[1], perr[1]))
+		# store popt in list
+		popts.append(popt)
+		perrs.append(perr)
+		
+		# loss
+		y = run.avg_data['loss']
+		yerr = run.avg_data['em_loss']
+		
+		ax = axs[1]
+		ax.errorbar(x, y, yerr=yerr, **sty)
+		
+		# fit to saturation curve
+		p0 = [0.5, 10000]
+		popt_l, pcov_l = curve_fit(Saturation, x, y, p0=p0, sigma=yerr)
+		perr_l = np.sqrt(np.diag(pcov))
+		ax.plot(xs, Saturation(xs, *popt_l), '-', label=label, color=color)
+		ax.plot(xs, Linear(xs, popt_l[0]/popt_l[1], 0), '--', color=color)
+		
+		
+		print(r"loss: A = {:.4f} ± {:.4f}, x_0 = {:.4f} ± {:.4f}".format(popt_l[0], 
+												  perr_l[0], popt_l[1], perr_l[1]))
+		
+		popts_l.append(popt_l)
+		perrs_l.append(perr_l)
+		
+		
+		# plot calibration curves
+		detuning = detunings[i]
+		popt = popts[i]
+		popt_l = popts_l[i]
+		label = f'det = {detuning} kHz'
+		
+		# transfer
+		ax = axs[2]
+		xs = np.linspace(0, popt[1], 1000)  # linspace of rf powers
+		
+		Gammas_Sat = Saturation(xs, *popt)
+		Gammas_Lin = xs*popt[0]/popt[1]
+		e_Gammas_Lin = quotient_propagation(xs*popt[0]/popt[1], popt[0], popt[1], perr[0], perr[1], pcov[0,1])
+		
+		ax.plot(Gammas_Sat, Gammas_Lin, '-', label=label)
+		if fill_between == True:
+			ax.fill_between(Gammas_Sat, Gammas_Lin-e_Gammas_Lin, 
+				Gammas_Lin+e_Gammas_Lin, alpha=0.5)
+		ax.legend()
+		
+		# loss
+		ax=axs[3]
+		xs = np.linspace(0, popt_l[1], 1000)  # linspace of rf powers
+		
+		Gammas_Sat = Saturation(xs, *popt_l)
+		Gammas_Lin = xs*popt_l[0]/popt_l[1]
+		e_Gammas_Lin = quotient_propagation(xs*popt[0]/popt[1], popt[0], popt[1], perr[0], perr[1], pcov[0,1])
+		
+		if fill_between == True:
+			ax.fill_between(Gammas_Sat, Gammas_Lin-e_Gammas_Lin, 
+				Gammas_Lin+e_Gammas_Lin, alpha=0.5)
+		
+		ax.plot(Gammas_Sat, Gammas_Lin, '-', label=label)
+		
+		# append to results
+		
+		keys = ['file', 'detuning', 'pulse_time', 'ToTF', 'EF', 'df', 'popt', 'pcov', 'popt_l', 'pcov_l']
+		vals = [file, detuning, pulse_time, ToTF, EF, run.avg_data, popt, pcov, popt_l, pcov_l]
+		
+		for key, val in zip(keys, vals):
+			results[key] = val
+			
+		results_list.append(results)
+	
+	# add y = x lines to calibration plots
+	axs[2].plot(Gammas_Sat, Gammas_Sat, '-', color='dimgrey', zorder=1)
+	axs[3].plot(Gammas_Sat, Gammas_Sat, '-', color='dimgrey', zorder=1)
+	
+	for ax in axs:
+		ax.legend()
+	fig.tight_layout()
+	plt.show()
+	
+	
+	if save == True:
+		with open(pkl_file, "wb") as output_file:
+			pkl.dump(results_list, output_file)
+		
 
-run.group_by_mean(xname)
+# if script imported
+else:
+	# fit results
+	popts = [np.array([  0.46657157, 139.89433055]),
+		   np.array([  0.49253269, 363.06301381]),
+		    np.array([4.76550893e-01, 8.33509148e+02]),
+			 np.array([4.31394956e-01, 1.88559341e+03])]
+	popts_l = [np.array([  0.57999841, 141.11129911]),
+			 np.array([  0.561563  , 300.17105107]),
+			 np.array([5.06720326e-01, 9.36351736e+02]),
+			 np.array([4.79542621e-01, 1.27518484e+03])]
+	detunings = [
+				25,
+				50,
+				100,
+				150,
+				]
+	
+	popt_l = np.array([0.5067, 936.3517])
+	
+	HFT_sat_cals = {}
+	HFT_loss_sat_cals = {}
+	
+	# generate calibation correction functions
+	for i in range(len(detunings)):
+		detuning = detunings[i]
+		popt = popts[i]
+		popt_l = popts_l[i]
+		xs = np.linspace(0, popt[1], 1000)  # linspace of rf powers
+		
+		Gammas_Sat = Saturation(xs, *popt)
+		Gammas_Lin = xs*popt[0]/popt[1]
+		def HFT_sat_correction(Gamma):
+			'''Interpolates fit saturation curve of transferred fraction in HFT
+			for 100kHz detuning. Returns the linear term, i.e. the unsaturated.
+			transfer.'''
+			return np.interp(Gamma, Gammas_Sat, Gammas_Lin)
+		
+		HFT_sat_cals[detuning] = HFT_sat_correction
+		
+		Gammas_Sat_l = Saturation(xs, *popt_l)
+		Gammas_Lin_l = xs*popt_l[0]/popt_l[1]
+		def HFT_loss_sat_correction(Gamma):
+			'''Interpolates fit saturation curve of loss fraction in HFT
+			for 100kHz detuning. Returns the linear term, i.e. the unsaturated.
+			transfer.'''
+			return np.interp(Gamma, Gammas_Sat_l, Gammas_Lin_l)
+		
+		HFT_loss_sat_cals[detuning] = HFT_loss_sat_correction
+		
+		
 
-### PLOTTING ###
-x = run.avg_data[xname]
-y = run.avg_data['transfer']
-yerr = run.avg_data['em_transfer']
 
-ax.set(xlabel=r'rf power $\Omega_R^2$ (kHz$^2$)', ylabel='Transfer',
-	   ylim=[-0.05, 0.5])
-ax.errorbar(x, y, yerr=yerr)
-
-# fit to saturation curve
-p0 = [0.5, 10000]
-popt, pcov = curve_fit(Saturation, x, y, p0=p0, sigma=yerr)
-perr = np.sqrt(np.diag(pcov))
-
-ax.plot(x, Saturation(x, *popt), '--')
-ax.plot(x, Linear(x, popt[0]/popt[1], 0), '--')
-
-print(r"A = {:.4f} ± {:.4f}, x_0 = {:.4f} ± {:.4f}".format(popt[0], 
-										  perr[0], popt[1], perr[1]))
-
-
-# run.avg_data['cut'] = np.where(run.avg_data[xname] < cut, 1, 0)
-# fitdf = run.avg_data[run.avg_run.cut == 1]
-# satdf = run.avg_data[run.avg_run.cut == 0]
-
-# x = fitdf[xname]
-# y = fitdf['transfer']
-# yerr = fitdf['em_transfer']
-
-# xsat = satdf[xname]
-# ysat = satdf['transfer']
-# yerrsat =satdf['em_transfer']
-
-# ax.errorbar(x, y, yerr, marker=marker)
-# ax.errorbar(xsat, ysat, yerrsat)
-
-# popt, pcov = curve_fit(Linear,x,y)
-# perr = np.sqrt(np.diag(pcov))
-# xlist = np.linspace(min(x),max(x),1000)
-
-# ax.plot(xlist,Linear(xlist,*popt), linestyle='-', marker='', label=label)
-# ax.set(xlabel=plot_name, ylabel="Transfer")
-# plot_pos = ax.get_position().get_points() # get plot position
-# ax_width = plot_pos[1,0] - plot_pos[0,0] 
-# ax_height = plot_pos[1,1] - plot_pos[0,1] 
-# inset_pos = [plot_pos[0,0] + ax_width/1.8, plot_pos[0,1], 
-# 		  ax_width/2.3, ax_height/2.3]
-# inset_poses.append(inset_pos)
-
-# ax.legend()
-# print(r'm={:.2f}$\pm${:.2f},b={:.3f}$\pm${:.3f}'.format(popt[0],perr[0],popt[1],perr[1]))
-
-# # plot residuals as inset
-# yreslin = y - Linear(x, *popt)
-
-# ax_inset = fig.add_axes([plot_pos[0,0], plot_pos[0,1], ax_width/2, ax_height/2])
-# ax_inset.errorbar(x, yreslin, yerr)
-# ax_inset.hlines(0, x.min(), x.max() ,ls='dashed')
-# 	
-# inset_poses = np.array(inset_poses)
-# inset_poses[0:2,:] += np.array([0,ax_height/4,0,0])
-# inset_poses[[1,3],:] += np.array([ax_width/6, 0, 0, 0])
-# 	
-# for ax, inset_pos in zip(fig.axes[4:], inset_poses):
-# 	ax.set_position(inset_pos)
-# 	
-# fig.tight_layout()
-# plt.show()
+	

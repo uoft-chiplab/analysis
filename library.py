@@ -62,10 +62,17 @@ colors = ["blue", "orange", "green", "red",
 colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
  '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
 
+MW_colors = ['hotpink', 'cornflowerblue']
+
 light_colors = []
 dark_colors = []
-	
-tintshade=0.6
+
+# Maggie Wang colors
+MW_colors = ['hotpink', 'cornflowerblue']
+MW_light_colors = []
+MW_dark_colors = []
+
+tintshade = 0.6
 
 def tint_shade_color(color, amount=0.5):
     """
@@ -91,6 +98,18 @@ def tint_shade_color(color, amount=0.5):
 for color in colors:
 	light_colors.append(tint_shade_color(color, amount=1+tintshade))
 	dark_colors.append(tint_shade_color(color, amount=1-tintshade))
+	
+for MW_color in MW_colors:
+	MW_light_colors.append(tint_shade_color(MW_color, amount=1+tintshade/2))
+	MW_dark_colors.append(tint_shade_color(MW_color, amount=1-tintshade/2))
+	
+styles = [{'color':dark_color, 'mec':dark_color, 'mfc':light_color,
+					 'marker':marker} for dark_color, light_color, marker in \
+						   zip(dark_colors, light_colors, markers)]
+	
+MW_styles = [{'color':dark_color, 'mec':dark_color, 'mfc':light_color,
+					 'marker':marker} for dark_color, light_color, marker in \
+						   zip(MW_dark_colors, MW_light_colors, markers)]
 
 def set_marker_color(color):
 	"""
@@ -138,6 +157,9 @@ def save_to_Excel(filename, df, sheet_name='Sheet1', mode='replace'):
 		 print("Save file does not exist.")
 		 print("Creating file " + filename + " and writing header")
 		 df.to_excel(filename, index=False, sheet_name=sheet_name)
+		 
+def quotient_propagation(f, A, B, sA, sB, sAB):
+	return f* (sA**2/A**2 + sB**2/B**2 - 2*sAB/A/B)**(1/2)
 
 
 def OmegaRcalibration():

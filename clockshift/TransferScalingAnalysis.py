@@ -12,6 +12,7 @@ and ac free, respectively.
 from data_class import Data
 from scipy.optimize import curve_fit
 from library import plt_settings, markers, tint_shade_color, tintshade
+from rfcalibrations.Vpp_from_VVAfreq import Vpp_from_VVAfreq
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -42,9 +43,14 @@ cal_43MHz = pd.read_csv(cal_file_43MHz, sep='\t', skiprows=1, names=['VVA','Vpp'
 calibration43MHz = lambda x: np.interp(x, cal_43MHz['VVA'], cal_43MHz['Vpp'])
 
 # free to free VVA cal file
-cal_file_47MHz = os.path.join(root, 'VVAtoVpp.txt')
-cal_47MHz = pd.read_csv(cal_file_47MHz, sep='\t', skiprows=1, names=['VVA','Vpp'])
-calibration47MHz = lambda x: np.interp(x, cal_47MHz['VVA'], cal_47MHz['Vpp'])
+# cal_file_47MHz = os.path.join(root, 'VVAtoVpp.txt')
+# cal_47MHz = pd.read_csv(cal_file_47MHz, sep='\t', skiprows=1, names=['VVA','Vpp'])
+# calibration47MHz = lambda x: np.interp(x, cal_47MHz['VVA'], cal_47MHz['Vpp'])
+
+### Vpp calibration
+# VpptoOmegaR = 27.5833 # kHz/Vpp, older calibration
+VpptoOmegaR = 17.05/0.703  # kHz/Vpp - 2024-09-16 calibration with 4GS/s scope measure of Vpp
+OmegaR_from_VVAfreq = lambda Vpp, freq: VpptoOmegaR * Vpp_from_VVAfreq(Vpp, freq)
 
 pulsearea_square = 1 # square pulse
 
@@ -56,7 +62,7 @@ def gain_calibration(gain):
 	return Linear(gain, *gain_popt)
 
 def OmegaR(VVA, calibration):
-	VpptoOmegaR = 27.5833 # kHz
+	VpptoOmegaR = 17.05/0.703  # 27.5833 # kHz
 	return  pulsearea_square*VpptoOmegaR*calibration(VVA)
 
 # background from July 8th
@@ -94,7 +100,8 @@ plot_names = ['Pulse Time (ms)', "Omega Rabi Squared (1/us^2)",
 cutoffs = [0.07, np.infty, 
 		   0.27, np.infty]
 cals = [calibration43MHz, calibration43MHz, 
-		calibration47MHz, calibration47MHz]
+		lambda x: OmegaR_from_VVAfreq(x, 47.2227), 
+		lambda x: OmegaR_from_VVAfreq(x, 47.2227)]
 labels = ["Dimer", "Dimer", 
 		  "Free to free", "Free to free"]
 inset_poses = []

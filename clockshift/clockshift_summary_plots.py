@@ -15,20 +15,21 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import time
-from scipy.optimize import curve_fit
-from pastamarkers import markers as pastamarkers
 
-from library import colors, markers, tintshade, tint_shade_color, plt_settings
+from library import styles, plt_settings
 
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', 9999)
 
 # save files 
-files = ['sumrule_analysis_results.xlsx',
-		 'loss_sumrule_analysis_results.xlsx',
-		 'acdimer_lineshape_results_c5.xlsx',
-		 'acdimer_lineshape_results_c9.xlsx',
-		 'acdimer_lineshape_results_sum95.xlsx']
+files = [
+# 		'HFT_analysis_results.xlsx',
+		 'corrected_HFT_analysis_results.xlsx',
+ 		 # 'corrected_loss_HFT_analysis_results.xlsx',
+# 		 'acdimer_lineshape_results_c5.xlsx',
+# 		 'acdimer_lineshape_results_c9.xlsx',
+# 		 'acdimer_lineshape_results_sum95.xlsx',
+		 ]
 
 ### load analysis results
 # for file in files:
@@ -41,12 +42,17 @@ full_df = pd.concat((pd.read_excel(os.path.join(proj_path,f), engine='openpyxl')
 Runs = ['2024-09-12_E_e.dat', '2024-09-18_F_e.dat', '2024-09-23_H_e.dat',
        '2024-09-24_C_e.dat', '2024-09-27_B_e.dat', '2024-09-27_C_e.dat',
 	   '2024-10-01_F_e.dat','2024-10-02_C_e.dat',
-	      '2024-10-07_C_e.dat','2024-10-07_G_e.dat', '2024-10-08_F_e.dat']
+	      '2024-10-07_C_e.dat','2024-10-07_G_e.dat', '2024-10-08_F_e.dat',
+		  ]
 	
-df = full_df.loc[full_df.Run.isin(Runs)]
+# df = full_df.loc[full_df.Run.isin(Runs)]
+df = full_df
 
 # print df
-print(df[['ToTF', 'EF', 'SR_median', 'CS_median', 'C_median', 'C_theory', 'CoSR_median', 'Run', 'Transfer']])
+df['C_diff'] = df['C_mean']-df['C_theory']
+print(df[['ToTF', 'EF', 'SW_mean', 'C_mean', 'C_theory', 'CoSW_mean', 
+		  'C_diff', 'Run', 'Transfer',
+		  ]])
 
 
 ### select x_axis
@@ -58,15 +64,15 @@ labels = [[xlabel,"Sumrule"],
 		   [xlabel, r"Contact $C/N$ [$k_F$]"],
 		   ["Theoretical Contact", r"Contact $C/N$ [$k_F$]"],
 		   [xlabel, "Clock Shift"],
-		   [xlabel, r"Contact over Sumrule $C/N/SR$ [$k_F$]"],
-		   ["Theoretical Contact", r"Contact over Sumrule $C/N/SR$ [$k_F$]"]]
+		   [xlabel, r"Contact over SW $C/N/SW$ [$k_F$]"],
+		   ["Theoretical Contact", r"Contact over SW $C/N/SW$ [$k_F$]"]]
 
-df_names = [[xname, "SR"],
+df_names = [[xname, "SW"],
 		  [xname, "C"],
 		  ["C_theory", "C"],
 		  [xname, "CS"],
-		  [xname, "CoSR"],
-		  ["C_theory", "CoSR"]]
+		  [xname, "CoSW"],
+		  ["C_theory", "CoSW"]]
 
 ### plots
 plt.rcParams.update(plt_settings)
@@ -74,7 +80,10 @@ plt.rcParams.update({"figure.figsize": [12,8]})
 fig, axes = plt.subplots(2,3)
 axs = axes.flatten()
 
-transfer_types = ['transfer', 'dimer_c9']#,'dimer_c5','dimer_sum95']
+transfer_types = ['transfer', 
+				  'loss',
+# 				  'dimer_c9',
+				  ]#,'dimer_c5','dimer_sum95']
 # flip 'em
 # colors = [colors[2], colors[1]]
 # markers = [markers[1], markers[0]]
@@ -84,16 +93,8 @@ scale_dimer = 1
 for l, transfer in enumerate(transfer_types):		
 	subdf = df.loc[df['Transfer'] == transfer]
 	
-	# labelToTF = r"ToTF"+"={:.3f}".format(ToTF)
-	color = colors[l]
-	marker = markers[l]
-	light_color = tint_shade_color(color, amount=1+tintshade)
-	dark_color = tint_shade_color(color, amount=1-tintshade)
-	plt.rcParams.update({
-					 "lines.markeredgecolor": dark_color,
-					 "lines.markerfacecolor": light_color,
-					 "lines.color": dark_color,
-					 "legend.fontsize": 14})
+	sty = styles[l]
+	plt.rcParams.update({"legend.fontsize": 14})
 	
 	
 	# Plot vs ToTF
@@ -111,13 +112,13 @@ for l, transfer in enumerate(transfer_types):
 				error = np.array(list(zip(subdf[df_pair[1]+"_median"]-subdf[df_pair[1]+"_lower"], 
 						   subdf[df_pair[1]+"_upper"]-subdf[df_pair[1]+"_median"]))).T*np.abs(scale_dimer)
 				ax.errorbar(subdf[df_pair[0]], subdf[df_pair[1]+"_median"]*scale_dimer, 
-					yerr=error, fmt=marker, label=transfer_types[l], ecolor=dark_color)
+					yerr=error, label=transfer_types[l], **sty)
 		else:
 			try:
 				error = np.array(list(zip(subdf[df_pair[1]+"_median"]-subdf[df_pair[1]+"_lower"], 
 								   subdf[df_pair[1]+"_upper"]-subdf[df_pair[1]+"_median"]))).T
-				ax.errorbar(subdf[df_pair[0]], subdf[df_pair[1]+"_median"], yerr=error, fmt=marker,
-				     label=transfer_types[l], ecolor=dark_color)
+				ax.errorbar(subdf[df_pair[0]], subdf[df_pair[1]+"_median"], yerr=error, 
+				     label=transfer_types[l], **sty)
 			except:
 				continue
 	
@@ -154,40 +155,40 @@ summaryfig_name = timestr = time.strftime("%Y%m%d-%H%M%S")+'summary.png'
 summaryfig_path = os.path.join(summaryfig_path, summaryfig_name)
 fig.savefig(summaryfig_path)
 
-fig1, ax1 = plt.subplots()
+# fig1, ax1 = plt.subplots()
 
-transfer_df = df[df['Transfer'] == 'transfer']
-dimerc5_df = df[df['Transfer'] == 'dimer_c5']
+# transfer_df = df[df['Transfer'] == 'transfer']
+# dimerc5_df = df[df['Transfer'] == 'dimer_c5']
 
-sorted_transfer_df = transfer_df.sort_values(by='ToTF')
-sorted_dimerc5_df = dimerc5_df.sort_values(by='ToTF')
+# sorted_transfer_df = transfer_df.sort_values(by='ToTF')
+# sorted_dimerc5_df = dimerc5_df.sort_values(by='ToTF')
 
-x = sorted_transfer_df['C_median']
-y = sorted_dimerc5_df['CS_median']
+# x = sorted_transfer_df['C_median']
+# y = sorted_dimerc5_df['CS_median']
 
-sorted_transfer_df['x'] = x
-sorted_dimerc5_df['y'] = y
+# sorted_transfer_df['x'] = x
+# sorted_dimerc5_df['y'] = y
 
-print(sorted_transfer_df[['ToTF','C_median','Transfer','x']])
-print(sorted_dimerc5_df[['ToTF','CS_median','Transfer','y']])
-	
-y = np.array(y)
-x = np.array(x)
+# print(sorted_transfer_df[['ToTF','C_median','Transfer','x']])
+# print(sorted_dimerc5_df[['ToTF','CS_median','Transfer','y']])
+# 	
+# y = np.array(y)
+# x = np.array(x)
 
-newy = np.array([y[0],y[1],(y[2]+y[3])/2,(y[4]+y[5])/2])
-newx = np.array([x[0],x[1],x[3],x[4]])
+# newy = np.array([y[0],y[1],(y[2]+y[3])/2,(y[4]+y[5])/2])
+# newx = np.array([x[0],x[1],x[3],x[4]])
 
-newxy_df = pd.DataFrame({'New x': newx, 'New y': newy})
-print(newxy_df)
+# newxy_df = pd.DataFrame({'New x': newx, 'New y': newy})
+# print(newxy_df)
 
-ax1.plot(newx,newy,marker=pastamarkers.farfalle, markersize=25)
+# ax1.plot(newx,newy,marker=pastamarkers.farfalle, markersize=25)
 
-def Linear(x,m,b):
-	return m*x + b
+# def Linear(x,m,b):
+# 	return m*x + b
 
-popt, pcov = curve_fit(Linear, newx,newy)
-xlist = np.linspace(newx.min(), newx.max(),100)
-ax1.plot(xlist, Linear(xlist,*popt),marker='',linestyle='-',color='b')
-print(f'y = {popt[0]:.2f}x + {popt[1]:.2f}')
+# popt, pcov = curve_fit(Linear, newx,newy)
+# xlist = np.linspace(newx.min(), newx.max(),100)
+# ax1.plot(xlist, Linear(xlist,*popt),marker='',linestyle='-',color='b')
+# print(f'y = {popt[0]:.2f}x + {popt[1]:.2f}')
 
-ax1.set(ylabel='Dimer c5 CS',xlabel='HFT C')
+# ax1.set(ylabel='Dimer c5 CS',xlabel='HFT C')

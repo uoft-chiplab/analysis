@@ -12,23 +12,25 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
+from rfcalibrations.Vpp_from_VVAfreq import Vpp_from_VVAfreq
 
 # filename = "2024-06-12_K_e.dat"
 filename = "2024-06-18_G_e.dat"
 # filename = "2024-06-20_C_e.dat" # reminder; had to kill 0 detuning because of scatter
 # filename = "2024-06-20_D_e.dat" # reminder; had to kill 0 detuning because of scatter
 # filename = "2024-06-21_F_e.dat"
-VVAtoVppfile = "VVAtoVpp.txt" # calibration file
-VVAs, Vpps = np.loadtxt(VVAtoVppfile, unpack=True)
-VpptoOmegaR = 27.5833 # kHz
 
-def VVAtoVpp(VVA):
-	"""Match VVAs to calibration file values. Will get mad if the VVA is not
-		also the file. """
-	for i, VVA_val in enumerate(VVAs):
-		if VVA == VVA_val:
-			Vpp = Vpps[i]
-	return Vpp
+VpptoOmegaR47 = 17.05/0.703 # kHz/Vpp - 2024-09-16 calibration with 4GS/s scope measure of Vpp
+VpptoOmegaR43 = 14.44/0.656 # kHz/Vpp - 2024-09-25 calibration 
+phaseO_OmegaR = lambda VVA, freq: 2*pi*VpptoOmegaR47 * Vpp_from_VVAfreq(VVA, freq)
+
+# def VVAtoVpp(VVA):
+# 	"""Match VVAs to calibration file values. Will get mad if the VVA is not
+# 		also the file. """
+# 	for i, VVA_val in enumerate(VVAs):
+# 		if VVA == VVA_val:
+# 			Vpp = Vpps[i]
+# 	return Vpp
 
 def trapz_w_error(xs, ys, yserr, num_iter=1000):
 	""" Computes trapz for list of data points (xs, ys+-yserr),

@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import pickle
 
 # pickle
-pickle_file = 'time_delay_BVTs.pkl'
+pickle_file = './contact_correlations/time_delay_BVTs.pkl'
 
 load = True
 

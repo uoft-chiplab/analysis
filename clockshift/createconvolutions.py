@@ -19,9 +19,9 @@ from library import pi, h
 
 plot_convs=True
 save_pickle=True
-load_pickle=True
+load_pickle=False
 
-pickle_file = "clockshift/convolutions_EFs.pkl"
+pickle_file = "clockshift/convolutions_EFs_640us.pkl"
 
 # transfer lineshape w/ FD distribution
 def lsFD(x, A, numDA):
@@ -44,9 +44,10 @@ xnum = 1000
 
 arbscale = 1
 # these are all the TTFs BAO's lookup table works for, but we don't need all of them
-TTFs = np.array([0.20, 0.25, 0.30, 0.40, 0.50, 0.60, 0.80, 1.00])
+TTFs = np.array([0.20, 0.25, 0.30, 0.40, 0.50, 0.60, 0.80])
 # trfs = np.array([10, 20, 30, 40, 50, 100, 150, 200]) # testing
-trfs = np.array([10])
+#trfs = np.array([10])
+trfs = np.array([640])
 EFs = np.array([12,14,16,18,20])
 # trfs = np.arange(10,400,10)
 
