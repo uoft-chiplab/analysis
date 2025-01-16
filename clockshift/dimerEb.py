@@ -15,7 +15,7 @@ proj_path = os.path.dirname(os.path.realpath(__file__))
 root = os.path.dirname(proj_path)
 data_path = os.path.join(proj_path, 'data')
 
-from library import pi, h, hbar, mK, a0, plt_settings, styles, colors
+from library import pi, h, hbar, mK, a0, plt_settings, styles, colors, FreqMHz
 from data_helper import remove_indices_formatter
 from data_class import Data
 from rfcalibrations.Vpp_from_VVAfreq import Vpp_from_VVAfreq
@@ -37,6 +37,7 @@ def a13(B):
 	return abg*(1 - DeltaB/(B-B0))
 
 re = 107*a0 # fixed, I think close to initial channel re
+
 def EbMHz_full_sol(B, re):
 	f = lambda x: 1 - 2/pi*np.arctan(pi*x*re/4) - 1/(x*a13(B))
 	kappa = fsolve(f, 1e7)[0]
@@ -54,6 +55,9 @@ def EbMHz_expansion_corr(B, re, order=1):
 	return EbMHz
 
 Bs = np.linspace(200, 224, 30)
+Ebs_full = [EbMHz_full_sol(B, re) for B in Bs]
+Ebs_o1 = EbMHz_expansion_corr(Bs, re, 1)
+Ebs_o2 = EbMHz_expansion_corr(Bs, re, 2)
 
 
 ### smattering of experimental data
@@ -63,19 +67,22 @@ files = ["2024-10-30_B_e",
 		 "2024-11-01_H_e",
 		 "on resonance"
 		 ]
-fields = [209,
+fields = np.array([209,
 		  204,
 		  207,
 		  211,
 		  202.14
-		  ]
+		  ])
+ress = [] # should've put a Breit-Rabi formula in here
 freqs = [45.441,
 		 43.797,
 		 44.773,
 		 46.150,
 		 43.248 # from memory
 		 ] # center freq in MHz
-e_freqs = [0.002,
+ress = FreqMHz(fields, -9/2, -7/2, -9/2, -5/2)
+Ebs = freqs-ress
+e_Ebs = [0.002,
 		   0.002,
 		   0.002,
 		   0.002,
@@ -83,7 +90,12 @@ e_freqs = [0.002,
 		   ] # Gaussian fit error in MHz
 
 fig, ax = plt.subplots()
-ax = plt.errorbar(fields, freqs, e_freqs, **styles[0])
+ax.errorbar(fields, Ebs, e_Ebs, **styles[0], label="Experiment")
+ax.plot(Bs, Ebs_full, '--', label="full solution")
+ax.plot(Bs, Ebs_o1, '.-', label = "To order 1")
+ax.plot(Bs, Ebs_o2, '.-', label= "To order 2")
+ax.legend()
+ax.set(xlabel='B [G]', ylabel='Eb [MHz]')
 
 
 
