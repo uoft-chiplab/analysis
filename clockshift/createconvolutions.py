@@ -5,11 +5,21 @@ Created on Thu Oct  3 12:26:31 2024
 
 @author: kevinxie
 """
-
+# this is a hack to access modules in the parent directory
+# Get the current script's directory
+import os
+import sys
+current_dir = os.path.dirname(os.path.abspath(__file__))
+# Get the parent directory by going one level up
+parent_dir = os.path.dirname(current_dir)
+# Add the parent directory to sys.path
+if parent_dir not in sys.path:
+	sys.path.append(parent_dir)
 ## This script is intended to create and save lineshapes that convolve an atom-to-dimer transfer spectrum with a FD distribution at some T/TF,
 ## with the square of the FT of the transfer pulse shape.
 import numpy as np
 import matplotlib.pyplot as plt
+plt.ion() # turn on interactive mode so plots won't block execution
 import pandas as pd
 import clockshift.pwave_fd_interp as FD # FD distribution data for interpolation functions, Ben Olsen
 from scipy.optimize import curve_fit
@@ -17,11 +27,11 @@ from scipy.integrate import quad
 from scipy.interpolate import interp1d
 from library import pi, h
 
-plot_convs=True
+plot_convs=False
 save_pickle=True
 load_pickle=False
 
-pickle_file = "clockshift/convolutions_EFs_640us.pkl"
+pickle_file = "./clockshift/convolutions_EFs_640us.pkl"
 
 # transfer lineshape w/ FD distribution
 def lsFD(x, A, numDA):
@@ -44,11 +54,11 @@ xnum = 1000
 
 arbscale = 1
 # these are all the TTFs BAO's lookup table works for, but we don't need all of them
-TTFs = np.array([0.20, 0.25, 0.30, 0.40, 0.50, 0.60, 0.80])
+TTFs = np.array([0.20, 0.25, 0.30, 0.40, 0.50])
 # trfs = np.array([10, 20, 30, 40, 50, 100, 150, 200]) # testing
 #trfs = np.array([10])
 trfs = np.array([640])
-EFs = np.array([12,14,16,18,20])
+EFs = np.array([12,14,16])
 # trfs = np.arange(10,400,10)
 
 resultsTTF = []
@@ -65,10 +75,11 @@ for EF in EFs:
 		print(str(idx), str(TTF), str(EF))
 		
 		# transfer spectrum lineshape with FD dist at some TTF
-		fig, ax = plt.subplots()
-		ax.plot(xx, lsFD(xx, arbscale, idx))
-		ax.set(title='FD dist transfer spectrum, TTF={:.2f}'.format(TTF), xlabel='Detuning [EF]')
-		plt.show()
+		if plot_convs:
+			fig, ax = plt.subplots()
+			ax.plot(xx, lsFD(xx, arbscale, idx))
+			ax.set(title='FD dist transfer spectrum, TTF={:.2f}'.format(TTF), xlabel='Detuning [EF]')
+			plt.show()
 		FDinterp = lambda x: np.interp(x, xx, lsFD(xx, arbscale, idx))
 		FDnorm = quad(FDinterp, -xnum, xnum, points=xx, limit=2*xx.shape[0]) # had to do wacky things to integrate properly
 		print('FDNORM: ' + str(FDnorm))
@@ -80,10 +91,11 @@ for EF in EFs:
 			yD = Sinc2D(D, trf, EF)
 			FTnorm = np.trapz(yD, D)
 			print('FTNORM: ' + str(FTnorm))
-			fig, ax=plt.subplots()
-			ax.plot(D, yD)
-			ax.set(title='FT^2 square pulse, trf={:.1f}'.format(trf), xlabel='Freq [EF]')
-			plt.show()
+			if plot_convs:
+				fig, ax=plt.subplots()
+				ax.plot(D, yD)
+				ax.set(title='FT^2 square pulse, trf={:.1f}'.format(trf), xlabel='Freq [EF]')
+				plt.show()
 			
 			# the convolution function is just a product of two normalized
 			# functions, slid across one another through the parameter t, and integrated
@@ -129,8 +141,8 @@ results = {'TTF':resultsTTF, 'EF':resultsEF, 'TRF':resultstrf, 'LS':resultsls}
 df = pd.DataFrame(data=results)
 
 if load_pickle:
- 	loaded_df = pd.read_pickle(pickle_file)
- 	df = pd.concat([loaded_df, df], ignore_index=True, sort=False)
+	loaded_df = pd.read_pickle(pickle_file)
+	df = pd.concat([loaded_df, df], ignore_index=True, sort=False)
 
 if save_pickle:
 	df.to_pickle(pickle_file)

@@ -12,6 +12,15 @@ BOOTSRAP_TRAIL_NUM = 1000
 
 # paths
 import os
+import sys
+# this is a hack to access modules in the parent directory
+# Get the current script's directory
+current_dir = os.path.dirname(os.path.abspath(__file__))
+# Get the parent directory by going one level up
+parent_dir = os.path.dirname(current_dir)
+# Add the parent directory to sys.path
+if parent_dir not in sys.path:
+	sys.path.append(parent_dir)
 proj_path = os.path.dirname(os.path.realpath(__file__))
 root = os.path.dirname(proj_path)
 data_path = os.path.join(proj_path, 'data')
@@ -72,6 +81,7 @@ files =  metadata.loc[metadata[exclude_name] == 0]['filename'].values
 
 # Manual file select, comment out if exclude column should be used instead
 files = ["2024-09-10_L_e"]
+files = ["2024-10-08_F_e"]
 # files = [files[0]]
 
 # save file path
@@ -228,7 +238,7 @@ for filename in files:
 	
 	#### compute detuning
 	run.data['detuning'] = run.data[xname] - meta_df['res_freq'][0]*np.ones(num) # MHz
-	
+	run.data['detuning_EF'] = run.data['detuning']/EF
 	# fudge the c9 counts using ff
 	run.data['c9'] = run.data['c9'] * meta_df['ff'][0]
 	

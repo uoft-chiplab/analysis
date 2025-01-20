@@ -6,6 +6,15 @@ Analysis script for triple shot scans: HFT, dimer, bg
 
 # paths
 import os
+import sys
+# this is a hack to access modules in the parent directory
+# Get the current script's directory
+current_dir = os.path.dirname(os.path.abspath(__file__))
+# Get the parent directory by going one level up
+parent_dir = os.path.dirname(current_dir)
+# Add the parent directory to sys.path
+if parent_dir not in sys.path:
+	sys.path.append(parent_dir)
 proj_path = os.path.dirname(os.path.realpath(__file__))
 root = os.path.dirname(proj_path)
 data_path = os.path.join(proj_path, 'data')
@@ -30,12 +39,13 @@ import pickle as pkl
 	
 ### This turns on (True) and off (False) saving the data/plots 
 Save = False
-
+Save_summary = False
+Save_lineshape = True
 ### script options
 Debug = False
 Filter = True
 Talk = True
-Reevaluate = False
+Reevaluate = True
 Calc_CTheory_std = False
 
 lineshape = 'sinc2'
@@ -61,6 +71,7 @@ files = ["2024-10-17_S_e",
 		  "2024-11-05_E_e",
 		  "2024-11-05_H_e",
 		 ]
+files = ['2024-11-04_M_e']
 
 def spin_map(spin):
 	if spin == 'c5':
@@ -475,6 +486,9 @@ for filename in files:
 		ax_fit.errorbar([dimer_freq/results['EF'], dimer_freq/results['EF']], 
 			  [0, scaledtransfer], yerr=e_scaledtransfer*np.array([1,1]), **sty)
 		
+
+
+		
 	# compute and plot ratio transfer
 	sty = styles[2]
 	spin = 'ratio95'
@@ -556,6 +570,21 @@ for filename in files:
 	ax_fit.errorbar([dimer_freq/results['EF'], dimer_freq/results['EF']], 
 		  [0, scaledtransfer], yerr=e_scaledtransfer*np.array([1,1]), **sty)
 	
+	if Save_lineshape:
+			savedf = pd.DataFrame(
+				{
+					'xx':xx,
+					'yy':yy,
+					'freq':[dimer_freq for _ in range(len(xx))],
+					'EF':[results['EF'] for _ in range(len(xx))],
+					'ScaledTransfer': [scaledtransfer for _ in range(len(xx))],
+					'e_ScaledTransfer': [e_scaledtransfer for _ in range(len(xx))]
+				}
+			)
+			pkl_file = filename[:-4] + '_2shotanalysis.pkl'
+			with open(os.path.join('C:\\Users\\kevin\\Documents\\GitHub\\analysis\\clockshift\\analyzed_data', pkl_file),"wb") as output_file:
+				pkl.dump(savedf, output_file)
+			
 		
 	# loop at cloud sizes vs. time
 	for i, spin, sty in zip([6, 7], spins[:-1], styles):
@@ -729,7 +758,7 @@ FM_d_max = CS_d_max * a13kF # assumes ideal SR=0.5
 FM_d_min = CS_d_min * a13kF # assumes ideal SR=0.5
 # a13 times kF # redefined compared to a few lines earlier?
 a13kF = np.array(summary['kF']) * a13(202.14)
-
+summary['a13kF'] = a13kF
 ### intitialize plots
 #fig, axs = plt.subplots(2,3, figsize=[14,7])
 fig, axs=plt.subplots(1,3, figsize=[14, 7])
@@ -965,6 +994,10 @@ fig.suptitle(plot_title)
 fig.tight_layout()
 #plt.savefig('clockshift/summary_plots/'+plot_title+'.png', dpi=300)
 plt.show()	
+
+if Save_summary:
+	with open(os.path.join(proj_path, 'analyzed_data/spectral_weight_summary.pkl'), 'wb') as handle:
+		pkl.dump(summary, handle)
 ### compare some statistics
 # intitialize plots
 # fig, axs = plt.subplots(2, figsize=[14,7])

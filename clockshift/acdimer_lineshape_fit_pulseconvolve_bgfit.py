@@ -43,36 +43,52 @@ BOOTSRAP_TRAIL_NUM = 1000
 Talk = True
 
 ## Diagnostic plots
-plotraw = True
-plotconvs = True
+plotraw = False
+plotconvs = False
 
 ## Bootstrap switches
-Bootstrap = True
-Bootstrapplots = True
-Correlations = True
+Bootstrap = False
+Bootstrapplots = False
+Correlations = False
 
 # save results
 Save = False
+Save_df = False
 
 # determines whether convolved lineshape fit to data has offset parameter
-fitWithOffset = False
+fitWithOffset = True
+
+# apply saturation correction
+saturation_correction = True
+
+# bg low and high analysis
+LowHigh = False
+
+# Omega^2 [kHz^2] 1/e saturation value fit from 09-26_F
+dimer_x0 = 4071
+dimer_e_x0 = 1058
+
+def saturation_scale(x, x0):
+	""" x is OmegaR^2 and x0 is fit 1/e Omega_R^2 """
+	return x/x0*1/(1-np.exp(-x/x0))
 
 # select spin states to analyze
-spins = ['c5','c9','sum95']
-spin = spins[0]
+spins = ['c5','c9','sum95', 'ratio95']
+spin = spins[-1]
 
 ### save file name
 savefile = './clockshift/acdimer_lineshape_results_' + spin + '.xlsx'
 
 ### metadata
-metadata_filename = 'metadata_dimer_file.xlsx'
+metadata_filename = 'dimer_metadata_file.xlsx'
 metadata_file = os.path.join(proj_path, metadata_filename)
 metadata = pd.read_excel(metadata_file)
 
 # if no filename selected, code will run over all files described in metadata (TO DO)
 
 filenames = ['2024-10-02_C_e']
-
+filenames = ['2024-06-12_S_e', '2024-07-17_I_e', '2024-07-17_J_e']
+filenames = ['2024-07-17_J_e']
 # if the filenames list is empty, run over all available files in metadata
 if not filenames:
 	filenames = metadata.filename
@@ -100,6 +116,12 @@ def GenerateSpectraFit(Ebfix):
 
 def bgdrift(x, A, omega, phi, C, m):
 	return A*np.sin(omega*x - phi) + m*x + C
+
+def dimer_transfer(Rab, fa, fb):
+	'''computes transfer to dimer state assuming loss in b is twice the loss
+		in a. Rba = Nb/Na for the dimer association shot. Nb_bg and Na_bg
+		are determined from averaged bg shots.'''
+	return (fa - Rab*fb)/(1/2-Rab)
 
 ## constants
 kF = 1.1e7
@@ -156,12 +178,16 @@ for filename in filenames:
 	Vppscope = metadf['Vpp'][0]
 	
 	if load_lineshape:
-		df_ls = pd.read_pickle('./clockshift/convolutions.pkl')
+		df_ls = pd.read_pickle('./clockshift/convolutions_EFs_640us.pkl')
 		TTF = round(ToTF,1)
 		if TTF == 0.7:
 			TTF = 0.6
 		TRF = trf*1e6
-		lineshape = df_ls.loc[(df_ls['TTF']==TTF) & (df_ls['TRF']==TRF)]['LS'].values[0]
+		if filename == '2024-06-12_S_e':
+			EFconv = 16
+		elif filename == '2024-07-17_I_e' or filename == '2024-07-17_J_e':
+			EFconv = 14
+		lineshape = df_ls.loc[(df_ls['EF']==EFconv) & (df_ls['TTF']==TTF) & (df_ls['TRF']==TRF)]['LS'].values[0]
 	
 	# calculate theoretical contact from Tilman's trap averaging code
 	C_theory = calc_contact(ToTF, EF*1e3, barnu)[0]
@@ -180,7 +206,12 @@ for filename in filenames:
 	elif pulsetype == 'blackman':
 		sqrtpulsearea = np.sqrt(0.3)
 	OmegaR = 2* pi * sqrtpulsearea * VpptoOmegaR * calInterp(VVA) * gain  # 1/s
-	
+	if saturation_correction:
+		# the fit parameters assume Omega^2 is in kHz^2... "sorry"
+		sat_scale_dimer = saturation_scale(OmegaR**2/(2*np.pi)**2, dimer_x0)
+		print(f'sat_scale_dimer={sat_scale_dimer}')
+	else:
+		sat_scale_dimer = 1
 	# remove indices if requested
 	remove_list = remove_indices_formatter(remove_indices)
 	if remove_list:
@@ -201,11 +232,32 @@ for filename in filenames:
 											  val[1])] for val in bg_freq])
 	
 	if not track_bg: # if we are not fudging number by evolving bg 
-		bgmean = bgdf[spin].mean()
-		bgerr = bgdf[spin].std()
-		run.data['transfer'] = (-run.data[spin] + bgmean) / bgmean
-		run.data['transferLow'] = (-run.data[spin] + (bgmean-bgerr)) / (bgmean-bgerr) 
-		run.data['transferHigh'] = (-run.data[spin] + (bgmean+bgerr)) / (bgmean+bgerr) 
+		if spin == 'ratio95':
+			print(bgdf.head())
+			bg_c9 = bgdf['c9'].mean()
+			e_bg_c9 = bgdf['c9'].sem()
+			bg_c5 = bgdf['c5'].mean()
+			e_bg_c5 = bgdf['c5'].sem()
+			bg_sum = bg_c9 + bg_c5
+			e_bg_sum = np.sqrt(e_bg_c9**2 + e_bg_c5**2)
+			bg_f9 = bg_c9 / bg_sum
+			e_bg_f9 = bg_f9 * np.sqrt((e_bg_c9/bg_c9)**2 + (e_bg_sum/bg_sum )**2)
+			bg_f5 = bg_c5/bg_sum
+			e_bg_f5 = bg_f5 * np.sqrt((e_bg_c5/bg_c5)**2 + (e_bg_sum/bg_sum )**2)
+			print(bg_f9)
+			print(bg_f5)
+
+			run.data['Rab'] = run.data['c9']/run.data['c5']
+			run.data['transfer'] = dimer_transfer(run.data['Rab'], bg_f9, bg_f5)
+
+
+		else:
+			bgmean = bgdf[spin].mean()
+			bgerr = bgdf[spin].std()
+			run.data['transfer'] = (-run.data[spin] + bgmean) / bgmean
+			run.data['transferLow'] = (-run.data[spin] + (bgmean-bgerr)) / (bgmean-bgerr) 
+			run.data['transferHigh'] = (-run.data[spin] + (bgmean+bgerr)) / (bgmean+bgerr) 
+
 	else:
 		# fit the bg point(s) along cyc number and use the fit to define transfer
 		fig_bg, ax_bg = plt.subplots()
@@ -231,30 +283,35 @@ for filename in filenames:
 		run.data['transferLow'] = 1 - run.data[spin]/(run.data['bg'])
 		run.data['transferHigh'] = 1 - run.data[spin]/(run.data['bg'])
 		
+
+	# apply optional saturation correction
+	run.data['transfer'] = run.data['transfer'] * sat_scale_dimer
+
 	# calculate scaled detuning
 	run.data['Delta'] = run.data.detuning * 1e3/EF
 	
 	# calculate Scaled transfer
 	run.data['ScaledTransfer']= run.data.apply(lambda x: GammaTilde(x['transfer'],
 									h*EF*1e3, OmegaR*1e3, trf), axis=1)
-	run.data['ScaledTransferLow'] = run.data.apply(lambda x: GammaTilde(x['transferLow'],
-									h*EF*1e3, OmegaR*1e3, trf), axis=1)
-	run.data['ScaledTransferHigh'] = run.data.apply(lambda x: GammaTilde(x['transferHigh'],
-									h*EF*1e3, OmegaR*1e3, trf), axis=1)
+	if LowHigh:
+		run.data['ScaledTransferLow'] = run.data.apply(lambda x: GammaTilde(x['transferLow'],
+										h*EF*1e3, OmegaR*1e3, trf), axis=1)
+		run.data['ScaledTransferHigh'] = run.data.apply(lambda x: GammaTilde(x['transferHigh'],
+										h*EF*1e3, OmegaR*1e3, trf), axis=1)
 	run.group_by_mean('detuning') # averaging
 	mti = run.avg_data['ScaledTransfer'].idxmax()
 	maxt, maxterr = run.avg_data.loc[mti]['transfer'], run.avg_data.loc[mti]['em_transfer']
 	maxsctrans, maxsctranserr = run.avg_data.loc[mti]['ScaledTransfer'], run.avg_data.loc[mti]['em_ScaledTransfer']
 	
-	# plot something
+	# # plot something
 	fig_data, axs = plt.subplots(2,2, figsize=(8,8))
-	ax_raw = axs[0,0]
-	xlims = [run.avg_data.Delta.min()*EF,run.avg_data.Delta.max()*EF ]
-	ax_raw.errorbar(run.avg_data['Delta']*EF, run.avg_data[spin], run.avg_data['em_' + spin])
-	ax_raw.set(ylabel=spin, xlabel='Detuning [kHz]', xlim=xlims)
-	ax_trans = axs[0,1]
-	ax_trans.errorbar(run.avg_data['Delta']*EF, run.avg_data['transfer'], run.avg_data['em_transfer'])
-	ax_trans.set(ylabel='transfer', xlabel='detuning [kHz]', xlim=[-4300,-3700])
+	# ax_raw = axs[0,0]
+	# xlims = [run.avg_data.Delta.min()*EF,run.avg_data.Delta.max()*EF ]
+	# ax_raw.errorbar(run.avg_data['Delta']*EF, run.avg_data[spin], run.avg_data['em_' + spin])
+	# ax_raw.set(ylabel=spin, xlabel='Detuning [kHz]', xlim=xlims)
+	# ax_trans = axs[0,1]
+	# ax_trans.errorbar(run.avg_data['Delta']*EF, run.avg_data['transfer'], run.avg_data['em_transfer'])
+	# ax_trans.set(ylabel='transfer', xlabel='detuning [kHz]', xlim=[-4300,-3700])
 	
 	### plot raw data
 	if plotraw:
@@ -278,19 +335,23 @@ for filename in filenames:
 
 	filtdf = run.avg_data[run.avg_data['filter']==1]
 	x = filtdf['Delta']
-	yparam = 'transfer'
+	yparam = 'ScaledTransfer'
 	y = filtdf[yparam]
 	yerr = filtdf['em_' + yparam]
-	ylo = filtdf['transferLow']
-	yerrlo = filtdf['em_transferLow']
-	yhi = filtdf['transferHigh']
-	yerrhi = filtdf['em_transferHigh']
+	if LowHigh:
+		ylo = filtdf[yparam+'Low']
+		yerrlo = filtdf['em_' + yparam+ 'Low']
+		yhi = filtdf[yparam+'High']
+		yerrhi = filtdf['em_' + yparam+ 'High']
 	
 	nfiltdf = run.avg_data[run.avg_data['filter']==0]
 	xnfilt = nfiltdf['Delta']
 	ynfilt = nfiltdf[yparam]
 	yerrnfilt = nfiltdf['em_' + yparam]
 	
+	if Save_df:
+		run.avg_data.to_pickle(os.path.join('./clockshift/analyzed_data/', filename+'_ratio95.pkl'))
+
 	### TEST: just choose Ebfix wherever the highest datapoint is, since detuning is heavily dependent on EF....
 # 	Ebfix = x[np.argmax(y)] 
 	Ebfix = -3.98 * 1e3/EF
@@ -299,7 +360,7 @@ for filename in filenames:
 	xrange = np.abs(x.min() - x.max())
 	xlow = Ebfix-xrange
 	xhigh = Ebfix + xrange
-	xnum = 1000
+	xnum = 2000
 	xx = np.linspace(xlow, xhigh, xnum)
 	xxC = np.linspace(-xrange, xrange, xnum)
 
@@ -341,17 +402,18 @@ for filename in filenames:
 		elif ToTFround == 0.6:
 			FDnum = 8
 	
+		######### KX messing around with this###########################
+		#FDnum=8 # forcing ToTF to be 0.6 basically
 		FDinterp = lambda x: np.interp(x, xxC, lsFD(xxC, 0, arbscale, FDnum))
 		FDnorm = quad(FDinterp, -qrange, qrange, points=xxC, limit=2*xxC.shape[0])
 		print('FDNORM: ' + str(FDnorm))
 		def convfunc(tau, t):
 			if pulsetype == 'square':
-	 			return FDinterp(tau)/FDnorm[0] * (Sinc2D(t-tau, trf*1e6)/norm)
+				return FDinterp(tau)/FDnorm[0] * (Sinc2D(t-tau, trf*1e6)/norm)
+			return
 			
-
 		def convint(t):
-			# the integral converges better when ranges don't go to infinity
-			sliderange=20
+			sliderange=20 # the integral converges better when ranges don't go to infinity
 			qrangelow = - sliderange
 			qrangehigh=  sliderange
 			return quad(convfunc, qrangelow, qrangehigh, args=(t,))
@@ -374,7 +436,8 @@ for filename in filenames:
 			fig_CVs, ax_CV = plt.subplots()
 	# 		ax_CV.plot(xxC, FDinterp(xxC), '-')
 			if pulsetype == 'square':
-	 			ax_CV.plot(xxC, Sinc2D(xxC, trf*1e6)/norm, '-', label='FT')
+				ax_CV.plot(xxC, Sinc2D(xxC, trf*1e6)/norm, '-', label='FT')
+			
 			ax_CV.plot(xxC, yyconv, '-', label='conv')
 			ax_CV.set(xlabel = 'Detuning [EF]', ylabel = 'Magnitude')
 			ax_CV.legend()
@@ -403,52 +466,69 @@ for filename in filenames:
 	# fit the lineshape onto the data
 	popt, pcov = curve_fit(convls, x, y, sigma=yerr, p0=guess_FDG, bounds=bounds)
 	perr = np.sqrt(np.diag(pcov))
-	popthi, pcovhi = curve_fit(convls, x, yhi, sigma=yerrhi, p0=guess_FDG, bounds=bounds)
-	perrhi = np.sqrt(np.diag(pcovhi))
-	poptlo, pcovlo = curve_fit(convls, x, ylo, sigma=yerrlo, p0=guess_FDG, bounds=bounds)
-	perrlo = np.sqrt(np.diag(pcovlo))
+	if LowHigh:
+		popthi, pcovhi = curve_fit(convls, x, yhi, sigma=yerrhi, p0=guess_FDG, bounds=bounds)
+		perrhi = np.sqrt(np.diag(pcovhi))
+		poptlo, pcovlo = curve_fit(convls, x, ylo, sigma=yerrlo, p0=guess_FDG, bounds=bounds)
+		perrlo = np.sqrt(np.diag(pcovlo))
 
 
  	### evaluate and plot on ax_ls
 	yyconvls = convls(xx, *popt)
-	yyconvls_hi = convls(xx, *popthi)
-	yyconvls_lo = convls(xx, *poptlo)
-
+	if LowHigh:
+		yyconvls_hi = convls(xx, *popthi)
+		yyconvls_lo = convls(xx, *poptlo)
 	ax_ls = axs[1,0]
 	
 	ax_ls.errorbar(x, y, yerr, marker='o', ls='', markersize =10, capsize=2, mew=2, mec=adjust_lightness('tab:gray',0.2), color='tab:gray', elinewidth=2)
 # 		ax_ls.errorbar(xnfilt, ynfilt, yerrnfilt, marker='o', ls='', markersize = 12, capsize=3, mew=3, mfc='none', color='tab:gray', elinewidth=3)
 	ax_ls.plot(xx, yyconvls, '-', linewidth=3, color = 'tab:green', label='bg avg')
-	ax_ls.errorbar(x, yhi, yerrhi, marker='o', ls='', markersize = 6, capsize=1, mew=1, mfc='none', color='tab:blue', elinewidth=1)
-	ax_ls.errorbar(x, ylo, yerrlo, marker='o', ls='', markersize = 6, capsize=1, mew=1, mfc='none', color='tab:red', elinewidth=1)
-	ax_ls.plot(xx, yyconvls_hi, '--', linewidth=1, color='tab:blue', label= 'bg lo')
-	ax_ls.plot(xx, yyconvls_lo, '--', linewidth=1, color='tab:red', label='bg hi')
+	if LowHigh:
+		ax_ls.errorbar(x, yhi, yerrhi, marker='o', ls='', markersize = 6, capsize=1, mew=1, mfc='none', color='tab:blue', elinewidth=1)
+		ax_ls.errorbar(x, ylo, yerrlo, marker='o', ls='', markersize = 6, capsize=1, mew=1, mfc='none', color='tab:red', elinewidth=1)
+		ax_ls.plot(xx, yyconvls_hi, '--', linewidth=1, color='tab:blue', label= 'bg lo')
+		ax_ls.plot(xx, yyconvls_lo, '--', linewidth=1, color='tab:red', label='bg hi')
+
+	fit_Ebs = [popt[1]*EF for _ in range(len(xx))]
+	fit_e_Ebs = [perr[1]*EF for _ in range(len(xx))]
+	dimer_convfit = pd.DataFrame(
+		{
+			'detuning':xx*EF,
+			'transfer':yyconvls,
+			'Eb':fit_Ebs,
+			'e_Eb': fit_e_Ebs
+		}
+	)
+	dimer_convfit.to_pickle(os.path.join('./clockshift/analyzed_data/', '2024-07-17_J_e_fit_ratio95.pkl'))
 
 	# integration has to deal with constant term depending on fit option
 	if fitWithOffset:
 		SR_convls = np.trapz(yyconvls - popt[-1], xx)
 		FM_convls = np.trapz((yyconvls - popt[-1])* xx, xx)
 		if not track_bg:
-			SR_convls_hi = np.trapz(yyconvls_hi - popthi[-1], xx)
-			FM_convls_hi = np.trapz((yyconvls_hi - popthi[-1])* xx, xx)
-			SR_convls_lo = np.trapz(yyconvls_lo - poptlo[-1], xx)
-			FM_convls_lo = np.trapz((yyconvls_lo - poptlo[-1])* xx, xx)
+			if LowHigh:
+				SR_convls_hi = np.trapz(yyconvls_hi - popthi[-1], xx)
+				FM_convls_hi = np.trapz((yyconvls_hi - popthi[-1])* xx, xx)
+				SR_convls_lo = np.trapz(yyconvls_lo - poptlo[-1], xx)
+				FM_convls_lo = np.trapz((yyconvls_lo - poptlo[-1])* xx, xx)
 		fitdof = 3
 	else:
 		SR_convls = np.trapz(yyconvls, xx)
 		FM_convls = np.trapz(yyconvls*xx, xx)
 
-		SR_convls_hi = np.trapz(yyconvls_hi, xx)
-		FM_convls_hi = np.trapz(yyconvls_hi* xx, xx)
-		SR_convls_lo = np.trapz(yyconvls_lo, xx)
-		FM_convls_lo = np.trapz(yyconvls_lo* xx, xx)
+		if LowHigh:
+			SR_convls_hi = np.trapz(yyconvls_hi, xx)
+			FM_convls_hi = np.trapz(yyconvls_hi* xx, xx)
+			SR_convls_lo = np.trapz(yyconvls_lo, xx)
+			FM_convls_lo = np.trapz(yyconvls_lo* xx, xx)
 		fitdof = 2
 	CS_convls = FM_convls/0.5 # assumes ideal SR
 	Ctilde_convls = CS_convls * (pi*kF*a13(Bfield)) / -2
-	CS_convls_hi = FM_convls_hi/0.5 # assumes ideal SR
-	Ctilde_convls_hi = CS_convls_hi * (pi*kF*a13(Bfield)) / -2
-	CS_convls_lo = FM_convls_lo/0.5 # assumes ideal SR
-	Ctilde_convls_lo = CS_convls_lo * (pi*kF*a13(Bfield)) / -2
+	if LowHigh:
+		CS_convls_hi = FM_convls_hi/0.5 # assumes ideal SR
+		Ctilde_convls_hi = CS_convls_hi * (pi*kF*a13(Bfield)) / -2
+		CS_convls_lo = FM_convls_lo/0.5 # assumes ideal SR
+		Ctilde_convls_lo = CS_convls_lo * (pi*kF*a13(Bfield)) / -2
 
 	### calculate residuals and chi2
 	ymodel = convls(x, *popt)
@@ -462,18 +542,19 @@ for filename in filenames:
 	ax_r.errorbar(x,convres,yerr,  marker='o', color='b', mec=adjust_lightness('b'), capsize=2, mew=2, elinewidth=2)
 	ax_r.set(xlabel='Detuning [EF]', ylabel='Residuals', title= r'$\chi^2$ = {:.1f}'.format(chi2))
 	
-	print('Convolution SR: {:.2} + {:.2f} - {:.2f}'.format(SR_convls,
-													 np.abs(SR_convls_hi-SR_convls),
-													 np.abs(SR_convls - SR_convls_lo)))
-	print('Convolution FM: {:.2} + {:.2f} - {:.2f}'.format(FM_convls,
-													 np.abs(FM_convls_hi-FM_convls),
-													 np.abs(FM_convls - FM_convls_lo)))
-	print('Convolution CS: {:.2} + {:.2f} - {:.2f}'.format(CS_convls,
-													 np.abs(CS_convls_hi-CS_convls),
-													 np.abs(CS_convls - CS_convls_lo)))
-	print('Convolution Ctilde: {:.2} + {:.2f} - {:.2f}'.format(Ctilde_convls,
-													 np.abs(Ctilde_convls_hi-Ctilde_convls),
-													 np.abs(Ctilde_convls - Ctilde_convls_lo)))
+	if LowHigh:
+		print('Convolution SR: {:.2} + {:.2f} - {:.2f}'.format(SR_convls,
+														np.abs(SR_convls_hi-SR_convls),
+														np.abs(SR_convls - SR_convls_lo)))
+		print('Convolution FM: {:.2} + {:.2f} - {:.2f}'.format(FM_convls,
+														np.abs(FM_convls_hi-FM_convls),
+														np.abs(FM_convls - FM_convls_lo)))
+		print('Convolution CS: {:.2} + {:.2f} - {:.2f}'.format(CS_convls,
+														np.abs(CS_convls_hi-CS_convls),
+														np.abs(CS_convls - CS_convls_lo)))
+		print('Convolution Ctilde: {:.2} + {:.2f} - {:.2f}'.format(Ctilde_convls,
+														np.abs(Ctilde_convls_hi-Ctilde_convls),
+														np.abs(Ctilde_convls - Ctilde_convls_lo)))
 	
 	### final plotting touches
 	ax_ls.legend()
@@ -483,6 +564,7 @@ for filename in filenames:
 # 	ax_ls.set_ylim([y.min() - 0.005,y.max() + 0.005])
 	ax_ls.set_ylabel(r'Scaled transfer $\tilde{\Gamma}$ [arb.]')
 	ax_ls.set_xlabel(r'Detuning from 12-resonance $\Delta$ [EF]')
+	#ax_ls.set(xlim=[-305, -295])
 	# how hard is it to put a second x-axis on this thing
 	# Put MHz frequencies on upper x-axis
 	f = lambda x: x * EF /1e3 
@@ -491,47 +573,48 @@ for filename in filenames:
 	ax2.set_xlabel("Detuning [MHz]")
 	fig_data.suptitle(filename + ', ' + spin + ', {:.2f} G, EF={:.1f} kHz, T/TF={:.2f}, T={:.1f} kHz, Ebfix={:.3f} MHz'.format(Bfield, EF, ToTF, ToTF*EF, Ebfix*EF/1000))
 	fig_data.tight_layout()
+	plt.show()
 
 ### generate summary table
-	fig_table, ax_table = plt.subplots()
-	ax_table.axis('off')
-	ax_table.axis('tight')
-	quantities = [r"file",
-			   r"Observable",
-			   r"ToTF",
-			   r"EF [kHz]",
-			   r"Max transfer",
-			   r"Max scaled transfer",
-			   r"SR [EF]",
-			   r"FM [EF]",
-			   r"CS [EF]",
-			   r"Ctilde"
-			   ]
-	values = ["{}".format(filename),
-			  "{}".format(spin),
-			  "{:.2f}".format(ToTF), 
-			  "{:.1f}".format(EF),
-			  "{:.3f} +/- {:.3f}".format(maxt, maxterr),
-			  "{:.3f} +/- {:.3f}".format(maxsctrans, maxsctranserr),
-			  "{:.2f} + {:.2f} - {:.2f}".format(SR_convls,
-									  np.abs(SR_convls_hi-SR_convls),
-									  np.abs(SR_convls - SR_convls_lo)),
-			  "{:.2f} + {:.2f} - {:.2f}".format(FM_convls,
-									  np.abs(FM_convls_hi-FM_convls),
-									  np.abs(FM_convls - FM_convls_lo)),
-			  "{:.2f} + {:.2f} - {:.2f}".format(CS_convls,
-									  np.abs(CS_convls_hi-CS_convls),
-									  np.abs(CS_convls - CS_convls_lo)),
-			  "{:.2f} + {:.2f} - {:.2f}".format(Ctilde_convls,
-									  np.abs(Ctilde_convls_hi-Ctilde_convls),
-									  np.abs(Ctilde_convls - Ctilde_convls_lo))
-			  ]
-	table = list(zip(quantities, values))
+	# fig_table, ax_table = plt.subplots()
+	# ax_table.axis('off')
+	# ax_table.axis('tight')
+	# quantities = [r"file",
+	# 		   r"Observable",
+	# 		   r"ToTF",
+	# 		   r"EF [kHz]",
+	# 		   r"Max transfer",
+	# 		   r"Max scaled transfer",
+	# 		   r"SR [EF]",
+	# 		   r"FM [EF]",
+	# 		   r"CS [EF]",
+	# 		   r"Ctilde"
+	# 		   ]
+	# values = ["{}".format(filename),
+	# 		  "{}".format(spin),
+	# 		  "{:.2f}".format(ToTF), 
+	# 		  "{:.1f}".format(EF),
+	# 		  "{:.3f} +/- {:.3f}".format(maxt, maxterr),
+	# 		  "{:.3f} +/- {:.3f}".format(maxsctrans, maxsctranserr),
+	# 		  "{:.2f} + {:.2f} - {:.2f}".format(SR_convls,
+	# 								  np.abs(SR_convls_hi-SR_convls),
+	# 								  np.abs(SR_convls - SR_convls_lo)),
+	# 		  "{:.2f} + {:.2f} - {:.2f}".format(FM_convls,
+	# 								  np.abs(FM_convls_hi-FM_convls),
+	# 								  np.abs(FM_convls - FM_convls_lo)),
+	# 		  "{:.2f} + {:.2f} - {:.2f}".format(CS_convls,
+	# 								  np.abs(CS_convls_hi-CS_convls),
+	# 								  np.abs(CS_convls - CS_convls_lo)),
+	# 		  "{:.2f} + {:.2f} - {:.2f}".format(Ctilde_convls,
+	# 								  np.abs(Ctilde_convls_hi-Ctilde_convls),
+	# 								  np.abs(Ctilde_convls - Ctilde_convls_lo))
+	# 		  ]
+	# table = list(zip(quantities, values))
 	
-	the_table = ax_table.table(cellText=table, loc='center')
-	the_table.auto_set_font_size(False)
-	the_table.set_fontsize(12)
-	the_table.scale(1,1.5)
+	# the_table = ax_table.table(cellText=table, loc='center')
+	# the_table.auto_set_font_size(False)
+	# the_table.set_fontsize(12)
+	# the_table.scale(1,1.5)
 	
 	
 	### time for clock shift analysis I guess		
