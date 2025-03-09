@@ -43,7 +43,7 @@ for i, file in enumerate(files):
 df = pd.DataFrame(loaded_data)
 
 # print relevant columns for data selection
-print(df[['file', 'detuning', 'ToTF']])
+print(df[['file', 'detuning', 'ToTF', 'popt']])
 
 ### plots
 plt.rcParams.update(plt_settings)
@@ -200,7 +200,7 @@ ax_raw.legend()
 ###
 ax = axs[2]
 ax_raw = axs_raw[2]
-sub_df = df.loc[df.pulse_time > 0.5]
+sub_df = df.loc[(df.pulse_time > 0.5) & (df.ToTF == 0.647)]
 
 detunings = sub_df.detuning.unique()
 detunings.sort()
@@ -397,7 +397,7 @@ ax_raw.legend()
 ###
 ax = axs[5]
 ax_raw = axs_raw[5]
-sub_df = df.loc[(df.pulse_time > 0.5) & ((df.detuning == 0) | (df.detuning == 5))]
+sub_df = df.loc[(df.ToTF == 0.647) & (df.pulse_time > 0.5) & ((df.detuning == 0) | (df.detuning == 5))]
 
 detunings = sub_df.detuning.unique()
 detunings.sort()

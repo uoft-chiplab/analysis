@@ -47,9 +47,9 @@ plotraw = True
 plotconvs = True
 
 ## Bootstrap switches
-Bootstrap = True
-Bootstrapplots = True
-Correlations = True
+Bootstrap = False
+Bootstrapplots = False
+Correlations = False
 
 # save results
 Save = False
@@ -65,14 +65,16 @@ spin = spins[0]
 savefile = './clockshift/acdimer_lineshape_results_' + spin + '.xlsx'
 
 ### metadata
-metadata_filename = 'metadata_dimer_file.xlsx'
+metadata_filename = 'dimer_metadata_file.xlsx'
 metadata_file = os.path.join(proj_path, metadata_filename)
 metadata = pd.read_excel(metadata_file)
 
 # if no filename selected, code will run over all files described in metadata (TO DO)
 
-filenames = ['2024-10-02_C_e']
-
+#filenames = ['2024-10-02_C_e']
+filenames = ['2024-06-12_S_e']
+#filenames = ['2024-07-17_I_e']
+#filenames = ['2024-07-17_J_e']
 # if the filenames list is empty, run over all available files in metadata
 if not filenames:
 	filenames = metadata.filename
@@ -156,12 +158,13 @@ for filename in filenames:
 	Vppscope = metadf['Vpp'][0]
 	
 	if load_lineshape:
-		df_ls = pd.read_pickle('./clockshift/convolutions.pkl')
+		df_ls = pd.read_pickle('./clockshift/convolutions_EFs_640us.pkl')
 		TTF = round(ToTF,1)
 		if TTF == 0.7:
 			TTF = 0.6
 		TRF = trf*1e6
-		lineshape = df_ls.loc[(df_ls['TTF']==TTF) & (df_ls['TRF']==TRF)]['LS'].values[0]
+		EFconv = 14
+		lineshape = df_ls.loc[(df_ls['TTF']==TTF) & (df_ls['TRF']==TRF) & (df_ls['EF']==EFconv)]['LS'].values[0]
 	
 	# calculate theoretical contact from Tilman's trap averaging code
 	C_theory = calc_contact(ToTF, EF*1e3, barnu)[0]

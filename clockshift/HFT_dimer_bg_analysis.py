@@ -29,18 +29,20 @@ import pickle as pkl
 
 	
 ### This turns on (True) and off (False) saving the data/plots 
-Save = False
-
+Save = True
 ### script options
 Debug = False
 Filter = True
-Talk = True
-Reevaluate = False
+Talk = False
+Reevaluate =True
+Reevaluate_last_only = True
 Calc_CTheory_std = False
+# Cold = True
+# cold_totf = 0.3
 
 lineshape = 'sinc2'
-
-# select spin state imaging for analysis
+ylist=[]
+# select spin state simaging for analysis
 state_selection = '97'
 
 #spins = ['c5', 'c9', 'sum95']
@@ -55,12 +57,29 @@ files =  metadata.loc[metadata['exclude'] == 0]['filename'].values
 files = ["2024-10-17_S_e",
  		 "2024-10-18_H_e",
  		 "2024-10-18_O_e",
- 		 "2024-11-04_M_e",
+ 		"2024-11-04_M_e",
 		  "2024-11-04_O_e",
 		  "2024-11-04_R_e",
 		  "2024-11-05_E_e",
 		  "2024-11-05_H_e",
-		 ]
+		  "2025-02-11_M_e",
+		  "2025-02-12_P_e",
+		  "2025-02-12_S_e",
+		  "2025-02-12_W_e",
+		  "2025-02-12_Z_e",
+		  "2025-02-12_ZC_e",
+		  "2025-02-12_ZF_e",
+		  "2025-02-13_E_e",
+		  "2025-02-18_H_e",
+		  "2025-02-18_K_e",
+		  "2025-02-18_O_e",
+		  "2025-02-18_R_e",
+		  "2025-02-26_I_e",
+		  "2025-02-27_M_e",
+		  "2025-02-27_P_e",
+		  "2025-03-05_K_e"
+ 		 ]
+#files = ["2025-02-12_Z_e"]
 
 def spin_map(spin):
 	if spin == 'c5':
@@ -80,21 +99,20 @@ savefile = os.path.join(proj_path, savefilename)
 
 pkl_file = os.path.join(proj_path, '4shot_results.pkl')
 
-### Vpp calibration
-# VpptoOmegaR = 27.5833 # kHz/Vpp, older calibration
-VpptoOmegaR47 = 17.05/0.703 # kHz/Vpp - 2024-09-16 calibration with 4GS/s scope measure of Vpp
-VpptoOmegaR43 = 14.44/0.656 # kHz/Vpp - 2024-09-25 calibration 
-phaseO_OmegaR = lambda VVA, freq: 2*pi*VpptoOmegaR47 * Vpp_from_VVAfreq(VVA, freq)
-
 correct_spinloss = True
 saturation_correction = True
+local_time_analysis = True
 
 # Omega^2 [kHz^2] 1/e saturation value fit from 09-26_F
-dimer_x0 = 4071
-dimer_e_x0 = 1058
+dimer_x0 = 1200.86  # 0.6 ToTF 2025-02-13
+#dimer_x0 = 3300
+dimer_e_x0 = 1030.23
 # Omega^2 [kHz^2] 1e saturation value fit from 09-17_C
-HFT_x0 = 805.2923
-HFT_e_x0 = 19.1718 
+# HFT_x0 = 805.2923
+
+# omega^2 [kHz^2] 1e saturation average fit value from various ToTF
+HFT_x0 = 897.441
+HFT_e_x0 = 35
 
 def saturation_scale(x, x0):
 	""" x is OmegaR^2 and x0 is fit 1/e Omega_R^2 """
@@ -128,6 +146,29 @@ def dimer_transfer(Rab, fa, fb):
 		are determined from averaged bg shots.'''
 	return (fa - Rab*fb)/(1/2-Rab)
 
+def e_dimer_transfer(Rab, e_Rab, bg_fa, e_bg_fa, bg_fb, e_bg_fb):
+	Rabfb = Rab*bg_fb
+	e_Rabfb = Rabfb*np.sqrt((e_Rab/Rab)**2 + (e_bg_fb/bg_fb)**2)
+	numer = bg_fa - Rabfb 
+	e_numer = np.sqrt(e_Rabfb**2 + e_bg_fa**2)
+	gamma = (bg_fa - Rabfb)/(1/2-Rab)
+	e_gamma = gamma * np.sqrt((e_numer/numer)**2 + (e_Rab/Rab)**2)
+	return e_gamma
+
+def dimer_transfer_norm(fRab, bgRab, bgfa, bgfb):
+	return (bgfa - fRab*bgRab*bgfb)/(1/2-fRab*bgRab)
+
+def dimer_transfer_a(Rab, bg_fa, bg_fb):
+	bgRba = bg_fb/bg_fa
+	return (1-Rab*bgRba)/(1-2*Rab)
+
+def dimer_transfer_b(Rab, bg_fa, bg_fb):
+	bgRab = bg_fa/bg_fb
+	return (bgRab - Rab)/(1-2*Rab)
+
+def dimer_transfer_sum_half(Rab, bg_fa, bg_fb):
+	return (dimer_transfer_a(Rab, bg_fa, bg_fb) + dimer_transfer_b(Rab, bg_fa, bg_fb))/2
+
 def sinc2(x, trf):
 	"""sinc^2 normalized to sinc^2(0) = 1"""
 	t = x*trf
@@ -152,7 +193,10 @@ except (OSError, IOError) as e:
     old_results_list = []
 
 if Reevaluate == True:
-	old_results_list = []
+	if Reevaluate_last_only == True:
+		old_results_list = old_results_list[:-1]
+	else:
+		old_results_list = []
 
 ### loop analysis over selected datasets
 save_df_index = 0
@@ -170,6 +214,21 @@ for filename in files:
 		continue
 	
 	filename = filename + ".dat"
+	
+	### Vpp calibration
+	if filename[:4] == '2024':
+		# VpptoOmegaR = 27.5833 # kHz/Vpp, older calibration
+		VpptoOmegaR47 = 17.05/0.728 # kHz/Vpp - 2024-09-16 calibration with 4GS/s scope measure of Vpp
+		VpptoOmegaR43 = 14.44/0.656 # kHz/Vpp - 2024-09-25 calibration 
+		phaseO_OmegaR = lambda VVA, freq: 2*pi*VpptoOmegaR47 * Vpp_from_VVAfreq(VVA, freq)
+		
+	elif filename[:4] == '2025':
+		VpptoOmegaR47 = 12.01/0.452 # kHz/Vpp - 2025-02-12 calibration 
+		VpptoOmegaR43 = 14.44/0.656 *VpptoOmegaR47/(17.05/0.728) # fudged 43MHz calibration
+		phaseO_OmegaR = lambda VVA, freq: 2*pi*VpptoOmegaR47 * Vpp_from_VVAfreq(VVA, freq)
+		
+	else:
+		raise ValueError("filename does not start with 2024 or 2025.")
 	
 	# check if we need to evalute this run
 	skip_evaluation = False
@@ -203,6 +262,7 @@ for filename in files:
 			'barnu': meta_df['barnu'][0],
 			'e_barnu': meta_df['barnu_sem'][0],
 			'ff': meta_df['ff'][0],
+			'year': filename[:4]
 			}
 	
 	results['x_star'] = xstar(meta_df['Bfield'][0], results['EF'])
@@ -264,9 +324,16 @@ for filename in files:
 	# compute number of total data points
 	num = len(run.data)
 	
-	
 	### CALCULATIONS	
 	# compute detuning
+	if filename == "2025-02-18_H_e" or filename == "2025-02-18_K_e":
+		# dumb exclusions for 02-18 testing of different dimer freqs
+		#exclude_indices = run.data[(run.data['freq'] == 43.248) & (run.data['VVA']==4)].index
+		exclude_test_freqs = run.data[run.data['freq']==43.218 or \
+								   run.data['freq']==43.23 or \
+								   run.data['freq']==43.278].index
+		run.data = run.data.drop(exclude_test_freqs)
+	 
 	run.data['detuning'] = run.data['freq'] - meta_df['res_freq'][0] # MHz
 	
 	
@@ -280,7 +347,7 @@ for filename in files:
 	# split df into each type of measurement
 	HFT_df = run.data.loc[(run.data.state==75) & (run.data.freq-meta_df['res_freq'][0]>0)]
 	bg_75_df = run.data.loc[(run.data.state==75) & (run.data.freq-meta_df['res_freq'][0]<0)]
-	dimer_75_df = run.data.loc[(run.data.state==7)]
+	dimer_75_df = run.data.loc[(run.data.state==75)]
 	dimer_97_df = run.data.loc[(run.data.state==97) & (run.data.VVA>0)]
 	bg_97_df = run.data.loc[(run.data.state==97) & (run.data.VVA==0)]
 	bg_95_df = run.data.loc[(run.data.state==95)]
@@ -291,8 +358,12 @@ for filename in files:
 	
 	if saturation_correction:
 		# the fit parameters assume Omega^2 is in kHz^2... "sorry"
-		sat_scale_HFT = saturation_scale(OmegaR_HFT**2/(2*np.pi)**2, HFT_x0)
-		sat_scale_dimer = saturation_scale(OmegaR_dimer**2/(2*np.pi)**2, dimer_x0)
+		if results['ToTF'] < 0.35:
+			sat_scale_HFT = saturation_scale(OmegaR_HFT**2/(2*np.pi)**2, 737)
+			sat_scale_dimer = saturation_scale(OmegaR_dimer**2/(2*np.pi)**2, 3000)
+		else:
+			sat_scale_HFT = saturation_scale(OmegaR_HFT**2/(2*np.pi)**2, HFT_x0)
+			sat_scale_dimer = saturation_scale(OmegaR_dimer**2/(2*np.pi)**2, 3600)
 	else:
 		sat_scale_HFT = 1
 		sat_scale_dimer = 1
@@ -426,10 +497,9 @@ for filename in files:
 		
 		ax.legend()
 		
-		
+	
 	# loop over spins
 	for spin, sty in zip(spins[:-1], styles):
-		
 		# compute averages
 		counts = dimer_df[spin].mean()
 		e_counts = dimer_df[spin].sem()
@@ -475,24 +545,33 @@ for filename in files:
 		ax_fit.errorbar([dimer_freq/results['EF'], dimer_freq/results['EF']], 
 			  [0, scaledtransfer], yerr=e_scaledtransfer*np.array([1,1]), **sty)
 		
+		
 	# compute and plot ratio transfer
 	sty = styles[2]
 	spin = 'ratio95'
-	
 	bg_f9 = bg_df['f9'].mean()
 	e_bg_f9 = bg_df['f9'].sem()
 	bg_f5 = bg_df['f5'].mean()
 	e_bg_f5 = bg_df['f5'].sem()
-	
+	bgRab = bg_df['ratio95'].mean()
+	e_bgRab = bg_df['ratio95'].sem()
+	Rab = dimer_df['ratio95'].mean()
+	e_Rab = dimer_df['ratio95'].sem()
+	fRab = Rab/bgRab
+
 	# compute transfer
-# 	bg_f9 = 0.5
-# 	bg_f5 = 0.5
+	dimer_transfer_func = dimer_transfer
 	dimer_df['transfer'] = dimer_transfer(dimer_df[spin], bg_f9, bg_f5)
+
+	#dimer_df['transfer'] = dimer_transfer_func(fRab, bgRab, bg_f9, bg_f5)
+	
 	# compute bg transfer where the inputed bg ratio is the mean
 	bg_df['transfer'] = dimer_transfer(bg_df[spin], bg_f9, bg_f5)
-	
+	#bg_df['transfer']=dimer_transfer_func(fRab, bgRab, bg_f9, bg_f5)
 	# correct transfer from fit saturation scaling
-	dimer_df['transfer'] = dimer_df['transfer'] * sat_scale_dimer
+	dimer_df['transfer'] = dimer_df['transfer'] * sat_scale_dimer	
+
+	#dimer_df['e_transfer'] = e_dimer_transfer(Rab, e_Rab, bg_f9, e_bg_f9, bg_f5, e_bg_f5)
 	
 	# plot ratio vs time
 	ax = axes[0]
@@ -501,9 +580,12 @@ for filename in files:
 	# signal
 	x = dimer_df.cyc*31/60
 	y = dimer_df[spin]
+	ymean = y.mean()
+	ylist.append(ymean)
 	popt, pcov = curve_fit(linear, x, y)
 	ax.plot(x, y, label='signal', **styles[0])
 	ax.plot(x, linear(x, *popt), '--')
+	
 	# bg
 	x = bg_df.cyc*31/60
 	y = bg_df[spin]
@@ -536,7 +618,10 @@ for filename in files:
 	transfer = dimer_df.transfer.mean()
 	# TODO fix the below to include both spins' bg error
 	e_transfer = transfer*np.sqrt((dimer_df.transfer.sem()/transfer)**2 + \
-					  (e_bg_f5/bg_f5)**2)
+ 					  (e_bg_f5/bg_f5)**2)
+	bg_f5_mean = bg_df['f5'].mean()
+	e_transfer = transfer*np.sqrt((dimer_df.transfer.sem()/transfer)**2 + \
+ 					  (e_bg_f5/bg_f5_mean)**2)
 	
 	# put in results dict
 	results['dimer_transfer'] = transfer
@@ -633,9 +718,9 @@ for filename in files:
 ###### Summary Plotting #######
 ###############################	
 
-
-
 # plotting options
+dimertype2024='dimer'
+dimertype2025 ='dimer'
 plot_options = {"SR Fudge Theory":False,
 				"SR Fudge Exp":False,
 				"Compare SW and FM": False,
@@ -643,6 +728,7 @@ plot_options = {"SR Fudge Theory":False,
 				"Plot Fits":False,
 				"Open Channel Fraction": True,
 				"Sum Rule 0.5": True}
+
 
 true_options = []
 for key, val in plot_options.items():
@@ -654,27 +740,16 @@ if title_end != '':
 	title_end = " with " + title_end
 plot_title = "Four shot analysis" + title_end
 
-# get all keys form recent results dict, make a new summary dict
-#keys = results.keys()	
-keys = results_list[0].keys()
-values = [[result[key] for result in results_list] for key in keys]	
-summary = dict(zip(keys, values))
-
-# filter out indices
-
-spins = [
-# 		'c9', 
-# 		'c5', 
-		'dimer', # this means a/b ratio
-		 ]
+# convert results into dataframe
+df_total = pd.DataFrame(results_list)
 
 # choose contact
 if plot_options['Loss Contact'] == False:
-	summary['C_data'] = summary['C_HFT']
-	summary['C_data_std'] = summary['C_HFT_std']
+	df_total['C_data'] = df_total['C_HFT']
+	df_total['C_data_std'] = df_total['C_HFT_std']
 else:
-	summary['C_data'] = summary['C_loss_HFT']
-	summary['C_data_std'] = summary['C_loss_HFT_std']
+	df_total['C_data'] = df_total['C_loss_HFT']
+	df_total['C_data_std'] = df_total['C_loss_HFT_std']
 	
 # contact fudge due to 0.35 sumrule
 if plot_options['SR Fudge Theory'] or plot_options['SR Fudge Exp']:
@@ -684,8 +759,8 @@ else:
 	SR_fudge = 1
 
 if plot_options['SR Fudge Exp']:
-	summary['C_data'] = np.array(summary['C_data']) * SR_fudge
-	summary['C_data_std'] = np.array(summary['C_data_std']) * SR_fudge 
+	df_total['C_data'] = np.array(df_total['C_data']) * SR_fudge
+	df_total['C_data_std'] = np.array(df_total['C_data_std']) * SR_fudge 
 
 ### THEORY CALCULATIONS ####
 # calculate theoretical sum rule and first moment vs contact
@@ -696,13 +771,14 @@ sum_rule = 0.5 if plot_options['Sum Rule 0.5'] else 1
 open_channel_fraction = 0.93 if plot_options["Open Channel Fraction"] else 1
 
 
-C = np.linspace(0, max(summary['C_data']), 50) 
-kF = np.mean(summary['kF'])
+C = np.linspace(0, max(df_total['C_data']), 50) 
+kF = np.mean(df_total['kF'])
 a13kF = kF * a13(202.14)
 
 ### ZY single-channel square well w/ effective range
 # divide I_d by a13 kF,
-I_d = sum_rule * kF/(pi*kappa) * 1/(1+re/a13(Bfield)) * C / a13kF * open_channel_fraction 
+not_small_kappa_correction = 1.08
+I_d = sum_rule * kF/(pi*kappa) * 1/(1+re/a13(Bfield)) * C / a13kF * open_channel_fraction  * not_small_kappa_correction
 # compute clock shift
 #CS_d = sum_rule*-2*kappa/(pi*kF) * (1/1+re/a13(Bfield)) * C 
 CS_d = -2*I_d *a13kF /kF**2 * kappa**2 # convert I_d to CS_d to avoid rewriting sum_rule and o_c_f
@@ -728,7 +804,23 @@ CS_d_min = -2*I_d_min *a13kF /kF**2 * kappa**2
 FM_d_max = CS_d_max * a13kF # assumes ideal SR=0.5
 FM_d_min = CS_d_min * a13kF # assumes ideal SR=0.5
 # a13 times kF # redefined compared to a few lines earlier?
-a13kF = np.array(summary['kF']) * a13(202.14)
+df_total['a13kF'] = np.array(df_total['kF']) * a13(202.14)
+
+### option to remove cold points from the summary plot
+### (where the ToTF is chosen by the flag in the start) 
+
+# if Cold == True:
+# 	df_total = df_total
+# 	
+# else:
+# 	df_total = df_total.drop(df_total[df_total['ToTF_i'] < cold_totf].index)
+
+# split df
+labels = ['2024, ' + dimertype2024, '2025, ' + dimertype2025]
+dfs = []
+
+for label in labels:
+	dfs.append(df_total.loc[df_total.year==label[0:4]])
 
 ### intitialize plots
 #fig, axs = plt.subplots(2,3, figsize=[14,7])
@@ -755,17 +847,18 @@ if plot_options["SR Fudge Theory"]:
 	ax.plot(C, I_d_CCC_sc * SR_fudge, '--', color=colors[3])
 	ax.fill_between(C, I_d_CCC_sc*SR_fudge, I_d_CCC_sc, color=colors[3], alpha=0.1)
 
-#ax.plot(C, I_d_max, '-', color=colors[4], label=theory_labels[3])
-#ax.plot(C, I_d_min, '-', color=colors[4], alpha=0.1)
-#ax.fill_between(C, I_d_min, I_d_max, color=colors[4], alpha=0.1, label=theory_labels[3])
 # data
-for spin, sty in zip(spins, styles):
-	x = summary['C_data']
-	xerr = summary['C_data_std']
-	y = summary['SW_'+spin] / a13kF
-	yerr = np.abs(summary['e_SW_'+spin]) / a13kF
-	ax.errorbar(x, y, yerr=yerr, xerr=summary['C_data_std'],
-		 label=spin_map(spin), **sty)
+for df, sty, label in zip(dfs, styles, labels):
+	x = df['C_data']
+	xerr = df['C_data_std']
+	if df['year'].values[0] == '2024':
+		dimertype= dimertype2024
+	elif df['year'].values[0] == '2025':
+		dimertype = dimertype2025
+	y = df['SW_' +dimertype] / df['a13kF']
+	yerr = np.abs(df['e_SW_'+dimertype]) / df['a13kF']
+	ax.errorbar(x, y, yerr=yerr, xerr=df['C_data_std'],
+		 label=label, **sty)
 	
 	ax.legend()
 	
@@ -774,7 +867,7 @@ for spin, sty in zip(spins, styles):
 	perr = np.sqrt(np.diag(pcov))
 	xs = np.linspace(0, max(x), 100)
 	if plot_options["Plot Fits"]: ax.plot(xs, linear(xs, *popt), '--', color=colors[i], label='fit') 
-	print(spin+" y-intercept = {:.3f}({:.0f})".format(popt[0], 1e3*perr[0]))
+	print("dimer y-intercept = {:.3f}({:.0f})".format(popt[0], 1e3*perr[0]))
 	 	
 	 	# theory (i.e. 0 intercept)
 	popt, pcov = curve_fit(lambda xx, a: linear(xx, a, 0), x, y, sigma=yerr)
@@ -802,17 +895,19 @@ if plot_options["SR Fudge Theory"]:
 	ax.fill_between(C, FM_d_CCC*SR_fudge, FM_d_CCC, color=colors[3], alpha=0.1)
 	ax.plot(C, FM_d_CCC_sc * SR_fudge, '--', color=colors[3])
 	ax.fill_between(C, FM_d_CCC_sc*SR_fudge, FM_d_CCC_sc, color=colors[3], alpha=0.1)
-#ax.plot(C, FM_d_max, '-', color=colors[4], label=theory_labels[3])
-#ax.plot(C, FM_d_min, '-', color=colors[4], alpha=0.1)
-#ax.fill_between(C, FM_d_min, FM_d_max, color=colors[4], alpha=0.1, label=theory_labels[3])
+
 # data
-for spin, sty in zip(spins, styles):
-	x = np.array(summary['C_data'])
-	xerr = np.array(summary['C_data_std']) 
-	y = np.array(summary['FM_'+spin]) * a13kF
-	yerr = np.array(np.abs(summary['e_FM_'+spin])) * a13kF
+for df, sty, label in zip(dfs, styles, labels):
+	x = np.array(df['C_data'])
+	xerr = np.array(df['C_data_std']) 
+	if df['year'].values[0] == '2024':
+		dimertype=dimertype2024
+	elif df['year'].values[0] == '2025':
+		dimertype = dimertype2025
+	y = np.array(df['FM_' + dimertype]) * df['a13kF']
+	yerr = np.array(np.abs(df['e_FM_' + dimertype])) * df['a13kF']
 	
-	ax.errorbar(x, y, yerr=yerr, xerr=xerr, label=spin_map(spin), **sty)
+	ax.errorbar(x, y, yerr=yerr, xerr=xerr, label=label, **sty)
 	ax.legend()
 	
 	# fit to linear
@@ -833,14 +928,14 @@ if plot_options["Compare SW and FM"]:
 	ax.set(xlabel=r"Contact (kF/N)",
 	 		   ylabel=r"$I_d$ or $\tilde\Omega_d$")
 	i = 0
-	for spin, sty in zip(spins[:-1], styles):
+	for df, sty, label in zip(dfs, styles, labels):
 		# spectra weight
-		x = np.array(summary['C_data'])
-		xerr = np.array(summary['C_data_std'])
-		y_sw = np.array(summary['SW_'+spin])/a13kF
-		yerr_sw = np.array(np.abs(summary['e_SW_'+spin]))/a13kF
-		ax.errorbar(x, y_sw, yerr=yerr_sw, xerr=summary['C_data_std'],
-			 label=spin_map(spin), **sty)
+		x = np.array(df['C_data'])
+		xerr = np.array(df['C_data_std'])
+		y_sw = np.array(df['SW_'+dimertype])/df['a13kF']
+		yerr_sw = np.array(np.abs(df['e_SW_'+dimertype]))/df['a13kF']
+		ax.errorbar(x, y_sw, yerr=yerr_sw, xerr=df['C_data_std'],
+			 label=label, **sty)
 		
 		ax.legend()
 		
@@ -849,7 +944,7 @@ if plot_options["Compare SW and FM"]:
 		perr = np.sqrt(np.diag(pcov))
 		xs = np.linspace(0, max(x), 100)
 		if plot_options["Plot Fits"]: ax.plot(xs, linear(xs, *popt), '--', color=colors[i], label='fit')
-		print(spin+" y-intercept = {:.3f}({:.0f})".format(popt[0], 1e3*perr[0]))
+		print("dimer y-intercept = {:.3f}({:.0f})".format(popt[0], 1e3*perr[0]))
 		
 		# theory (i.e. 0 intercept)
 		popt, pcov = curve_fit(lambda xx, a: linear(xx, a, 0), x, y_sw, sigma=yerr_sw)
@@ -857,8 +952,8 @@ if plot_options["Compare SW and FM"]:
 		A_sw = popt
 		
 		# now rescale first moment and plot
-		y_fm = np.array(summary['FM_'+spin]) * a13kF
-		yerr_fm = np.array(np.abs(summary['e_FM_'+spin])) * a13kF
+		y_fm = np.array(df['FM_' + dimertype]) * df['a13kF']
+		yerr_fm = np.array(np.abs(df['e_FM_' + dimertype])) * df['a13kF']
 		
 		# fit to linear
 		popt, pcov = curve_fit(linear, x, y_fm, sigma=yerr_fm)
@@ -868,43 +963,10 @@ if plot_options["Compare SW and FM"]:
 		# theory (i.e. 0 intercept)
 		popt, pcov = curve_fit(lambda xx, a: linear(xx, a, 0), x, y_fm, sigma=yerr_fm)
 		#ax.plot(xs, linear(xs, popt[0], 0), ':', color=colors[i])
-		st= iter(styles)
-		next(st) # LOL
-		next(st) # LMAO even
-		ax.errorbar(x, A_sw*(y_fm/popt[0]), yerr=np.abs(A_sw*(yerr_fm/popt[0])), xerr=xerr, label=spin_map(spin), **next(st))
+		sty = styles[2]
+		ax.errorbar(x, A_sw*(y_fm/popt[0]), yerr=np.abs(A_sw*(yerr_fm/popt[0])), xerr=xerr, label=label, **sty)
 		ax.legend()
 		i += 1
-		
-
-#-- spectral weight vs. C theory
-#else:
-# 	ax = axes[2]
-# 	ax.set(xlabel=r"Contact Theory (kF/N)",
-# 	 		   ylabel=r"$I_d/k_Fa_{13}$")
-# 	
-# 	ax.plot(C, I_d, '-', color=colors[2], label=r'(Eq. 6)')
-# 	i = 0 
-# 	for spin, sty in zip(spins, styles):
-# 		x = [C_interp(TTF) for TTF in summary['ToTF']]
-# 		y = summary['SW_'+spin]/a13kF
-# 		yerr = np.abs(summary['e_SW_'+spin])/a13kF
-# 		ax.errorbar(x, y, yerr=yerr, xerr=summary['C_data_std'],
-# 			 label=spin_map(spin), **sty)
-# 		
-# 		ax.legend()
-# 		
-# 		# fit to linear
-# 		popt, pcov = curve_fit(linear, x, y, sigma=yerr)
-# 		perr = np.sqrt(np.diag(pcov))
-# 		xs = np.linspace(0, max(x), 100)
-# 		if plot_options["Plot Fits"]: ax.plot(xs, linear(xs, *popt), '--', color=colors[i], label='fit')
-# 		print(spin+" y-intercept = {:.3f}({:.0f})".format(popt[0], 1e3*perr[0]))
-# 		
-# 		# theory (i.e. 0 intercept)
-# 		popt, pcov = curve_fit(lambda xx, a: linear(xx, a, 0), x, y, sigma=yerr)
-# 		if plot_options["Plot Fits"]: ax.plot(xs, linear(xs, popt[0], 0), ':', color=colors[i], label='fix (0,0)')
-# 		
-# 		i += 1
 	
 	
 #-- C vs. ToTF
@@ -914,13 +976,14 @@ ax.set(ylabel=r"Contact ($k_F/N$)",
 
 i = 2
 label = 'C ratio'
+df = df_total
 sty = styles[i]
-x = summary['ToTF']
+x = df['ToTF']
 # this is supposed to be the std dev of a uniform distribution of ToTFs that occur
 # when the ToTF is changing linearly during the data run
-xerr = np.abs(np.array(summary['ToTF_diff'])*0.68) 
-y = summary['C_data']
-yerr = summary['C_data_std']
+xerr = np.abs(np.array(df['ToTF_diff'])*0.68) 
+y = df['C_data']
+yerr = df['C_data_std']
 ax.errorbar(x, y, yerr=yerr, xerr=xerr, **sty)
 
 # plot trap-averaged contact
@@ -929,70 +992,70 @@ ax.plot(xs, C_interp(xs), ':', color=colors[i], label='Tilman Theory')
 ax.legend()
 
 
-# #-- Transfer fraction vs. ToTF
-# ax = axes[4]
-# ax.set(xlabel=r"Temperature,  ($T_F$)",
-#  		   ylabel=r"Transfer fraction,  $2\Gamma_a/(2\Gamma_a+\Gamma_b)$")
-
-# i = 3
-# sty = styles[i]
-# y = np.array(summary['transfer_c5'])/(np.array(summary['transfer_c9'])+np.array(summary['transfer_c5']))
-# yerr = y*np.sqrt((np.array(summary['e_transfer_c5'])/np.array(summary['transfer_c5']))**2 + \
-# 						(np.sqrt(np.array(summary['e_transfer_c9'])**2+np.array(summary['e_transfer_c5'])**2) \
-# 	   /(np.array(summary['transfer_c9'])+np.array(summary['transfer_c5'])))**2)
-
-# ax.errorbar(x, y, yerr=yerr, xerr=xerr, **sty)
-# ax.legend()
-
-
-# #-- Transfer ratio vs. ToTF
-# ax = axes[-1]
-# ax.set(xlabel=r"Temperature,  ($T_F$)",
-#  		   ylabel=r"Transfer ratio,  $\Gamma_b/2\Gamma_a$")
-
-# i = 4
-# sty = styles[i]
-# y = np.array(summary['transfer_c5'])/np.array(summary['transfer_c9'])
-# yerr = y*np.sqrt((np.array(summary['e_transfer_c5'])/np.array(summary['transfer_c5']))**2 + \
-# 						(np.array(summary['e_transfer_c9'])/np.array(summary['transfer_c9']))**2)
-
-# ax.errorbar(x, y, yerr=yerr, xerr=xerr, **sty)
-# ax.legend()
-
 
 # final plot settings
 fig.suptitle(plot_title)
 fig.tight_layout()
-#plt.savefig('clockshift/summary_plots/'+plot_title+'.png', dpi=300)
+#plt.savefig('clockshift/df_plots/'+plot_title+'.png', dpi=300)
 plt.show()	
-### compare some statistics
-# intitialize plots
-# fig, axs = plt.subplots(2, figsize=[14,7])
-# axes = axs.flatten()
 
-# ax=axes[0]
-# ax.set(xlabel=r"Contact (kF/N)",
-#  		   ylabel=r"$I_d/k_Fa_{13}$ uncertainty")
-# for spin, sty in zip(spins, styles):
-# 	x = summary['C_data']
-# 	y = summary['e_SW_'+spin] / a13kF
-# 	ax.plot(x, y,
-# 		 label=spin_map(spin), **sty)
-# 	
-# 	ax.legend()
-# 	
-# ax=axes[1]
-# ax.set(xlabel=r"Contact (kF/N)",
-#  		   ylabel=r"$\tilde\Omega_d k_Fa_{13}/2$ uncertainty")
-# for spin, sty in zip(spins, styles):
-# 	x = summary['C_data']
-# 	y = summary['e_FM_'+spin] * a13kF
-# 	ax.plot(x, y,
-# 		 label=spin_map(spin), **sty)
-# 	
-# 	ax.legend()
-# 	
-# plot_title = 'Uncertainty comparison between analysis methods'
-# fig.suptitle(plot_title)
-# fig.tight_layout()
-# plt.show()
+
+### intitialize plots spectral weight vs. C for various analysis methods
+#fig, axs = plt.subplots(2,3, figsize=[14,7])
+fig, axs=plt.subplots(1,3, figsize=[14, 7])
+axes = axs.flatten()
+
+
+# data
+for df, sty, label in zip(dfs, styles, labels):
+	
+	for i in range(3):
+		#-- spectral weight vs. C
+		if i == 0:
+			dimertype= 'dimer'
+		elif i == 1:
+			dimertype= 'c5'
+		elif i==2:
+			dimertype='c9'
+		ax = axes[i]
+		ax.set(xlabel=r"Contact (kF/N)",
+		 		   ylabel=r"Spectral weight $I_d/k_Fa_{13}$",
+					title = dimertype)
+		
+		
+		# theory curves
+		theory_labels = [r'1ch Sq, re', r'CCC', r'CCC w/ spin corr.', r'shallow dimer']
+		ax.plot(C, I_d, '-', color=colors[2], label=theory_labels[0])
+		ax.plot(C, I_d_CCC, '-', color=colors[3], label=theory_labels[1])
+		ax.plot(C, I_d_CCC_sc, '--', color=colors[3], label=theory_labels[2])
+		if plot_options["SR Fudge Theory"]:
+			ax.plot(C, I_d_CCC * SR_fudge, '-', color=colors[3])
+			ax.fill_between(C, I_d_CCC*SR_fudge, I_d_CCC, color=colors[3], alpha=0.1)
+			ax.plot(C, I_d *SR_fudge, '-', color=colors[2])
+			ax.fill_between(C, I_d*SR_fudge, I_d, color=colors[2], alpha=0.1)
+			ax.plot(C, I_d_CCC_sc * SR_fudge, '--', color=colors[3])
+			ax.fill_between(C, I_d_CCC_sc*SR_fudge, I_d_CCC_sc, color=colors[3], alpha=0.1)
+	
+		x = df['C_data']
+		xerr = df['C_data_std']
+		
+		y = df['SW_' +dimertype] / df['a13kF']
+		yerr = np.abs(df['e_SW_'+dimertype]) / df['a13kF']
+		ax.errorbar(x, y, yerr=yerr, xerr=df['C_data_std'],
+			 label=label, **sty)
+		
+		
+	 	# fit to linear
+		popt, pcov = curve_fit(linear, x, y, sigma=yerr)
+		perr = np.sqrt(np.diag(pcov))
+		xs = np.linspace(0, max(x), 100)
+		if plot_options["Plot Fits"]: ax.plot(xs, linear(xs, *popt), '--', color=colors[i], label='fit') 
+		print("dimer y-intercept = {:.3f}({:.0f})".format(popt[0], 1e3*perr[0]))
+		 	
+		 	# theory (i.e. 0 intercept)
+		popt, pcov = curve_fit(lambda xx, a: linear(xx, a, 0), x, y, sigma=yerr)
+		if plot_options["Plot Fits"]: ax.plot(xs, linear(xs, popt[0], 0), ':', color=colors[i], label='fix (0,0)')
+
+	
+fig.tight_layout()
+

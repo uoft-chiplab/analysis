@@ -27,21 +27,28 @@ def spin_map(spin):
 	else:
 		return 'a'
 
-files = ["2024-11-01_F_e.dat",
-		"2024-10-01_F_e.dat",
-		"2024-10-02_C_e.dat",
-		"2024-10-03_C_e.dat",
-		"2024-10-07_C_e.dat",
-		"2024-06-12_S_e.dat"]
+# files = ["2024-11-01_F_e.dat",
+# 		"2024-10-01_F_e.dat",
+# 		"2024-10-02_C_e.dat",
+# 		"2024-10-03_C_e.dat",
+# 		"2024-10-07_C_e.dat",
+# 		"2024-06-12_S_e.dat"]
+
+Save_df = True
+
+files = ["2024-10-30_D_e.dat",
+		 "2024-10-30_B_e.dat",
+		 "2024-11-01_C_e.dat"]
 
 # files = ["2024-11-01_H_e.dat"]
 
-fields = [204,202.14,202.14,202.14,202.14,202.14]
-
+#fields = [204,202.14,202.14,202.14,202.14,202.14]
+fields = [204,209, 202.14]
 xname = 'freq'
 xlabel = xname
 
 dimer_freqs = [44.6, 43.325, 43.325, 43.225, 43.4, 43.3]
+dimer_freqs = [43.797,45.441, 43.3]
 guess_width = 0.03
 
 spins = ['c5', 'c9']
@@ -179,36 +186,36 @@ ax.errorbar(fields, Ars, yerr=e_Ars)
 
 
 # attempt: iterate on observable and plot results for all analyzed files
-df = pd.concat(dfs)
-for i, ylabel in enumerate(ylabels):
-	fig, axes = plt.subplots(len(files))
-	fig.suptitle(ylabel)
-	for j, file in enumerate(files):
-		data = df[df['filename']==file]
-		axes[j].set(title=file)
-		x=data['freq']
-	
-		# counts
-		if i == 0:
-			for spin, sty in zip(spins, styles):
-				y = data[spin]
-				yerr = data['em_'+spin]
-				axes[j].errorbar(x, y, yerr=yerr, label=spin_map(spin), **sty)
-		elif i == 2:# widths
-			for spin, sty in zip(spins, styles):
-				x = data['freq']
-				y = data[spin+'_s']
-				yerr =data['em_'+spin+'_s']
-				axes[j].errorbar(x, y, yerr=yerr, label='a width', **sty)
-		elif i==3: # total counts
-			axes[j].errorbar(x, data['sum95'], yerr=data['em_sum95'], label='a+b', **sty)
-		elif i==4: # count ratio
-			axes[j].errorbar(x, data['ratio_59'], yerr=data['em_ratio_59'], label='b/a', **sty)
-		elif i==5: # width ratio
-			axes[j].errorbar(x, data['ratio_59_s'], yerr=data['em_ratio_59_s'], label='bw/aw', **sty)
-			
-		elif i==6:
-			yerr = data['em_'+spin]
-			axes[j].plot(x, yerr, label=spin_map(spin), **sty)
+# df = pd.concat(dfs)
+# for i, ylabel in enumerate(ylabels):
+# 	fig, axes = plt.subplots(len(files))
+# 	fig.suptitle(ylabel)
+# 	for j, file in enumerate(files):
+# 		data = df[df['filename']==file]
+# 		axes[j].set(title=file)
+# 		x=data['freq']
+# 	
+# 		# counts
+# 		if i == 0:
+# 			for spin, sty in zip(spins, styles):
+# 				y = data[spin]
+# 				yerr = data['em_'+spin]
+# 				axes[j].errorbar(x, y, yerr=yerr, label=spin_map(spin), **sty)
+# 		elif i == 2:# widths
+# 			for spin, sty in zip(spins, styles):
+# 				x = data['freq']
+# 				y = data[spin+'_s']
+# 				yerr =data['em_'+spin+'_s']
+# 				axes[j].errorbar(x, y, yerr=yerr, label='a width', **sty)
+# 		elif i==3: # total counts
+# 			axes[j].errorbar(x, data['sum95'], yerr=data['em_sum95'], label='a+b', **sty)
+# 		elif i==4: # count ratio
+# 			axes[j].errorbar(x, data['ratio_59'], yerr=data['em_ratio_59'], label='b/a', **sty)
+# 		elif i==5: # width ratio
+# 			axes[j].errorbar(x, data['ratio_59_s'], yerr=data['em_ratio_59_s'], label='bw/aw', **sty)
+# 			
+# 		elif i==6:
+# 			yerr = data['em_'+spin]
+# 			axes[j].plot(x, yerr, label=spin_map(spin), **sty)
 
-	fig.tight_layout()
+# 	fig.tight_layout()

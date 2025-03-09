@@ -22,7 +22,7 @@ root = os.path.dirname(proj_path)
 
 # plot error bands for saturation curves
 fill_between = True
-save = False
+save = True
 
 pkl_file = os.path.join(data_path, "near-res_saturation_curves.pkl")
 
@@ -34,7 +34,7 @@ def Quadratic(x, a, b, c):
 	return a*x**2 + b*x + c
 
 def Saturation(x, A, x0):
-	return A*(1-np.exp(-x/np.abs(x0)))
+	return A*(1-np.exp(-x/x0))
 
 def satratio(x, x0):
 	return x/x0*1/(1-np.exp(-x/x0))
@@ -47,21 +47,27 @@ if __name__ == '__main__':
 	
 	results_list = []
 	
-	detunings = [-20,
+	detunings = [
+				-20,
 				-10,
 				-5,
-				0,
+# 				0,
 				5,
 				10,
-				20
+				20,
+# 				0,
+				0,
 				]
-	files = ["2024-12-05_L_e_detuning=-20.dat",
+	files = [
+		  "2024-12-05_L_e_detuning=-20.dat",
 		  "2024-12-05_L_e_detuning=-10.dat",
 		  "2024-12-05_L_e_detuning=-5.dat",
-		   "2024-12-05_K_e.dat",
+ 		   # "2024-12-05_K_e.dat",
 		  "2024-12-05_L_e_detuning=5.dat",
 		  "2024-12-05_L_e_detuning=10.dat",
-		  "2024-12-05_L_e_detuning=20.dat"
+		  "2024-12-05_L_e_detuning=20.dat",
+# 		  "2025-02-13_K_e.dat",
+		  "2025-02-13_P_e.dat",
 		  ]
 	
 # 	files = [
@@ -76,12 +82,7 @@ if __name__ == '__main__':
 # 			  "2024-11-28_P_e_detuning=-5.dat"
 # 			  ]
 	
-	ToTF = 0.647  # from J_UShots
 	pulse_time = 2  # ms
-	EF = 18.7  # kHz, from J_UShots
-	
-	fudge_factors = np.ones(len(files))*0.98
-	
 	cutoffs = np.ones(len(files)) * 100
 	
 	popts = []
@@ -89,11 +90,6 @@ if __name__ == '__main__':
 	popts_l = []
 	perrs_l = []
 	
-	#### PLOTTING #####
-	# initialize plots
-	fig, axes = plt.subplots(2, 2, figsize=(12,7.5), sharex=True)
-	axs = axes.flatten()
-	# axs[0].set(xscale="log")
 	
 	### plot settings
 	plt.rcParams.update(plt_settings) # from library.py
@@ -101,6 +97,11 @@ if __name__ == '__main__':
 						 "font.size": 14,
 						 "lines.markeredgewidth": 2,
 						 "errorbar.capsize": 0})
+	
+	#### PLOTTING #####
+	# initialize plots
+	fig, axes = plt.subplots(3, 2, figsize=(12,12))
+	axs = axes.flatten()
 	
 	fig.suptitle("2ms Blackman resonant transfer saturation")
 	
@@ -112,23 +113,43 @@ if __name__ == '__main__':
 		results = {}
 		
 		file = files[i]
-		detuning = detunings[i]
-		ff = fudge_factors[i]
 		cutoff = cutoffs[i]
+		detuning = detunings[i]
 		
 		# paths
 		proj_path = os.path.dirname(os.path.realpath(__file__))
 		data_path = os.path.join(proj_path, 'saturation_data')
 		root = os.path.dirname(proj_path)
 		
-		### Omega Rabi calibrations
-		# VpptoOmegaR = 27.5833 # kHz/Vpp, older calibration
-		VpptoOmegaR47 = 17.05/0.703 # kHz/Vpp - 2024-09-16 calibration with 4GS/s scope measure of Vpp
-		VpptoOmegaR43 = 14.44/0.656 # kHz/Vpp - 2024-09-25 calibration 
-		phaseO_OmegaR = lambda VVA, freq: VpptoOmegaR47 * Vpp_from_VVAfreq(VVA, freq)
-		
 		print("Analyzing", file)
 		run = Data(file, path=data_path)
+		
+		if file[:4] == '2024':
+			EF = 18.7  # kHz, from J_UShots
+			ToTF = 0.647  # from J_UShots
+			ff = 0.98
+			VpptoOmegaR47 = 17.05/0.703 # kHz/Vpp - 2024-09-16 calibration with 4GS/s scope measure of Vpp
+			VpptoOmegaR43 = 14.44/0.656 # kHz/Vpp - 2024-09-25 calibration 
+		elif file == "2025-02-13_K_e.dat":
+			EF = 13.9 # H_UShots
+			ToTF = 0.306
+			ff = 0.83
+			VpptoOmegaR47 = 12.01/0.452 # kHz/Vpp - 2025-02-12 calibration 
+			VpptoOmegaR43 = 14.44/0.656 *VpptoOmegaR47/(17.05/0.728) # fudged 43MHz calibration
+		elif file == "2025-02-13_P_e.dat":
+			EF = 18.2 # M_UShots
+			ToTF = 0.595
+			ff = 0.83
+			VpptoOmegaR47 = 12.01/0.452 # kHz/Vpp - 2025-02-12 calibration 
+			VpptoOmegaR43 = 14.44/0.656 *VpptoOmegaR47/(17.05/0.728) # fudged 43MHz calibration
+		
+		# calculate frequency
+		run.data['freq'] = 47.2227 + detuning/1000
+		
+		### Omega Rabi calibrations
+		# VpptoOmegaR = 27.5833 # kHz/Vpp, older calibration
+		phaseO_OmegaR = lambda VVA, freq: VpptoOmegaR47 * Vpp_from_VVAfreq(VVA, freq)	
+	
 		run.data['c9'] = ff * run.data['c9']
 		run.data['ToTF'] = ToTF
 		run.data['EF'] = EF
@@ -138,7 +159,6 @@ if __name__ == '__main__':
 		bg_df = run.data.loc[(run.data.VVA == 0)]
 		run.data = run.data.drop(bg_df.index)
 		
-		
 		bg_c5 = bg_df.c5.mean()
 		e_bg_c5 = bg_df.c5.sem()
 		bg_c9 = bg_df.c9.mean()
@@ -147,11 +167,10 @@ if __name__ == '__main__':
 		run.data['N'] = run.data.c5 - bg_c5 + run.data.c9
 		run.data['transfer'] = (run.data.c5 - bg_c5)/(run.data.N)
 		run.data['loss'] = (bg_c9 - run.data.c9)/bg_c9
+		run.data['anomalous_loss'] = (bg_c9 + bg_c5 - run.data.c9 - run.data.c5)/bg_c9
 		
 		
 		run.data['OmegaR'] = phaseO_OmegaR(run.data.VVA, run.data.freq) * np.sqrt(0.31)
-		# KX just playing around
-		#run.data['OmegaR'] = np.sqrt(phaseO_OmegaR(run.data.VVA, run.data.freq)**2 - detuning**2) * np.sqrt(0.31)
 		run.data['OmegaR2'] = (run.data['OmegaR'])**2
 		xname = 'OmegaR2'
 		
@@ -173,40 +192,28 @@ if __name__ == '__main__':
 		y = run.avg_data['transfer']
 		yerr = run.avg_data['em_transfer']
 		
-# 		if i != 0:
-#  			j = 3
-#  			k = 15
-#  			x = x[j:k]
-#  			y = y[j:k]
-#  			yerr = yerr[j:k]
-		
 		xs = np.linspace(0, max(x), 1000)  # linspace of rf powers
 		
 		ax = axs[0]
 		ax.set(xlabel=r'rf power $\Omega_R^2$ (kHz$^2$)', ylabel='Transfer',
 			   ylim=[-0.05, 0.70],
-			   xlim=[0.005, 0.5])
+			   xlim=[0.005, 5])
 		ax.errorbar(x, y, yerr=yerr, **sty)
 		ax.errorbar(cutoff_df[xname], cutoff_df['transfer'], 
 			  yerr=cutoff_df['em_transfer'], **sty_cutoff)
 		
 		# fit to saturation curve
-		p0 = [0.4, 0.5]
-# 		ax.plot(xs, Saturation(xs,*p0), '--', label=label, color='mediumvioletred')
+		p0 = [np.max(run.data.transfer), cutoff/np.e]
 		popt, pcov = curve_fit(Saturation, x, y, p0=p0, sigma=yerr)
 		perr = np.sqrt(np.diag(pcov))
-# 		label_lin = r'linear term $\Gamma(\Omega_R^2) = \Gamma_{sat} \Omega_R^2/\Omega_e^2$'
 		ax.plot(xs, Saturation(xs, *popt), '-', label=label, color=color)
-		# 		ax.plot(xs, Saturation(xs, *p0), ':', color=color)
 		ax.plot(xs, Linear(xs, popt[0]/popt[1], 0), '--', color=color)
 		
-		# plot residuals 
-		ax = axs[2]
-		ax.set(xlabel=r'rf power $\Omega_R^2$ (kHz$^2$)', ylabel='Transfer residuals', ylim=(-0.03, 0.06))
-		ax.axhline(0, linestyle=":", color="lightgrey")
-		ax.errorbar(x, y - Saturation(x, *popt), yerr=yerr, **sty, label=label)
-		# ax.plot(x, y-Saturation(x, *popt), color=color, linestyle='-')
-		# ax.errorbar(x, y-Linear(x, popt[0]/popt[1],0), color=color)
+# 		# plot residuals 
+# 		ax = axs[2]
+# 		ax.set(xlabel=r'rf power $\Omega_R^2$ (kHz$^2$)', ylabel='Transfer residuals', ylim=(-0.03, 0.06))
+# 		ax.axhline(0, linestyle=":", color="lightgrey")
+# 		ax.errorbar(x, y - Saturation(x, *popt), yerr=yerr, **sty, label=label)
 		
 		print(r"transfer: A = {:.4f} ± {:.4f}, x_0 = {:.4f} ± {:.4f}".format(popt[0], 
 												  perr[0], popt[1], perr[1]))
@@ -217,14 +224,10 @@ if __name__ == '__main__':
 		# loss
 		y = run.avg_data['loss']
 		yerr = run.avg_data['em_loss']
-
-# 		if i != 0:
-# 			y = y[j:k]
-# 			yerr = yerr[j:k]
 			
 		ax = axs[1]
 		ax.set(xlabel=r'rf power $\Omega_R^2$ (kHz$^2$)', ylabel='Loss',
-			   ylim=[-0.05, 0.75])
+			   ylim=[-0.05, 0.75], xlim=[0,5])
 		ax.errorbar(x, y, yerr=yerr, **sty)
 		ax.errorbar(cutoff_df[xname], cutoff_df['loss'], 
 			  yerr=cutoff_df['em_loss'], **sty_cutoff)
@@ -233,9 +236,7 @@ if __name__ == '__main__':
 		p0 = [0.6, 5]
 		popt_l, pcov_l = curve_fit(Saturation, x, y, p0=p0, sigma=yerr)
 		perr_l = np.sqrt(np.diag(pcov))
-# 		label_lin = r'loss linear term $\Gamma(\Omega_R^2) = \Gamma_{sat} \Omega_R^2/\Omega_e^2$'
 		ax.plot(xs, Saturation(xs, *popt_l), '-', label=label, color=color)
-# 		ax.plot(xs, Saturation(xs, *p0), ':', color=color)
 		ax.plot(xs, Linear(xs, popt_l[0]/popt_l[1], 0), '--', color=color)
 		
 		
@@ -245,12 +246,35 @@ if __name__ == '__main__':
 		popts_l.append(popt_l)
 		perrs_l.append(perr_l)
 		
-		# plot residuals 
+# 		# plot residuals 
+# 		ax = axs[3]
+# 		ax.set(xlabel=r'rf power $\Omega_R^2$ (kHz$^2$)', ylabel='Loss residuals')
+# 		ax.axhline(0, linestyle=":", color="lightgrey")
+# 		ax.errorbar(x, y - Saturation(x, *popt_l), yerr=yerr, **sty, label=label)
+
+		# plot atom number vs. transfer
+		ax = axs[2]
+		xlabel = 'transfer'
+		ax.set(xlabel=xlabel, ylabel='N_b + N_c')
+		
+		x = run.avg_data['transfer']
+		y = run.avg_data['N']
+		yerr = run.avg_data['em_N']
+		
+		ax.hlines(bg_c9, min(x), max(x), linestyle='--', color=color)
+		ax.errorbar(x, y, yerr=yerr, label=label, **sty)
+		
+		# plot atom number vs. loss
 		ax = axs[3]
-		ax.set(xlabel=r'rf power $\Omega_R^2$ (kHz$^2$)', ylabel='Loss residuals')
-		ax.axhline(0, linestyle=":", color="lightgrey")
-		ax.errorbar(x, y - Saturation(x, *popt_l), yerr=yerr, **sty, label=label)
-		# ax.errorbar(x, y - Linear(x, popt_l[0]/popt_l[1],0), color=color)
+		xlabel = 'loss'
+		ax.set(xlabel=xlabel, ylabel='Anomalous loss')
+		
+		x = run.avg_data['loss']
+		y = run.avg_data['anomalous_loss']
+		yerr = run.avg_data['em_anomalous_loss']
+		
+# 		ax.hlines(bg_c9, min(x), max(x), linestyle='--', color=color)
+		ax.errorbar(x, y, yerr=yerr, label=label, **sty)
 
 		# append to results
 		

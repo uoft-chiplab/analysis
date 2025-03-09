@@ -41,7 +41,7 @@ fit_options = {'min': '2EF',  # 2EF or 2 Fourier Widths
 	
 ### This turns on (True) and off (False) saving the data/plots 
 Save = False
-Save_run_df = True
+Save_run_df = False
 
 ### script options
 Analysis = True
@@ -71,7 +71,9 @@ if transfer_selection == 'loss':
 files =  metadata.loc[metadata[exclude_name] == 0]['filename'].values
 
 # Manual file select, comment out if exclude column should be used instead
-files = ["2024-09-10_L_e"]
+# files = ["2024-09-10_L_e"]
+# files = ["2024-10-08_F_e"]
+# files=["2024-09-24_C_e"]
 # files = [files[0]]
 
 # save file path
@@ -86,7 +88,7 @@ savefile = os.path.join(proj_path, savefilename)
 
 ### Vpp calibration
 # VpptoOmegaR = 27.5833 # kHz/Vpp, older calibration
-VpptoOmegaR = 17.05/0.703  # kHz/Vpp - 2024-09-16 calibration with 4GS/s scope measure of Vpp
+VpptoOmegaR = 17.05/0.728  # kHz/Vpp - 2024-09-16 calibration with 4GS/s scope measure of Vpp
 OmegaR_from_VVAfreq = lambda Vpp, freq: VpptoOmegaR * Vpp_from_VVAfreq(Vpp, freq)
 	
 ### contants

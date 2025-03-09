@@ -3,6 +3,8 @@
 2024 Nov 12
 @author: Chip Lab
 
+Modified in 2025 to include new lower temperature data.
+
 """
 from data_class import Data
 from scipy.optimize import curve_fit
@@ -37,7 +39,7 @@ def Quadratic(x, a, b, c):
 # 	return A*(1-B*np.exp(-x/np.abs(x0))*np.cos(w*x)**2)
 
 def Saturation(x, A, x0):
-	return A*(1-np.exp(-x/np.abs(x0)))
+	return A*(1-np.exp(-x/x0))
 
 def satratio(x, x0):
 	return x/x0*1/(1-np.exp(-x/x0))
@@ -51,18 +53,23 @@ if __name__ == '__main__':
 	results_list = []
 	
 	files = [
- 			"2024-11-29_G_e.dat",
+ 			# "2024-11-29_G_e.dat",
+			  "2025-02-13_I_e.dat", # 0.3 ToTF
+			  "2025-02-13_O_e.dat", # 0.6 ToTF
+			  "2025-03-06_E_e.dat", # 0.95 ToTF
 			  ]
 	
-	ODT1_to_ToTF_map_dict = {0.1: 0.478,
-				 0.07: 0.384}
+	ODT1_to_ToTF_map_dict = {
+				0.4: 0.95, # this is a lie
+				0.3: 0.595,
+				0.1: 0.478,
+				 0.07: 0.384,
+				 0.06: 0.306}
 	
 	def ODT1_to_ToTF_map(ODT1):
 		for key, val in ODT1_to_ToTF_map_dict.items():
 			if ODT1 == key:
 				return val
-	
-	fudge_factor = 0.98
 	
 	pulse_time = 0.2  # ms
 	
@@ -71,16 +78,17 @@ if __name__ == '__main__':
 	popts_l = []
 	perrs_l = []
 	
-	#### PLOTTING #####
-	# initialize plots
-	fig, axes = plt.subplots(2, 2, figsize=(12,10))
-	axs = axes.flatten()
 	
 	### plot settings
 	plt.rcParams.update(plt_settings) # from library.py
 	plt.rcParams.update({"font.size": 14,
 						 "lines.markeredgewidth": 2,
 						 "errorbar.capsize": 0})
+	
+	#### PLOTTING #####
+	# initialize plots
+	fig, axes = plt.subplots(2, 2, figsize=(12,8))
+	axs = axes.flatten()
 	
 	fig.suptitle("200us Blackman resonant transfer saturation")
 	
@@ -91,10 +99,30 @@ if __name__ == '__main__':
 	i = 0
 	for j in range(len(files)):
 		file = files[j]
-		ff = fudge_factor
 		
 		print("Analyzing", file)
 		run = Data(file, path=data_path)
+		
+		if file[:4] == '2024':
+			fudge_factor = 0.98
+			VpptoOmegaR47 = 17.05/0.728 # kHz/Vpp - 2024-09-16 calibration with 4GS/s scope measure of Vpp
+			VpptoOmegaR43 = 14.44/0.656 # kHz/Vpp - 2024-09-25 calibration 
+		elif file[:4] == "2025":
+			fudge_factor = 0.83
+			VpptoOmegaR47 = 12.01/0.452 # kHz/Vpp - 2025-02-12 calibration 
+			VpptoOmegaR43 = 14.44/0.656 *VpptoOmegaR47/(17.05/0.728) # fudged 43MHz calibration
+			run.data['detuning'] = 100
+			run.data['freq'] = 47.3227
+			if file == '2025-02-13_I_e.dat':
+				run.data['ODT1'] = 0.06
+			elif file == "2025-02-13_O_e.dat":
+				run.data['ODT1'] = 0.3
+			elif file == '2025-03-06_E_e.dat':
+				run.data['ODT1'] = 0.4 # this is a lie, just used to differentiate :P
+		else:
+			raise ValueError("File not in list")
+		
+		ff = fudge_factor
 		
 		# correct c9
 		run.data['c9'] = ff * run.data['c9']
@@ -102,15 +130,7 @@ if __name__ == '__main__':
 		run.data['pulse_time'] = pulse_time
 		
 		# add ToTF to data
-		if file == files[0]:
-			run.data['ToTF'] = run.data.ODT1.apply(ODT1_to_ToTF_map)
-# 		else:  # else it was in a different run and had roughly...
-# 			run.data['ToTF'] = 0.616
-			
-		# add detuning to data
-# 		if file == files[-1]:
-# 			run.data['detuning'] = 100
-# 			run.data['freq'] = 47.3227
+		run.data['ToTF'] = run.data.ODT1.apply(ODT1_to_ToTF_map)
 		
 		for ToTF in run.data.ToTF.unique():
 			
@@ -129,6 +149,10 @@ if __name__ == '__main__':
 			e_bg_c9 = bg_df.c9.sem()
 			
 			for detuning in ToTF_df.detuning.unique():
+				
+				if detuning != 100:
+					continue
+				
 				results = {}
 				
 				print(f"Analyzing for detuning = {detuning} and ToTF = {ToTF}")
@@ -148,14 +172,13 @@ if __name__ == '__main__':
 		
 				### Omega Rabi calibrations
 				# VpptoOmegaR = 27.5833 # kHz/Vpp, older calibration
-				VpptoOmegaR47 = 17.05/0.703 # kHz/Vpp - 2024-09-16 calibration with 4GS/s scope measure of Vpp
-				VpptoOmegaR43 = 14.44/0.656 # kHz/Vpp - 2024-09-25 calibration 
 				phaseO_OmegaR = lambda VVA, freq: VpptoOmegaR47 * Vpp_from_VVAfreq(VVA, freq)
 				
 				# do some calculations
 				df['N'] = df.c5 - bg_c5 + df.c9
 				df['transfer'] = (df.c5 - bg_c5)/(df.N)
 				df['loss'] = (bg_c9 - df.c9)/bg_c9
+				df['anomalous_loss'] = (bg_c9 + bg_c5 - df.c9 - df.c5)/bg_c9
 				
 				df['OmegaR'] = phaseO_OmegaR(df.VVA, df.freq) * np.sqrt(0.31)
 				df['OmegaR2'] = (df['OmegaR'])**2
@@ -170,7 +193,6 @@ if __name__ == '__main__':
 				sem = df.groupby([xname]).sem().reset_index().add_prefix("em_")
 				std = df.groupby([xname]).std().reset_index().add_prefix("e_")
 				avg_df = pd.concat([mean, std, sem], axis=1)
-		
 		
 		
 				### PLOTTING ###
@@ -207,20 +229,6 @@ if __name__ == '__main__':
 				popts.append(popt)
 				perrs.append(perr)
 				
-				# compare measured to linear 
-				ax = axs[2]
-				ax.set(xlabel='Measured transfer', xlim=[-0.02, 0.3], ylim=[-0.025, 0.4],
-				   ylabel='Calibrated linear transfer')
-				
-				xs = np.linspace(0, popt[1], 1000)  # linspace of rf powers
-				Gammas_Sat = Saturation(xs, *popt)
-				Gammas_Lin = xs*popt[0]/popt[1]
-				e_Gammas_Lin = quotient_propagation(xs*popt[0]/popt[1], popt[0], popt[1], perr[0], perr[1], pcov[0,1])
-				
-				if fill_between == True:
-					ax.fill_between(Gammas_Sat, Gammas_Lin-e_Gammas_Lin, 
-						Gammas_Lin+e_Gammas_Lin, alpha=0.5)
-				ax.plot(Gammas_Sat, Gammas_Lin, ls, label=label, color=color)
 				
 				# loss
 				y = avg_df['loss']
@@ -240,7 +248,6 @@ if __name__ == '__main__':
 				perr_l = np.sqrt(np.diag(pcov))
 		# 		label_lin = r'loss linear term $\Gamma(\Omega_R^2) = \Gamma_{sat} \Omega_R^2/\Omega_e^2$'
 				ax.plot(xs, Saturation(xs, *popt_l), '-', label=label, color=color)
-		# 		ax.plot(xs, Saturation(xs, *p0), ':', color=color)
 				ax.plot(xs, Linear(xs, popt_l[0]/popt_l[1], 0), '--', color=color)
 				
 				
@@ -250,15 +257,55 @@ if __name__ == '__main__':
 				popts_l.append(popt_l)
 				perrs_l.append(perr_l)
 				
-				# compare measured to linear 
-				ax = axs[3]
-				ax.set(xlabel='Measured loss', xlim=[-0.02, 0.3], ylim=[-0.025, 0.4],
-				   ylabel='Calibrated linear loss')
 				
-				xs = np.linspace(0, popt_l[1], 1000)  # linspace of rf powers
-				Gammas_Sat = Saturation(xs, *popt_l)
-				Gammas_Lin = xs*popt_l[0]/popt_l[1]
-				ax.plot(Gammas_Sat, Gammas_Lin, ls, label=label)
+				# plot loss vs. anomalous_loss
+				ax = axs[2]
+				xlabel = r'Transfer $\Delta N_b/N_{b, bg}$'
+				ax.set(xlabel=xlabel, ylabel=r'Loss $\Delta N/N_{bg}$')
+				
+				x = avg_df['loss']
+				y = avg_df['anomalous_loss']
+				yerr = avg_df['em_anomalous_loss']
+				
+		# 		ax.hlines(bg_c9, min(x), max(x), linestyle='--', color=color)
+				ax.errorbar(x, y, yerr=yerr, label=label, **sty)
+				
+				# plot anomalous_loss vs. Nb cloud fit amplitude
+				ax = axs[3]
+				xlabel = r'Loss $\Delta N/N_{bg}$'
+				ax.set(xlabel=xlabel, ylabel=r'$N_b$ fit amplitude')
+				
+				x = avg_df['anomalous_loss']
+				y = avg_df['two2D_a2']#/avg_df['c9']
+				yerr = avg_df['em_two2D_a2']#/avg_df['c9']
+				
+				ax.errorbar(x, y, yerr=yerr, label=label, **sty)
+				
+				
+# 				# compare measured to linear 
+# 				ax = axs[4]
+# 				ax.set(xlabel='Measured transfer', xlim=[-0.02, 0.3], ylim=[-0.025, 0.4],
+# 				   ylabel='Calibrated linear transfer')
+# 				
+# 				xs = np.linspace(0, popt[1], 1000)  # linspace of rf powers
+# 				Gammas_Sat = Saturation(xs, *popt)
+# 				Gammas_Lin = xs*popt[0]/popt[1]
+# 				e_Gammas_Lin = quotient_propagation(xs*popt[0]/popt[1], popt[0], popt[1], perr[0], perr[1], pcov[0,1])
+# 				
+# 				if fill_between == True:
+# 					ax.fill_between(Gammas_Sat, Gammas_Lin-e_Gammas_Lin, 
+# 						Gammas_Lin+e_Gammas_Lin, alpha=0.5)
+# 				ax.plot(Gammas_Sat, Gammas_Lin, ls, label=label, color=color)
+# 				
+# 				# compare measured to linear 
+# 				ax = axs[5]
+# 				ax.set(xlabel='Measured loss', xlim=[-0.02, 0.3], ylim=[-0.025, 0.4],
+# 				   ylabel='Calibrated linear loss')
+# 				
+# 				xs = np.linspace(0, popt_l[1], 1000)  # linspace of rf powers
+# 				Gammas_Sat = Saturation(xs, *popt_l)
+# 				Gammas_Lin = xs*popt_l[0]/popt_l[1]
+# 				ax.plot(Gammas_Sat, Gammas_Lin, ls, label=label)
 				
 				# append to results
 				keys = ['file', 'detuning', 'pulse_time', 'ToTF', 'df', 'popt', 'pcov', 'popt_l', 'pcov_l']
@@ -271,8 +318,8 @@ if __name__ == '__main__':
 				
 				i += 1
 				
-	axs[2].plot(Gammas_Sat, Gammas_Sat, '-', color='dimgrey', zorder=1)
-	axs[3].plot(Gammas_Sat, Gammas_Sat, '-', color='dimgrey', zorder=1)
+# 	axs[4].plot(Gammas_Sat, Gammas_Sat, '-', color='dimgrey', zorder=1)
+# 	axs[5].plot(Gammas_Sat, Gammas_Sat, '-', color='dimgrey', zorder=1)
 	
 	for ax in axs:
 		ax.legend()

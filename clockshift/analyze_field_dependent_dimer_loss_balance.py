@@ -11,11 +11,11 @@ from scipy.optimize import curve_fit
 from library import plt_settings, dark_colors, light_colors, markers
 
 files = ["2024-10-24_D_e","2024-10-24_E_e", "2024-10-24_F_e", "2024-10-24_G_e",
-		 "2024-10-24_I_e","2024-10-24_K_e"]
+		 "2024-10-24_I_e","2024-10-24_K_e", "2024-10-30_B_e"]
 spin_names = ['c5', 'c9']
 # spin_names = ['two2D_int1', 'two2D_int2']
-fields = [201,202.5, 201.75, 202.3, 202.14,201.5]
-x0_guesss = [42.95, 43.3, 43.15, 43.3, 43.2, 43.1]
+fields = [201,202.5, 201.75, 202.3, 202.14,201.5, 209]
+x0_guesss = [42.95, 43.3, 43.15, 43.3, 43.2, 43.1, 45]
 
 fig, axs = plt.subplots(2, figsize=(10,6))
 xname = 'field'

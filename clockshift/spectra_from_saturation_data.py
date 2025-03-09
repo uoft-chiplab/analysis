@@ -44,8 +44,11 @@ for i, file in enumerate(files):
 # turn dictionary list into dataframe
 df = pd.DataFrame(loaded_data)
 
+# filter out cold data sets
+df = df.loc[df.ToTF > 0.55]
+
 # arbitrarily set OmegaR2, I don't think this matters because we will use linear transfer
-OmegaR2 = 0.5
+OmegaR2 = 1
 
 df['ScaledDetuning'] = df.detuning/df.EF
 
@@ -67,15 +70,15 @@ for popt, pcov, prefix in zip(popts, pcovs, ['', 'loss_']):
 
 
 # print relevant columns for data selection
-print(df[['file', 'detuning', 'pulse_time', 'ToTF', 'ScaledTransfer', 'loss_ScaledTransfer']])
+print(df[['file', 'detuning', 'pulse_time', 'ToTF', 'ScaledTransfer', 'loss_ScaledTransfer', 'EF']])
 
 
 ### plots
 plt.rcParams.update(plt_settings)
 plt.rcParams.update({
 					"figure.figsize": [15,8],
-					"font.size":14,
-					"lines.linewidth":1.5,
+					"font.size": 14,
+					"lines.linewidth": 1.5,
 					})
 alpha = 0.25
 
@@ -91,6 +94,8 @@ axs[1].set(xlabel="Detuning [EF]", ylabel=r"Transfer/Loss")
 ax = axs[0]
 x_name = 'ScaledDetuning'
 
+df = df.sort_values(x_name)
+
 # transfer
 y_name = 'ScaledTransfer'
 yerr_name = 'e_ScaledTransfer'
@@ -101,6 +106,7 @@ yerr = np.array(df[yerr_name])
 sty = styles[0]
 color = colors[0]
 ax.errorbar(x, y, yerr=yerr, **sty, label='transfer')
+ax.plot(x, np.interp(x, x, y), '-', color=colors[0])
 
 # loss
 y_name = 'loss_ScaledTransfer'
@@ -111,6 +117,7 @@ yerr_loss = np.array(df[yerr_name])
 sty = styles[1]
 color = colors[1]
 ax.errorbar(x, y_loss, yerr=yerr_loss, **sty, label='loss')
+ax.plot(x, np.interp(x, x, y_loss), '-', color=colors[1])
 
 ax.legend()
 
@@ -118,15 +125,18 @@ ax.legend()
 ### integrate data
 ###
 
-SW = integrate.simps(y, x=x)
-SW_loss = integrate.simps(y_loss, x=x)
+SW = integrate.trapz(y, x=x)
+SW_loss = integrate.trapz(y_loss, x=x)
+
+SW = integrate.quad(lambda d: np.interp(d, x, y), min(x), max(x))
+SW_loss = integrate.quad(lambda d: np.interp(d, x, y_loss), min(x), max(x))
 
 # MC error of integral
 num = 1000
 dist = []
 i = 0
 while i < num:
-	dist.append(integrate.simps([np.random.normal(val, err) for val, err \
+	dist.append(integrate.trapz([np.random.normal(val, err) for val, err \
 				 in zip(y, yerr)], x=x))
 	i += 1
 SW_mean = np.array(dist).mean()
@@ -139,7 +149,7 @@ num = 1000
 dist = []
 i = 0
 while i < num:
-	dist.append(integrate.simps([np.random.normal(val, err) for val, err \
+	dist.append(integrate.trapz([np.random.normal(val, err) for val, err \
 				 in zip(y_loss, yerr_loss)], x=x))
 	i += 1
 SW_loss_mean = np.array(dist).mean()

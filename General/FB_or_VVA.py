@@ -22,20 +22,17 @@ import numpy as np
 plt.rcParams.update({"figure.figsize": [5,3.5]})
 
 FB = False
-guesses = [2]
-files = ["2024-11-04_G_e.dat"]
+FB_val = 3.309
+file = "2025-02-25_S_e.dat"
 
 fit_func = Sinc2
 
-
 if FB == True:
 	names = ['FB', 'fraction95']
-	guess = [0.5, guesses, 0.1, 0]
+	guess = [0.5, FB_val, 0.1, 0]
 else:
 	names = ['VVA', 'fraction95']
-# 	guess = [1, 2, 1, 0]
+	guess = [1, 2, 1, 0]
 
-for file, guess in zip(files, guesses):
-	print("--------------------------")
-	guess = [0.5, guess, 0.1, 0]
-	Data(file).fit(fit_func, names, guess=guess)
+print("--------------------------")
+Data(file).fit(fit_func, names, guess=guess)

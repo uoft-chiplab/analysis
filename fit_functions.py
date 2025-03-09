@@ -209,7 +209,7 @@ def Sinc(data, guess=None):
 
 def Sinc2(data, guess=None):
 	"""
-	Returns:   A*np.sinc((x-x0) / sigma) + C
+	Returns:   A*np.sinc((x-x0) / sigma))**2 + C
 	"""
 	if guess is None:
 		x_ofmin = data[np.abs(data[:,1]).argmin(),0]
