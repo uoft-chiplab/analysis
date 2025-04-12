@@ -28,9 +28,12 @@ from library import pi, h, hbar, mK, a0, plt_settings, styles, colors, adjust_li
 from data_class import Data
 from rfcalibrations.Vpp_from_VVAfreq import Vpp_from_VVAfreq
 from scipy.optimize import curve_fit
+from scipy.signal import savgol_filter
+from scipy import interpolate
 from contact_correlations.contact_interpolation import contact_interpolation as C_interp
 import numpy as np
 import pandas as pd
+from numpy.polynomial import polynomial
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import pickle as pkl
@@ -40,7 +43,7 @@ Save = True
 Show = True
 
 # choose plot
-Plot = 2
+Plot =2
 
 #region ######## FIGURE 1: PLOT DIMER AND HFT TOGETHER ON LOG SCALE, NOISE FLOOR, AND 5/2 REGION
 if Plot == 1:
@@ -53,7 +56,7 @@ if Plot == 1:
 			#ax.text(0.5, 0.5, "ax%d" % (i+1), va="center", ha="center")
 			ax.tick_params(labelbottom=False, labelleft=False)
 	
-	fig = plt.figure(layout="constrained", figsize=(12, 6))
+	fig = plt.figure(layout="constrained", figsize=(10, 5))
 	gs = GridSpec(2, 4, figure=fig)
 	#ax1 = fig.add_subplot(gs[0, :])
 	gs0=gs[0, 0:2].subgridspec(1, 2, wspace=0.05, hspace=0)
@@ -83,17 +86,28 @@ if Plot == 1:
 	#fit_e_Eb = fit['e_Eb'][0]/1000
 
 	# HFT spectrum for ax1
-	file = '2024-10-08_F_e.pkl'
-	data = pd.read_pickle(os.path.join(data_path, file))
-	data = data[data['detuning'] > -1]
-	x_all = data['detuning']
-	y_all = data[yparam]
-	yerr_all = data['em_' +yparam]
-	res_bound = 0.030
-	x_res = data[data['detuning'] <= res_bound+0.02]['detuning']
-	y_res = data[data['detuning'] <= res_bound+0.02][yparam]
-	x_HFT = data[data['detuning'] > res_bound]['detuning']
-	y_HFT = data[data['detuning'] > res_bound][yparam]
+	#file = '2024-10-08_F_e.pkl'
+	file = 'HFT_2MHz_spectra.csv'
+	data = pd.read_csv(os.path.join(data_path, file))
+	x_name = 'detuning'
+	y_name = 'loss_ScaledTransfer'
+	yerr_name = 'loss_e_ScaledTransfer'
+	# y_name='ScaledTransfer'
+	# yerr_name='e_ScaledTransfer'
+	#data = data[data[x_name] > -1]
+	data[x_name] = data[x_name]/1000 # MHz
+	cutoff =2 # cutoff because really high frequencies have bad signal and don't filter well
+	data = data[data[x_name] < cutoff]
+	x_all = data[x_name]
+	y_all = data[y_name]
+	yerr_all = data[yerr_name]
+	res_bound = 0.05
+
+	x_res = data[data[x_name] <= res_bound][x_name]
+	y_res = data[data[x_name] <= res_bound][y_name]
+	res_bound_adjust = 0.01
+	x_HFT = data[data[x_name] > res_bound-res_bound_adjust][x_name]
+	y_HFT = data[data[x_name] > res_bound-res_bound_adjust][y_name]
 
 
 	# dimer plot (left)
@@ -114,15 +128,30 @@ if Plot == 1:
 	)
 
 	# HFT plot (right)
-	x_ress = np.linspace(min(x_res), max(x_res), 500)
+	def transfer_function(f, a):
+		# note the EFs are so similar in the datasets I've baked in the average
+		# EF here to make this analysis a little easier.
+		EF_avg = 19.2
+		Eb=3980
+		return a*f**(-3/2)/(1+f*EF_avg/Eb)  # binding energy in kHz
+
+	x_ress = np.linspace(min(x_res), max(x_res), 30)
 	y_ress = np.interp(x_ress, x_res, y_res)
-	x_HFTs = np.linspace(min(x_HFT), max(x_HFT),500)
+	y_ress_smooth = savgol_filter(y_ress, 5, 4)
+	popt, pcov = curve_fit(transfer_function, x_HFT, y_HFT)
+
+	x_HFTs = np.linspace(min(x_HFT), max(x_HFT),30)
 	y_HFTs = np.interp(x_HFTs, x_HFT, y_HFT)
-	ax1_2.plot(x_HFTs, y_HFTs, ls='-', marker='', color=colors[2])
-	ax1_2.fill_between(x_HFTs, y_HFTs, 0, color=adjust_lightness(colors[2],2))
-	ax1_2.plot(x_ress, y_ress, ls='-', marker='', color=colors[3])
-	ax1_2.fill_between(x_ress, 0, y_ress, color=adjust_lightness(colors[3],1.5))
-	ax1_2.set(xlim=[-0.1, 1], ylim=[10e-6, 10e-1])
+
+	ax1_2.plot(x_HFTs, transfer_function(x_HFTs, *popt), ls='-', marker='', color=colors[2])
+	ax1_2.fill_between(x_HFTs, transfer_function(x_HFTs, *popt), 0, color=adjust_lightness(colors[2],2))
+	ax1_2.plot(x_ress, y_ress_smooth, ls='-', marker='', color=colors[3])
+	ax1_2.fill_between(x_ress, 0, y_ress_smooth, color=adjust_lightness(colors[3],1.5))
+
+	# ax1_2.plot(x_alls, y_alls, ls='--', marker='o', color=colors[4])
+	# ax1_2.plot(x_alls, y_alls_smooth, ls='-', marker='', color=colors[5])
+
+	ax1_2.set(xlim=[-0.1, cutoff], ylim=[1e-5, 10e-1])
 	ax1_2.set_yscale('log')
 	
 
@@ -188,101 +217,188 @@ if Plot == 1:
 	ax_bl.legend()
 	ax_bl.set(xlim=[-4.15, -3.8],
 		xlabel=r'$\omega$ [MHz]',
-		ylabel=r'$\alpha/\Omega_R^2/t_\mathrm{rf}$')
+		ylabel=r'$\alpha_d/\Omega_R^2/t_\mathrm{rf}$')
 
 	#### ZOOM-IN HFT SPECTRUM IN BOTTOM RIGHT
 	filter_by_Ut = True
-	Ut = 0.180 # just an estimate
-	file = '2024-09-10_L_e.pkl'
-	yparam='ScaledTransfer'
-	data = pd.read_pickle(os.path.join(data_path, file))
-	if filter_by_Ut:
-		data = data[data['detuning'] < Ut]
-	x_HFT = data['detuning']
-	y_HFT = data[yparam]
-	yerr_HFT = data['em_' +yparam]
+	trap_depth = 200.0 # estimate
+	EF_avg=19.2
+	#file = '2024-09-10_L_e.pkl'
+	file = 'HFT_2MHz_spectra.csv'
 
-	file = '2024-09-10_L_e_loss.pkl'
-	yparam='ScaledTransfer'
-	data = pd.read_pickle(os.path.join(data_path, file))
+	data = pd.read_csv(os.path.join(data_path, file))
+	x_name = 'ScaledDetuning'
 	if filter_by_Ut:
-		data = data[data['detuning'] >= Ut]
-	x_loss = data['detuning']
-	y_loss = data[yparam]
-	yerr_loss = data['em_' +yparam]
-	
-		#we do some fitting
-	def powerlawtail(x, A):
-		xstar = 2
-		return A*x**(-3/2) / (1+x/xstar)
-	def tail32(x, A):
-		return A*x**(-3/2)
-	def tail52(x, A):
-		return A*x**(-5/2)
-	
-	def generate_fit_func(fit_func, x, y, yerr):
-		print(fit_func.__name__)
-		if fit_func.__name__ == 'powerlawtail':	
-			fit_range = x.between(0.040, 4)
-			guess = [0.1]
-		elif fit_func.__name__ == 'tail32':
-			fit_range = x.between(0.040, 0.125)
-			guess = [0.1]
-		elif fit_func.__name__ == 'tail52':
-			fit_range = x.between(0.5, 2)
-			guess = [0.1]
+		data_below = data[(data[x_name] < trap_depth/EF_avg) & (data[x_name] > 0)]
+		data_above = data[data[x_name] > trap_depth/EF_avg]
+		
+	y_name='ScaledTransfer'
+	yerr_name = 'e_ScaledTransfer'
+	x = np.array(data_below[x_name])
+	y = np.array(data_below[y_name])
+	yerr = np.array(data_below[yerr_name])
 
-		x_fit = x[fit_range]
-		y_fit = y[fit_range]
-		yerr_fit = yerr[fit_range]
-		#print(x_fit)
-		popt, pcov = curve_fit(fit_func, x_fit, y_fit, sigma=yerr_fit, p0=guess)
-		xfit = np.linspace(x_fit.min(), x_fit.max(), 1000)
-		xall = np.linspace(x.min(), x.max()+10, 1000)
-		yfit = fit_func(xfit, *popt)
-		yall = fit_func(xall, *popt)
-		return xfit, xall, yfit, yall
+	sty = styles[0]
+	ax_br.errorbar(x, y, yerr=yerr, **sty, label=r'$\alpha_3 = N_3/N_\mathrm{tot}$')
+
+	# fit to both forms of the transfer rate equation, w/wout Final State Effect
+	def transfer_function(f, a):
+		# note the EFs are so similar in the datasets I've baked in the average
+		# EF here to make this analysis a little easier.
+		EF_avg = 19.2
+		Eb=3980
+		return a*f**(-3/2)/(1+f*EF_avg/Eb)  # binding energy in kHz
+
+	def transfer_function_no_FSE(f, a):
+		return a*f**(-3/2)
 	
-	#noisefloor = 1e-6 # CHECK THIS (for transfer)
-	noisefloor=1e-5 # for loss
-	ax_br.errorbar(x_HFT, y_HFT, yerr_HFT, **styles[0], label='Transfer')
-	ax_br.errorbar(x_loss, y_loss, yerr_loss, **styles[1], label='Loss')
-	# fit lines
-	xx, xxall, yy, yyall = generate_fit_func(tail32, x_HFT, y_HFT, yerr_HFT)
-	ax_br.plot(xxall, yyall, color=colors[2], ls='-', marker='')
-	xx, xxall, yy, yyall = generate_fit_func(powerlawtail, x_loss, y_loss, yerr_loss)
-	ax_br.plot(xxall, yyall, color=colors[2], ls= 'dotted', marker='')
-	# noise floor
+
+	popt, pcov = curve_fit(transfer_function_no_FSE, x, y, sigma=yerr, p0=[0.05])
+	perr = np.sqrt(np.diag(pcov))
+	popt_2, pcov_2 = curve_fit(transfer_function, x, y, sigma=yerr, p0=[0.05])
+	perr_2 = np.sqrt(np.diag(pcov_2))
+
+	xs = np.linspace(0.5, max(x), 100)
+
+	ax_br.plot(xs, transfer_function_no_FSE(xs, *popt), '-', color=colors[0])
+	ax_br.plot(xs, transfer_function(xs, *popt_2), '--', color=colors[0])
+
+	C_FSE = popt[0] * 2*np.sqrt(2)*np.pi**2
+	e_C_FSE = perr[0] * 2*np.sqrt(2)*np.pi**2
+
+	C = popt_2[0] * 2*np.sqrt(2)*np.pi**2
+	e_C = perr_2[0] * 2*np.sqrt(2)*np.pi**2
+
+	print("Contact from tranfser with FSE is {:.2f}({:.0f})".format(C_FSE, e_C_FSE*1e2))
+	print("Contact from transfer w/out FSE is {:.2f}({:.0f})".format(C, e_C*1e2))
+
+	# transfer above trap depth
+	x = np.array(data_above[x_name])
+	y = np.array(data_above[y_name])
+	yerr = np.array(data_above[yerr_name])
+
+	sty = styles[0].copy()
+	sty['mfc'] = 'w'
+	ax_br.errorbar(x, y, yerr=yerr, **sty)
+
+	# loss
+	y_name = 'loss_ScaledTransfer'
+	yerr_name = 'loss_e_ScaledTransfer'
+	x = np.array(data[x_name])
+	y_loss = np.array(data[y_name])
+	yerr_loss = np.array(data[yerr_name])
+
+	sty = styles[1]
+	ax_br.errorbar(x, y_loss, yerr=yerr_loss, **sty, label=r'$\alpha_2=(N_2^{\mathrm{bg}}-N_2)/N_\mathrm{tot}$')
+
+	df_fit = data.loc[data[x_name] > 0]
+	x = df_fit[x_name]
+	y = df_fit[y_name]
+	yerr = df_fit[yerr_name]
+
+	# fit to both forms of the transfer rate equation, w/wout Final State Effect
+	popt, pcov = curve_fit(transfer_function_no_FSE, x, y, sigma=yerr, p0=[0.05])
+	perr = np.sqrt(np.diag(pcov))
+	popt_2, pcov_2 = curve_fit(transfer_function, x, y, sigma=yerr, p0=[0.05])
+	perr_2 = np.sqrt(np.diag(pcov_2))
+
+	xs = np.linspace(0.5, max(x)+500, 500)
+
+	ax_br.plot(xs, transfer_function_no_FSE(xs, *popt), '-', color=colors[1])
+	ax_br.plot(xs, transfer_function(xs, *popt_2), '--', color=colors[1])
+
+	C_loss_FSE = popt[0] * 2*np.sqrt(2)*np.pi**2
+	e_C_loss_FSE = perr[0] * 2*np.sqrt(2)*np.pi**2
+
+	C_loss = popt_2[0] * 2*np.sqrt(2)*np.pi**2
+	e_C_loss = perr_2[0] * 2*np.sqrt(2)*np.pi**2
+
+	print("Contact from loss with FSE is {:.2f}({:.0f})".format(C_loss_FSE, e_C_loss_FSE*1e2))
+	print("Contact from loss w/out FSE is {:.2f}({:.0f})".format(C_loss, e_C_loss*1e2))
+
+	ax_br.vlines(trap_depth/EF_avg, 0, 1.0, color='k', linestyle='--') 
+	ax_br.legend()
+
+	# file = '2024-09-10_L_e_loss.pkl'
+	# yparam='ScaledTransfer'
+	# data = pd.read_pickle(os.path.join(data_path, file))
+	# if filter_by_Ut:
+	# 	data = data[data['detuning'] >= Ut]
+	# x_loss = data['detuning']
+	# y_loss = data[yparam]
+	# yerr_loss = data['em_' +yparam]
+	
+	# 	#we do some fitting
+	# def powerlawtail(x, A):
+	# 	xstar = 2
+	# 	return A*x**(-3/2) / (1+x/xstar)
+	# def tail32(x, A):
+	# 	return A*x**(-3/2)
+	# def tail52(x, A):
+	# 	return A*x**(-5/2)
+	
+	# def generate_fit_func(fit_func, x, y, yerr):
+	# 	print(fit_func.__name__)
+	# 	if fit_func.__name__ == 'powerlawtail':	
+	# 		fit_range = x.between(0.040, 4)
+	# 		guess = [0.1]
+	# 	elif fit_func.__name__ == 'tail32':
+	# 		fit_range = x.between(0.040, 0.125)
+	# 		guess = [0.1]
+	# 	elif fit_func.__name__ == 'tail52':
+	# 		fit_range = x.between(0.5, 2)
+	# 		guess = [0.1]
+
+	# 	x_fit = x[fit_range]
+	# 	y_fit = y[fit_range]
+	# 	yerr_fit = yerr[fit_range]
+	# 	#print(x_fit)
+	# 	popt, pcov = curve_fit(fit_func, x_fit, y_fit, sigma=yerr_fit, p0=guess)
+	# 	xfit = np.linspace(x_fit.min(), x_fit.max(), 1000)
+	# 	xall = np.linspace(x.min(), x.max()+10, 1000)
+	# 	yfit = fit_func(xfit, *popt)
+	# 	yall = fit_func(xall, *popt)
+	# 	return xfit, xall, yfit, yall
+	
+	# #noisefloor = 1e-6 # CHECK THIS (for transfer)
+	# noisefloor=1e-5 # for loss
+	# ax_br.errorbar(x_HFT, y_HFT, yerr_HFT, **styles[0], label='Transfer')
+	# ax_br.errorbar(x_loss, y_loss, yerr_loss, **styles[1], label='Loss')
+	# # fit lines
+	# xx, xxall, yy, yyall = generate_fit_func(tail32, x_HFT, y_HFT, yerr_HFT)
+	# ax_br.plot(xxall, yyall, color=colors[2], ls='-', marker='')
+	# xx, xxall, yy, yyall = generate_fit_func(powerlawtail, x_loss, y_loss, yerr_loss)
+	# ax_br.plot(xxall, yyall, color=colors[2], ls= 'dotted', marker='')
+	# # noise floor
 	# Create a Rectangle patch
-	rect = patches.Rectangle((0,0), 10, noisefloor, linewidth=2, facecolor='red', fill=True, alpha = 0.1)
+	noisefloor=1e-5
+	rect = patches.Rectangle((0,0), 150, noisefloor, linewidth=3, facecolor='red', fill=True, alpha = 0.1)
 	# Add the patch to the Axes
 	ax_br.add_patch(rect)
 	# horizontal line for noise floor?
-	ax_br.plot([0, 10], [noisefloor, noisefloor], color='red', marker='', ls = '--')
+	ax_br.plot([0, 150], [noisefloor, noisefloor], color='red', marker='', ls = '--')
 	# vertical line for trap dept
-	ax_br.vlines(Ut, ymin=0, ymax=1,ls='dashed', color='black')
-	ax_br.set_yscale('log')
-	ax_br.set_xscale('log')
-	ax_br.set_xlim([0.02, 10])
-	ax_br.set_ylim([1e-7, 0.1])
+	ax_br.vlines(trap_depth/EF_avg, ymin=0, ymax=1.5,ls='dashed', color='black')
 
-	ax_br.yaxis.set_visible(True)
-	ax_br.set(xlabel=r'$\omega$ [MHz]',
-		 ylabel = r'$\Gamma$')
+	ax_br.set(xlabel=r'Detuning $\tilde{\omega}\,[E_F]$',
+		 ylabel = r'$\widetilde{\Gamma}$',
+		 yscale='log', 
+		 xscale='log',
+		 xlim=[x.min()-0.5, x.max()+50])
 
 	# add text
 
-	ax_br.text(0.06, 1e-2, r'$\omega^{-3/2}$')
-	ax_br.text(2, 1e-6, r'$\frac{\omega^{-3/2}}  {\frac{1}{1+\omega/\omega^*}}$')
-	ax_br.text(0.23, 0.007, r'$U_t$')
+	#ax_br.text(1.5, 1e-1, r'$\omega^{-3/2}$')
+	#ax_br.text(80, 1e-2, r'$\frac{\omega^{-3/2}}  {\frac{1}{1+\omega/\omega^*}}$')
+	ax_br.text(7, 5e-5, r'$U_t$')
 
 	ax_br.legend()
 	
 	fig.tight_layout()
 	if Save: 
-		save_path = os.path.join(proj_path, 'manuscript_figures/log_linear_spectra_v5.pdf')
+		save_path = os.path.join(proj_path, 'manuscript_figures/log_linear_spectra_v6.pdf')
 		print(f'saving to {save_path}')
-		plt.savefig(save_path, dpi=300)
+		plt.savefig(save_path, dpi=1200)
 	if Show: plt.show()
 
 #endregion
@@ -320,8 +436,8 @@ if Plot == 2:
 	kF = 1.1e7
 	kappa = np.sqrt((Eb*h*10**6) *mK/hbar**2) # convert Eb back to kappa
 	Bfield = 202.14
-	spin = 'ratio95' # this means ratio analysis
-
+	#spin = 'ratio95' # this means ratio analysis
+	spin='c5'
 	#file = 'spectral_weight_summary.pkl'
 	file = '4shot_results_testing.pkl'
 	with open(os.path.join(data_path, file),'rb') as handle:
@@ -331,7 +447,7 @@ if Plot == 2:
 	### apply various options
 	# choose contact
 	if plot_options['Loss Contact'] == False:
-		summary['C_data'] = summary['C_HFT']
+		summary['C_data'] = summary['C_HFT']*1.29
 		summary['C_data_std'] = summary['C_HFT_std']
 	else:
 		summary['C_data'] = summary['C_loss_HFT']
@@ -392,20 +508,7 @@ if Plot == 2:
 	CS_d_max = -2*I_d_max *a13kF /kF**2 * kappa**2
 	FM_d_max = CS_d_max * a13kF # assumes ideal SR=0.5
 
-	from matplotlib.gridspec import GridSpec
-
-	def format_axes(fig):
-		for i, ax in enumerate(fig.axes):
-			#ax.text(0.5, 0.5, "ax%d" % (i+1), va="center", ha="center")
-			ax.tick_params(labelbottom=False, labelleft=False)
-	
-	fig = plt.figure(layout="constrained", figsize=(12, 6))
-	gs = GridSpec(3, 3, figure=fig)
-	ax1 = fig.add_subplot(gs[:, 1:3])
-	ax2 = fig.add_subplot(gs[0, 0])
-	ax3 = fig.add_subplot(gs[1, 0])
-	ax4 = fig.add_subplot(gs[2, 0])
-	format_axes(fig)
+	fig, (ax0, ax1) = plt.subplots(2, 1, height_ratios=[1,3])
 
 	### MAIN AREA: THEORY CURVES
 	theory_labels = [r'1ch square well', r'CCC', r'CCC w/ spin corr.', r'zero range']
@@ -420,94 +523,26 @@ if Plot == 2:
 	ax1.errorbar(x, y, yerr=yerr, xerr=summary['C_data_std'], **styles[0])
 	
 	ax1.legend(loc='upper left')
-	ax1.set(xlabel=r"Contact [$k_F/N$]",
+	ax1.set(xlabel=r"Contact/N [$k_F$]",
  		   ylabel=r"$I_d/k_Fa_{13}$",
 		   ylim = [0,y.max()+0.02])
 	
-	# INSET: CLOCK SHIFT THEORY
-	#left, bottom, width, height = [0.45, 0.65, 0.18, 0.3]
-	left, bottom, width, height = [0.8, 0.15, 0.18, 0.3]
-	ax_in = fig.add_axes([left, bottom, width, height])
-	# Clock shift theory
-	ax_in.plot(C, FM_d, '-', color=colors[0], label=theory_labels[0])
-	ax_in.plot(C, FM_d_CCC_sc, '-', color=colors[3], label=theory_labels[2])
-	ax_in.plot(C, FM_d_max, '-', color='black', label=theory_labels[3])
-
-	# INSET: CLOCK SHIFT DATA
-	x = summary['C_data']
-	xerr = summary['C_data_std']
-	y = summary['FM_'+spin] * summary['a13kF']
-	yerr = np.abs(summary['e_FM_'+spin]) * summary['a13kF']
-	ax_in.errorbar(x, y, yerr=yerr, xerr=summary['C_data_std'],
-		 label=spin_map(spin), **styles[0])
-	ax_in.set(ylabel=r"$\hbar\Omega_d  k_Fa_{13} /E_F $ ",
-	ylim=[y.min()-0.1, 0.1])
-
-
-	#### TOP LEFT PLOT: EXAMPLE DIMER 2SHOT
-	file = '2024-11-04_M_e_2shotanalysis.pkl'
-	data = pd.read_pickle(os.path.join(data_path, file))
-	x_dimer = data['freq'][0]/data['EF'][0]
-	yparam='ScaledTransfer'
-	y_dimer = data[yparam][0]
-	yerr_dimer = data['e_' + yparam][0]
-
-	xx = data['xx']
-	yy= data['yy']
-
-	ax2.errorbar([x_dimer, x_dimer], [0,y_dimer], yerr= yerr_dimer*np.array([1,1]), **styles[1])
-	ax2.plot(xx, yy, ls='--', marker='', color=colors[1])
-	d = np.zeros(len(yy))
-	ax2.fill_between(xx, yy, where=yy>=d, color=colors[1], alpha=0.1)
-	ax2.text(x_dimer.mean()-1, y_dimer.mean()-0.0009, r'$I_d$')
-	xlims = [-255, -220]
-	ax2.set(xlim=xlims,
-		 ylabel=r'$\Gamma_d$',
-		 xlabel=r'$\omega [E_F]$')
-
-	#### MIDDLE LEFT: EXAMPLE HFT 2SHOTdata
-	HFT_df = summary.loc[summary['Run']=='2024-11-04_M_e.dat']
-	EF = HFT_df['EF'].values[0]
-	HFT_detuning = 0.1/EF
-	print(HFT_df['C_data_std'].values)
-	ax3.errorbar(np.array([HFT_detuning, HFT_detuning]), [0, HFT_df['C_data']], yerr = HFT_df['C_data_std'].values*np.array([1,1]), **styles[2])
-	ax3.set(ylabel=r'$\Gamma_{\mathrm{HFT}}$',
-		 xlabel=r'$\omega [E_F]$',
-		 ylim=[-0.1, HFT_df['C_data'].max()+0.5],
-		 xlim=[1, 10])
-
-	#file = "2024-09-24_C_e.pkl"
-	file= '2024-10-08_F_e.pkl'
-	data = pd.read_pickle(os.path.join(data_path, file))
-	data=data[data['detuning_EF']>=-0.1]
-	x = data['detuning_EF']
-	y = data['ScaledTransfer']
-	xs = np.linspace(min(x), max(x),200)
-	interp = np.interp(xs, x, y)
-	arb_scale=200
-	ys = arb_scale*interp
-	d = np.zeros(len(ys))
-	ax3.plot(xs, ys, '--', marker='', color=colors[2])
-	ax3.fill_between(xs, ys, where=ys>=d, color=colors[2], alpha=0.1)
-	ax3.vlines(0.200/EF, ymin=0, ymax=5,ls='dashed', color='black')
-	ax3.text(6, HFT_df['C_data'].max()+0.2, r'$C \sim \Gamma_{\mathrm{HFT}} \omega^{3/2}$')
-
-	#### BOTTOM LEFT: CONTACT VS TOTF
+	#### UPPER: CONTACT VS TOTF
 	x = summary['ToTF']
 	# this is supposed to be the std dev of a uniform distribution of ToTFs that occur
 	# when the ToTF is changing linearly during the data run
 	xerr = np.abs(np.array(summary['ToTF_diff'])*0.68) 
 	y = summary['C_data']
 	yerr = summary['C_data_std']
-	ax4.errorbar(x, y, yerr=yerr, xerr=xerr, **styles[4])
+	ax0.errorbar(x, y, yerr=yerr, xerr=xerr, **styles[4])
 	xs = np.linspace(min(x), max(x))
-	ax4.plot(xs, C_interp(xs), '--', color=colors[4])
-	ax4.set(ylabel=r"Contact [$k_F/N$]",
+	ax0.plot(xs, C_interp(xs), '--', color=colors[4])
+	ax0.set(ylabel=r"Contact [$k_F/N$]",
  		   xlabel=r"Temperature [$T_F$]")
 
 	fig.tight_layout()
 	if Save: 
-		save_path = os.path.join(proj_path, 'manuscript_figures/spectral_weight_v2.pdf')
+		save_path = os.path.join(proj_path, 'manuscript_figures/spectral_weight_v3.pdf')
 		print(f'saving to {save_path}')
 		plt.savefig(save_path, dpi=300)
 	if Show: plt.show()
@@ -569,6 +604,20 @@ if Plot == 3:
 		plt.savefig(save_path, dpi=300)
 	if Show: plt.show() 
 #endregion
+
+# #region some other stuff
+# if Plot == 5:
+	
+#     def expdecay(t, A, tau, C)
+
+# 	file = 'dimer_loss_timeconstant.pkl'
+# 	data = pd.read_pickle(os.path.join(data_path, file))
+# 	fig, ax = plt.subplots()
+	
+# #endregion
+
+
+
 
 #region ##### TESTING PLOTTING TRICKS
 if Plot == 5:
