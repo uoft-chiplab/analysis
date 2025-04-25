@@ -37,13 +37,35 @@ from numpy.polynomial import polynomial
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import pickle as pkl
+#plt.rcdefaults()
+plt.rcParams.update({
+    'font.size': 8,                   # Base font size
+    'axes.labelsize': 8,             # Axis label font size
+    'axes.titlesize': 8,             # Title font size (if used)
+    'xtick.labelsize': 7,            # Tick label font size (x-axis)
+    'ytick.labelsize': 7,            # Tick label font size (y-axis)
+    'legend.fontsize': 7,            # Legend font size
+    'figure.figsize': (3.4, 2.4),    # One-column PRL figure size in inches
+    'figure.dpi': 300,               # Publication-ready resolution
+    'lines.linewidth': 1,            # Thinner lines for compactness
+    'axes.linewidth': 0.5,           # Thin axis spines
+    'xtick.major.width': 0.5,        # Tick mark width
+    'ytick.major.width': 0.5,
+    'xtick.direction': 'in',         # Ticks pointing inward
+    'ytick.direction': 'in',
+    'xtick.major.size': 3,           # Shorter tick marks
+    'ytick.major.size': 3,
+    'font.family': 'sans-serif',         
+  #  'text.usetex': True,             # Use LaTeX for typesetting
+    'axes.grid': False,              # No grid for PRL figures
+})
 
 # options
 Save = True
 Show = True
 
 # choose plot
-Plot =2
+Plot =1
 
 #region ######## FIGURE 1: PLOT DIMER AND HFT TOGETHER ON LOG SCALE, NOISE FLOOR, AND 5/2 REGION
 if Plot == 1:
@@ -56,18 +78,28 @@ if Plot == 1:
 			#ax.text(0.5, 0.5, "ax%d" % (i+1), va="center", ha="center")
 			ax.tick_params(labelbottom=False, labelleft=False)
 	
-	fig = plt.figure(layout="constrained", figsize=(10, 5))
+	# fig = plt.figure(layout="constrained", figsize=(8,2))
+	# gs = GridSpec(1, 5, figure=fig)
+	# #ax1 = fig.add_subplot(gs[0, :])
+	# #gs0=gs[0, :].subgridspec(1, 2, wspace=0.03, hspace=0)
+	# ax1 = fig.add_subplot(gs[0:2])
+	# ax1_2 = fig.add_subplot(gs[2:4], sharey=ax1) # see: https://stackoverflow.com/questions/32185411/break-in-x-axis-of-matplotlib for broken x-axis plotting
+	# plt.setp(ax1_2.get_yticklabels(), visible=False)
+
+	#ax_bl = fig.add_subplot(gs[1, 0])
+	
+	#ax_br = fig.add_subplot(gs[1, 1])
+
+	fig = plt.figure(layout="constrained", figsize=(4, 3))
 	gs = GridSpec(2, 4, figure=fig)
 	#ax1 = fig.add_subplot(gs[0, :])
-	gs0=gs[0, 0:2].subgridspec(1, 2, wspace=0.05, hspace=0)
+	gs0=gs[0, :].subgridspec(1, 2, wspace=0.05, hspace=0)
 	ax1 = fig.add_subplot(gs0[0])
 	ax1_2 = fig.add_subplot(gs0[1], sharey=ax1) # see: https://stackoverflow.com/questions/32185411/break-in-x-axis-of-matplotlib for broken x-axis plotting
 	plt.setp(ax1_2.get_yticklabels(), visible=False)
-	ax_tr = fig.add_subplot(gs[0,2:])
-	ax_bl = fig.add_subplot(gs[1, 0:2])
+	#ax_bl = fig.add_subplot(gs[1, 0:2])
 	#ax4 = fig.add_subplot(gs[1, 1]) # this plot used to contain a histogram of errorbar sizes
-	ax_br = fig.add_subplot(gs[1, 2:])
-
+	ax_br = fig.add_subplot(gs[1, :])
 
 	yparam = 'ScaledTransfer' #'ScaledTransfer' or 'transfer'
 	# dimer spectrum, long pulse
@@ -96,7 +128,7 @@ if Plot == 1:
 	# yerr_name='e_ScaledTransfer'
 	#data = data[data[x_name] > -1]
 	data[x_name] = data[x_name]/1000 # MHz
-	cutoff =2 # cutoff because really high frequencies have bad signal and don't filter well
+	cutoff =2.1 # cutoff because really high frequencies have bad signal and don't filter well
 	data = data[data[x_name] < cutoff]
 	x_all = data[x_name]
 	y_all = data[y_name]
@@ -109,23 +141,41 @@ if Plot == 1:
 	x_HFT = data[data[x_name] > res_bound-res_bound_adjust][x_name]
 	y_HFT = data[data[x_name] > res_bound-res_bound_adjust][y_name]
 
+	#colors
+	transfer_color = '#26D980'
+	transfer_style = {'color':transfer_color,
+				   'mec':adjust_lightness(transfer_color, 0.3),
+				   'mfc':transfer_color,
+				   'mew':1,
+				   'marker':'^',}
+	res_color = '#D9267F'
+	res_style = {'color':res_color,
+				   'mec':adjust_lightness(res_color, 0.3),
+				   'mfc':res_color,
+				   'mew':1,
+				   'marker':'D',}
 
 	# dimer plot (left)
 	peakindex = np.where(ys==ys.max())
 	xpeak = xs[peakindex]
 	filt = 0.028 # arbitrarily chosen so that the plotted lineshape doesn't have sinc^2 sidebands
+	#filt=1
 	xs_filt = xs[(xs > (xpeak-filt)) & (xs < (xpeak+filt))]
 	ys_filt = ys[(xs > (xpeak-filt)) & (xs < (xpeak+filt))]
 
-	ax1.plot(xs_filt, ys_filt, ls='-',  marker='', color=colors[2])
-	ax1.fill_between(xs_filt, ys_filt,0, color=adjust_lightness(colors[2],2))
-	#ax1.errorbar(x_dimer, y_dimer, yerr_dimer)
-	ax1.set(xlim=[-4.2, -3.8])
+	ax1.plot(xs_filt, ys_filt, ls='--',  lw= 1, marker='', color=transfer_color)
+	ax1.fill_between(xs_filt, ys_filt,0, color=adjust_lightness(transfer_color,1.8))
+	ax1.plot(x_dimer, y_dimer, linestyle='', **transfer_style)
+	ax1.set(xlim=[-6.2, -3.8])
 	ax1.set_yscale('log')
 	ax1.set(
-		xlabel=r'$\omega$ [MHz]',
+		#xlabel=r'$\omega$ [MHz]',
 		ylabel=r'$\widetilde{\Gamma}$'
 	)
+	ax1.xaxis.set_label_coords(0.7, -0.2)
+	xticks = [-6, -5, -4]
+	ax1.set_xticks(xticks)
+	
 
 	# HFT plot (right)
 	def transfer_function(f, a):
@@ -142,43 +192,44 @@ if Plot == 1:
 
 	x_HFTs = np.linspace(min(x_HFT), max(x_HFT),30)
 	y_HFTs = np.interp(x_HFTs, x_HFT, y_HFT)
-
-	ax1_2.plot(x_HFTs, transfer_function(x_HFTs, *popt), ls='-', marker='', color=colors[2])
-	ax1_2.fill_between(x_HFTs, transfer_function(x_HFTs, *popt), 0, color=adjust_lightness(colors[2],2))
-	ax1_2.plot(x_ress, y_ress_smooth, ls='-', marker='', color=colors[3])
-	ax1_2.fill_between(x_ress, 0, y_ress_smooth, color=adjust_lightness(colors[3],1.5))
-
-	# ax1_2.plot(x_alls, y_alls, ls='--', marker='o', color=colors[4])
-	# ax1_2.plot(x_alls, y_alls_smooth, ls='-', marker='', color=colors[5])
-
-	ax1_2.set(xlim=[-0.1, cutoff], ylim=[1e-5, 10e-1])
+	ax1_2.plot(x_HFTs, transfer_function(x_HFTs, *popt), ls='--', lw= 1, marker='', color=transfer_color)
+	ax1_2.fill_between(x_HFTs, transfer_function(x_HFTs, *popt), 0, color=adjust_lightness(transfer_color,1.8))
+	ax1_2.plot(x_ress, y_ress_smooth, ls='-',  lw= 1,marker='', color=res_color)
+	ax1_2.fill_between(x_ress, 0, y_ress_smooth, color=adjust_lightness(res_color,1.7))
+	ax1_2.plot(x_res, y_res, linestyle='', **res_style)
+	ax1_2.plot(x_HFT, y_HFT, linestyle='', **transfer_style)
+	ax1_2.set(xlim=[-0.2, cutoff+0.1], ylim=[0.5e-5, 7e-1])
+	xticks = [0, 1, 2]
+	ax1_2.set_xticks(xticks)
+	#ax1_2.set(xlim=[-0.1, cutoff], ylim=[0, 0.01])
 	ax1_2.set_yscale('log')
-	
+
 
 	ax1.spines['right'].set_visible(False)
 	ax1_2.spines['left'].set_visible(False)
 	ax1.yaxis.tick_left()
-	#ax1.tick_params(labelright='off')
 	ax1_2.yaxis.tick_right()
 	plt.setp(ax1_2.get_yticklabels(), visible=False)
+	ax1.minorticks_off()
+	yticks=[1e-5,  1e-3, 1e-1]
+	ax1.set_yticks(yticks)
 
-	d = .015  # how big to make the diagonal lines in axes coordinates
-	# arguments to pass plot, just so we don't keep repeating them
-	kwargs = dict(transform=ax1.transAxes, color='k', clip_on=False, linestyle='-', marker='')
-	ax1.plot((1-d, 1+d), (-d, +d), **kwargs)
-	ax1.plot((1-d, 1+d), (1-d, 1+d), **kwargs)
 
-	kwargs.update(transform=ax1_2.transAxes)  # switch to the bottom axes
-	ax1_2.plot((-d, +d), (1-d, 1+d), **kwargs)
-	ax1_2.plot((-d, +d), (-d, +d), **kwargs)
+	# d = .015  # how big to make the diagonal lines in axes coordinates
+	# # arguments to pass plot, just so we don't keep repeating them
+	# kwargs = dict(transform=ax1.transAxes, color='k', clip_on=False, linestyle='-', marker='')
+	# ax1.plot((1-d, 1+d), (-d, +d), **kwargs)
+	# ax1.plot((1-d, 1+d), (1-d, 1+d), **kwargs)
+
+	# kwargs.update(transform=ax1_2.transAxes)  # switch to the bottom axes
+	# ax1_2.plot((-d, +d), (1-d, 1+d), **kwargs)
+	# ax1_2.plot((-d, +d), (-d, +d), **kwargs)
 
 	# add text
-	ax1.text(-4.05, 0.1e-1, 'Dimer')
-	ax1_2.text(0.05, 1e-1, 'Res.')
-	ax1_2.text(0.3, 10e-4, 'HFT')
+	# ax1.text(-4.05, 0.2e-1, 'Dimer')
+	# ax1_2.text(0.07, 1e-1, 'Res.')
+	# ax1_2.text(0.3, 10e-4, 'HFT')
 
-	### PLOT SPACE FOR DIAGRAMS IN TOP RIGHT
-	ax_tr.text(0.1, 0.5, 'SPACE FOR ENERGY DIAGRAMS')
 
 	### DIMER ZOOM-IN BOTTOM LEFT
 	# run = '2024-10-04'
@@ -190,34 +241,41 @@ if Plot == 1:
 	# yerr_dimer = data['em_' + yparam]
 	file = '2025-03-19_G_e_pulsetime=0.64.dat.pkl'
 	data = pd.read_pickle(os.path.join(data_path, file))
+	scaling = 1000
 	x_dimer = data['detuning']
-	y_dimer = data['c5_scaledtransfer']
-	yerr_dimer = data['em_c5_scaledtransfer']
+	y_dimer = data['c5_scaledtransfer'] * scaling
+	yerr_dimer = data['em_c5_scaledtransfer'] *scaling
 	#fit = pd.read_pickle(os.path.join(data_path, run+'_fit_ratio95.pkl'))
 	fit = pd.read_pickle(os.path.join(data_path, 'fit_'+file))
 	xs = fit['xs']/1e6
-	ys = fit['ys']
+	ys = fit['ys'] *scaling
 
 	file2 = '2025-03-19_G_e_pulsetime=0.01.dat.pkl'
 	data = pd.read_pickle(os.path.join(data_path, file2))
 	x_dimer2 = data['detuning']
-	y_dimer2 = data['c5_scaledtransfer']
-	yerr_dimer2 = data['em_c5_scaledtransfer']
+	y_dimer2 = data['c5_scaledtransfer'] * scaling
+	yerr_dimer2 = data['em_c5_scaledtransfer'] * scaling
 	#fit = pd.read_pickle(os.path.join(data_path, run+'_fit_ratio95.pkl'))
 	fit2 = pd.read_pickle(os.path.join(data_path, 'fit_'+file2))
 	xs2 = fit2['xs']/1e6
-	ys2 = fit2['ys']
+	ys2 = fit2['ys'] *scaling
 
 	#left, bottom, width, height = [0.3, 0.3, 0.2, 0.3]
 	#ax_inset = fig.add_axes([left, bottom, width, height])
-	ax_bl.errorbar(x_dimer, y_dimer, yerr=yerr_dimer, **styles[0], ls='', zorder=1, label=r'$t_\mathrm{rf}=640\,\mu$s') 
-	ax_bl.plot(xs, ys, ls='-', marker='', color=colors[0], zorder=2) 
-	ax_bl.errorbar(x_dimer2, y_dimer2, yerr=yerr_dimer2, **styles[1], ls='', zorder=1, label=r'$t_\mathrm{rf}=10\,\mu$s')
-	ax_bl.plot(xs2, ys2, ls='-', marker='', color=colors[1], zorder=2) 
-	ax_bl.legend()
-	ax_bl.set(xlim=[-4.15, -3.8],
-		xlabel=r'$\omega$ [MHz]',
-		ylabel=r'$\alpha_d/\Omega_R^2/t_\mathrm{rf}$')
+	# ax_bl.errorbar(x_dimer, y_dimer, yerr=yerr_dimer, **styles[0], ls='', zorder=1, label=r'$t_\mathrm{rf}=640\,\mu$s') 
+	# ax_bl.plot(xs, ys, ls='-', marker='', color=colors[0], zorder=2) 
+	# ax_bl.errorbar(x_dimer2, y_dimer2, yerr=yerr_dimer2, **styles[1], ls='', zorder=1, label=r'$t_\mathrm{rf}=10\,\mu$s')
+	# ax_bl.plot(xs2, ys2, ls='-', marker='', color=colors[1], zorder=2) 
+	# ax_bl.legend()
+	# ax_bl.set(xlim=[-4.15, -3.89],
+	# 	xlabel=r'$\omega$ [MHz]',
+	# 	ylabel=r'$\alpha_d/\Omega_R^2/t_\mathrm{rf} \times 10^{-3}$',
+	# 	ylim=[-2.5, 8.5]
+	# )
+	# xticks = [-4.1, -4, -3.9]
+	# ax_bl.set_xticks(xticks)
+	# yticks = [0, 3, 6]
+	# ax_bl.set_yticks(yticks)
 
 	#### ZOOM-IN HFT SPECTRUM IN BOTTOM RIGHT
 	filter_by_Ut = True
@@ -239,7 +297,7 @@ if Plot == 1:
 	yerr = np.array(data_below[yerr_name])
 
 	sty = styles[0]
-	ax_br.errorbar(x, y, yerr=yerr, **sty, label=r'$\alpha_3 = N_3/N_\mathrm{tot}$')
+	ax_br.errorbar(x, y, yerr=yerr, linestyle='', **sty, label=r'$\alpha_3 = N_3/N_\mathrm{tot}$')
 
 	# fit to both forms of the transfer rate equation, w/wout Final State Effect
 	def transfer_function(f, a):
@@ -279,7 +337,7 @@ if Plot == 1:
 
 	sty = styles[0].copy()
 	sty['mfc'] = 'w'
-	ax_br.errorbar(x, y, yerr=yerr, **sty)
+	ax_br.errorbar(x, y, yerr=yerr, linestyle='', **sty)
 
 	# loss
 	y_name = 'loss_ScaledTransfer'
@@ -289,7 +347,7 @@ if Plot == 1:
 	yerr_loss = np.array(data[yerr_name])
 
 	sty = styles[1]
-	ax_br.errorbar(x, y_loss, yerr=yerr_loss, **sty, label=r'$\alpha_2=(N_2^{\mathrm{bg}}-N_2)/N_\mathrm{tot}$')
+	ax_br.errorbar(x, y_loss, yerr=yerr_loss, linestyle= '', **sty, label=r'$\alpha_2=(N_2^{\mathrm{bg}}-N_2)/N_\mathrm{tot}$')
 
 	df_fit = data.loc[data[x_name] > 0]
 	x = df_fit[x_name]
@@ -317,59 +375,7 @@ if Plot == 1:
 	print("Contact from loss w/out FSE is {:.2f}({:.0f})".format(C_loss, e_C_loss*1e2))
 
 	ax_br.vlines(trap_depth/EF_avg, 0, 1.0, color='k', linestyle='--') 
-	ax_br.legend()
 
-	# file = '2024-09-10_L_e_loss.pkl'
-	# yparam='ScaledTransfer'
-	# data = pd.read_pickle(os.path.join(data_path, file))
-	# if filter_by_Ut:
-	# 	data = data[data['detuning'] >= Ut]
-	# x_loss = data['detuning']
-	# y_loss = data[yparam]
-	# yerr_loss = data['em_' +yparam]
-	
-	# 	#we do some fitting
-	# def powerlawtail(x, A):
-	# 	xstar = 2
-	# 	return A*x**(-3/2) / (1+x/xstar)
-	# def tail32(x, A):
-	# 	return A*x**(-3/2)
-	# def tail52(x, A):
-	# 	return A*x**(-5/2)
-	
-	# def generate_fit_func(fit_func, x, y, yerr):
-	# 	print(fit_func.__name__)
-	# 	if fit_func.__name__ == 'powerlawtail':	
-	# 		fit_range = x.between(0.040, 4)
-	# 		guess = [0.1]
-	# 	elif fit_func.__name__ == 'tail32':
-	# 		fit_range = x.between(0.040, 0.125)
-	# 		guess = [0.1]
-	# 	elif fit_func.__name__ == 'tail52':
-	# 		fit_range = x.between(0.5, 2)
-	# 		guess = [0.1]
-
-	# 	x_fit = x[fit_range]
-	# 	y_fit = y[fit_range]
-	# 	yerr_fit = yerr[fit_range]
-	# 	#print(x_fit)
-	# 	popt, pcov = curve_fit(fit_func, x_fit, y_fit, sigma=yerr_fit, p0=guess)
-	# 	xfit = np.linspace(x_fit.min(), x_fit.max(), 1000)
-	# 	xall = np.linspace(x.min(), x.max()+10, 1000)
-	# 	yfit = fit_func(xfit, *popt)
-	# 	yall = fit_func(xall, *popt)
-	# 	return xfit, xall, yfit, yall
-	
-	# #noisefloor = 1e-6 # CHECK THIS (for transfer)
-	# noisefloor=1e-5 # for loss
-	# ax_br.errorbar(x_HFT, y_HFT, yerr_HFT, **styles[0], label='Transfer')
-	# ax_br.errorbar(x_loss, y_loss, yerr_loss, **styles[1], label='Loss')
-	# # fit lines
-	# xx, xxall, yy, yyall = generate_fit_func(tail32, x_HFT, y_HFT, yerr_HFT)
-	# ax_br.plot(xxall, yyall, color=colors[2], ls='-', marker='')
-	# xx, xxall, yy, yyall = generate_fit_func(powerlawtail, x_loss, y_loss, yerr_loss)
-	# ax_br.plot(xxall, yyall, color=colors[2], ls= 'dotted', marker='')
-	# # noise floor
 	# Create a Rectangle patch
 	noisefloor=1e-5
 	rect = patches.Rectangle((0,0), 150, noisefloor, linewidth=3, facecolor='red', fill=True, alpha = 0.1)
@@ -381,22 +387,63 @@ if Plot == 1:
 	ax_br.vlines(trap_depth/EF_avg, ymin=0, ymax=1.5,ls='dashed', color='black')
 
 	ax_br.set(xlabel=r'Detuning $\tilde{\omega}\,[E_F]$',
-		 ylabel = r'$\widetilde{\Gamma}$',
+		 ylabel = r'$\widetilde{\Gamma}_\mathrm{HFT}$',
 		 yscale='log', 
 		 xscale='log',
-		 xlim=[x.min()-0.5, x.max()+50])
-
+		 xlim=[x.min()-0.5, x.max()+50],
+		 ylim=[10e-8, 20e-1])
+	ax_br.minorticks_off()
 	# add text
 
 	#ax_br.text(1.5, 1e-1, r'$\omega^{-3/2}$')
 	#ax_br.text(80, 1e-2, r'$\frac{\omega^{-3/2}}  {\frac{1}{1+\omega/\omega^*}}$')
-	ax_br.text(7, 5e-5, r'$U_t$')
+	ax_br.text(7, 5e-2, r'$U_t$')
+	#ax_br.legend(fontsize=8, loc='lower left')
 
-	ax_br.legend()
+	ax_br2 = ax_br.twiny()
+	x_trans = x * EF_avg / 1000
+	ax_br2.plot(x_trans, y, alpha=0)
+
+	# sync axis limits
+	ax_br2.set_xlim(ax_br.get_xlim()[0] * EF_avg/1000, ax_br.get_xlim()[1]*EF_avg/1000)
+	ax_br2.set_xscale('log')
+	
+	# Set only top axis visible
+	ax_br2.tick_params(
+		axis='x',
+		which='both',
+		bottom=False,
+		top=True,
+		labelbottom=False,
+		labeltop=True
+	)
+	#ax_br2.minorticks_off()
+	ax_br2.set_xticklabels(['-','-','0.01','0.1','1'])
+	# Hide all axis elements except top x-axis
+	ax_br2.spines['bottom'].set_visible(False)
+	ax_br2.spines['left'].set_visible(False)
+	ax_br2.spines['right'].set_visible(False)
+	ax_br2.yaxis.set_visible(False)
+	ax_br2.set_xlabel(r'Detuning $\omega$ [MHz]')
+
+	# #second axis
+	# ax_br2 = ax_br.twiny()
+	# ax_br2.set_xlim(ax_br.get_xlim())
+	# bottom_ticks = ax_br.get_xticks()
+	# #new_tick_locations = (bottom_ticks * EF_avg)/1e3
+	# new_tick_locations = np.array([1, 10, 100, 1000, 10000]) 
+	# #new_tick_labels = [f'{tick * EF_avg }'for tick in new_tick_locations]
+	# ax_br2.set_xticks(new_tick_locations)
+	# #ax_br2.set_xticklabels(new_tick_labels)
+	# ax_br2.set_xscale('log')
+	# ax_br2.set(
+	# 	xlabel = r'Detuning $\omega $ [kHz]'
+	# )
+	
 	
 	fig.tight_layout()
 	if Save: 
-		save_path = os.path.join(proj_path, 'manuscript_figures/log_linear_spectra_v6.pdf')
+		save_path = os.path.join(proj_path, 'manuscript_figures/log_linear_spectra_v10.pdf')
 		print(f'saving to {save_path}')
 		plt.savefig(save_path, dpi=1200)
 	if Show: plt.show()
@@ -583,7 +630,7 @@ if Plot == 3:
 	omegads = [43.24, 43.797, 45.441]
 
 	for i, df in enumerate(dfs):
-		ax2.errorbar(df[xparam]/omegads[i], df[yparam], df['em_'+yparam], **styles[i], label=fields[i])
+		ax2.plot(df[xparam]/omegads[i], df[yparam], **styles[i], label=fields[i])
 
 
 	xlabel=r'$\omega/\omega_d$'

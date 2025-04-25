@@ -36,11 +36,11 @@ import matplotlib.patches as patches
 import pickle as pkl
 
 # options
-Save = True
+Save = False
 Show = True
 
 # choose plot
-Plot = 2
+Plot = 1
 
 #region ######## FIGURE 1: PLOT DIMER AND HFT TOGETHER ON LOG SCALE, NOISE FLOOR, AND 5/2 REGION
 if Plot == 1:
@@ -99,14 +99,15 @@ if Plot == 1:
 	# dimer plot (left)
 	peakindex = np.where(ys==ys.max())
 	xpeak = xs[peakindex]
-	filt = 0.028 # arbitrarily chosen so that the plotted lineshape doesn't have sinc^2 sidebands
+	#filt = 0.028 # arbitrarily chosen so that the plotted lineshape doesn't have sinc^2 sidebands
+	filt = 1
 	xs_filt = xs[(xs > (xpeak-filt)) & (xs < (xpeak+filt))]
 	ys_filt = ys[(xs > (xpeak-filt)) & (xs < (xpeak+filt))]
 
 	ax1.plot(xs_filt, ys_filt, ls='-',  marker='', color=colors[2])
 	ax1.fill_between(xs_filt, ys_filt,0, color=adjust_lightness(colors[2],2))
-	#ax1.errorbar(x_dimer, y_dimer, yerr_dimer)
-	ax1.set(xlim=[-4.2, -3.8])
+	ax1.plot(x_dimer, y_dimer, **styles[2])
+	ax1.set(xlim=[-4.1, -3.9])
 	ax1.set_yscale('log')
 	ax1.set(
 		xlabel=r'$\omega$ [MHz]',
@@ -118,10 +119,13 @@ if Plot == 1:
 	y_ress = np.interp(x_ress, x_res, y_res)
 	x_HFTs = np.linspace(min(x_HFT), max(x_HFT),500)
 	y_HFTs = np.interp(x_HFTs, x_HFT, y_HFT)
+	ax1_2.plot(x_res, y_res, **styles[3])
+	ax1_2.plot(x_HFT, y_HFT, **styles[2])
 	ax1_2.plot(x_HFTs, y_HFTs, ls='-', marker='', color=colors[2])
 	ax1_2.fill_between(x_HFTs, y_HFTs, 0, color=adjust_lightness(colors[2],2))
 	ax1_2.plot(x_ress, y_ress, ls='-', marker='', color=colors[3])
 	ax1_2.fill_between(x_ress, 0, y_ress, color=adjust_lightness(colors[3],1.5))
+
 	ax1_2.set(xlim=[-0.1, 1], ylim=[10e-6, 10e-1])
 	ax1_2.set_yscale('log')
 	
