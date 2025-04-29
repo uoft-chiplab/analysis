@@ -65,7 +65,7 @@ Save = True
 Show = True
 
 # choose plot
-Plot =1
+Plot =3
 
 #region ######## FIGURE 1: PLOT DIMER AND HFT TOGETHER ON LOG SCALE, NOISE FLOOR, AND 5/2 REGION
 if Plot == 1:
@@ -231,51 +231,6 @@ if Plot == 1:
 	# ax1_2.text(0.3, 10e-4, 'HFT')
 
 
-	### DIMER ZOOM-IN BOTTOM LEFT
-	# run = '2024-10-04'
-	# runletter = 'H'
-	# file = run+'_' + runletter+'_e_ratio95.pkl'
-	# data = pd.read_pickle(os.path.join(data_path, file))
-	# x_dimer = data['detuning']
-	# y_dimer = data[yparam]
-	# yerr_dimer = data['em_' + yparam]
-	file = '2025-03-19_G_e_pulsetime=0.64.dat.pkl'
-	data = pd.read_pickle(os.path.join(data_path, file))
-	scaling = 1000
-	x_dimer = data['detuning']
-	y_dimer = data['c5_scaledtransfer'] * scaling
-	yerr_dimer = data['em_c5_scaledtransfer'] *scaling
-	#fit = pd.read_pickle(os.path.join(data_path, run+'_fit_ratio95.pkl'))
-	fit = pd.read_pickle(os.path.join(data_path, 'fit_'+file))
-	xs = fit['xs']/1e6
-	ys = fit['ys'] *scaling
-
-	file2 = '2025-03-19_G_e_pulsetime=0.01.dat.pkl'
-	data = pd.read_pickle(os.path.join(data_path, file2))
-	x_dimer2 = data['detuning']
-	y_dimer2 = data['c5_scaledtransfer'] * scaling
-	yerr_dimer2 = data['em_c5_scaledtransfer'] * scaling
-	#fit = pd.read_pickle(os.path.join(data_path, run+'_fit_ratio95.pkl'))
-	fit2 = pd.read_pickle(os.path.join(data_path, 'fit_'+file2))
-	xs2 = fit2['xs']/1e6
-	ys2 = fit2['ys'] *scaling
-
-	#left, bottom, width, height = [0.3, 0.3, 0.2, 0.3]
-	#ax_inset = fig.add_axes([left, bottom, width, height])
-	# ax_bl.errorbar(x_dimer, y_dimer, yerr=yerr_dimer, **styles[0], ls='', zorder=1, label=r'$t_\mathrm{rf}=640\,\mu$s') 
-	# ax_bl.plot(xs, ys, ls='-', marker='', color=colors[0], zorder=2) 
-	# ax_bl.errorbar(x_dimer2, y_dimer2, yerr=yerr_dimer2, **styles[1], ls='', zorder=1, label=r'$t_\mathrm{rf}=10\,\mu$s')
-	# ax_bl.plot(xs2, ys2, ls='-', marker='', color=colors[1], zorder=2) 
-	# ax_bl.legend()
-	# ax_bl.set(xlim=[-4.15, -3.89],
-	# 	xlabel=r'$\omega$ [MHz]',
-	# 	ylabel=r'$\alpha_d/\Omega_R^2/t_\mathrm{rf} \times 10^{-3}$',
-	# 	ylim=[-2.5, 8.5]
-	# )
-	# xticks = [-4.1, -4, -3.9]
-	# ax_bl.set_xticks(xticks)
-	# yticks = [0, 3, 6]
-	# ax_bl.set_yticks(yticks)
 
 	#### ZOOM-IN HFT SPECTRUM IN BOTTOM RIGHT
 	filter_by_Ut = True
@@ -612,43 +567,207 @@ if Plot == 3:
 
 	# Eb vs field
 	Ebs = pd.read_pickle(os.path.join(data_path, 'Ebs.pkl'))
-	ExpEbs = pd.read_pickle(os.path.join(data_path, 'ExpEbs.pkl'))
+	ExpEbs = pd.read_excel(os.path.join(data_path, 'Eb_results.xlsx'))
+	ExpEbs = ExpEbs.sort_values(by='B')
+	point_color = '#62de93'
+	Eb_style = {'color':point_color,
+				   'mec':adjust_lightness(point_color, 0.5),
+				   'mfc':point_color,
+				   'mew':1,
+				   'marker':'.',}
 
-	fig, ax = plt.subplots(figsize=(9,9))
-	
-	ax.plot(Ebs['B'], Ebs['Ebs_full'], ls='-', color='blue', marker='', label='T-matrix')
-	ax.plot(Ebs['B'], Ebs['Ebs_naive'], ls='--', color='red', marker='',  label=r'$1/a^2$')
-	ax.errorbar(ExpEbs['B'], ExpEbs['Eb'], yerr=ExpEbs['e_Eb'], **styles[7]) # TO DO: find multiple measurements for Eb at 202.14 G and get a more accurate one for the figure. Also, consider width of fit as uncertainty
-	#ax2.plot([199, 225], [x_dimer, x_dimer], color=colors[1], marker='', ls = '--')
+	fig, axs= plt.subplots(3,1, figsize=(3.4,3.6))
+	ax=axs[0]
+	colornaive = '#000000'
+	colorT = '#de6f62'
+	ax.plot(Ebs['B'], Ebs['Ebs_naive'], ls='--', color=colornaive, marker='',  label=r'$1/a_{13}^2$')
+	ax.plot(Ebs['B'], Ebs['Ebs_full'], ls='-', color=colorT, marker='', label=r'$T^{-1}=0$')
+	ax.errorbar(ExpEbs['B'], ExpEbs['Eb'], yerr=ExpEbs['sigma'], linestyle='', **Eb_style) # TO DO: find multiple measurements for Eb at 202.14 G and get a more accurate one for the figure. Also, consider width of fit as uncertainty
+	#2ebdff
 	xlabel=r'$B$ [G]'
 	ylabel = r'$\omega_d$ [MHz]'
-	ax.set(xlabel=xlabel, ylabel=ylabel)
+	#ax.vlines(202.14, -5, 1)
+	ax.set(xlabel=xlabel, ylabel=ylabel,
+		#xlim=[Ebs['B'].min()-2, Ebs['B'].max()+2],
+		#ylim = [-4.2, 0.2]
+		)
+	legend = ax.legend(loc='lower right', frameon=False)
+	legend.get_texts()[0].set_color(colornaive)
+	legend.get_texts()[1].set_color(colorT)
 
-	# inset axis
-	left, bottom, width, height = [0.6, 0.2, 0.35, 0.35]
-	ax2 = fig.add_axes([left, bottom, width, height])
-	omegads = [43.24, 43.797, 45.441]
 
-	for i, df in enumerate(dfs):
-		ax2.plot(df[xparam]/omegads[i], df[yparam], **styles[i], label=fields[i])
+# inset axis
+	# left, bottom, width, height = [0.7, 0.7, 0.15, 0.15]
+	# ax2 = fig.add_axes([left, bottom, width, height])
+	# omegads = [43.24, 43.797, 45.441]
+
+	# for i, df in enumerate(dfs):
+	# 	ax2.plot(df[xparam]/omegads[i], df[yparam], **styles[i], label=fields[i])
 
 
-	xlabel=r'$\omega/\omega_d$'
-	ylabel= r'$\widetilde{\Gamma}$'
+	# xlabel=r'$\omega/\omega_d$'
+	# ylabel= r'$\widetilde{\Gamma}$'
 
-	ax2.set(xlabel =xlabel, ylabel=ylabel,
-		 xlim=[0.996,1.004])
-	ax2.set_yscale('log')
-	ax2.set_xlabel(xlabel, fontsize=10)
-	ax2.set_ylabel(ylabel, fontsize=10)
-	ax2.yaxis.set_ticklabels([])
-	ax2.xaxis.set_ticklabels(['','', '1', '' ,''])
+	# ax2.set(xlabel =xlabel, ylabel=ylabel,
+	# 	 xlim=[0.996,1.004])
+	# ax2.set_yscale('log')
+	# ax2.set_xlabel(xlabel, fontsize=5)
+	# ax2.set_ylabel(ylabel, fontsize=5)
+	# ax2.yaxis.set_ticklabels([])
+	# ax2.xaxis.set_ticklabels(['','', '1', '' ,''])
 	#ax2.legend()
+
+	ax=axs[1]
+	### DIMER ZOOM-IN BOTTOM LEFT
+	file = '2025-03-19_G_e_pulsetime=0.64.dat.pkl'
+	data = pd.read_pickle(os.path.join(data_path, file))
+	scaling = 1000
+	data = data.sort_values(by='detuning')
+	x_dimer = data['detuning']
+	y_dimer = data['c5_scaledtransfer'] * scaling
+	yerr_dimer = data['em_c5_scaledtransfer'] *scaling
+	#fit = pd.read_pickle(os.path.join(data_path, run+'_fit_ratio95.pkl'))
+	fit = pd.read_pickle(os.path.join(data_path, 'fit_'+file))
+	xs = fit['xs']/1e6
+	ys = fit['ys'] *scaling
+
+	file2 = '2025-03-19_G_e_pulsetime=0.01.dat.pkl'
+	data = pd.read_pickle(os.path.join(data_path, file2))
+	data = data.sort_values(by='detuning')
+	x_dimer2 = data['detuning']
+	y_dimer2 = data['c5_scaledtransfer'] * scaling
+	yerr_dimer2 = data['em_c5_scaledtransfer'] * scaling
+	#fit = pd.read_pickle(os.path.join(data_path, run+'_fit_ratio95.pkl'))
+	fit2 = pd.read_pickle(os.path.join(data_path, 'fit_'+file2))
+	xs2 = fit2['xs']/1e6
+	ys2 = fit2['ys'] *scaling
+
+	color640 = '#4093ff'
+	style640 = {'color':color640,
+				   'mec':adjust_lightness(color640, 0.3),
+				   'mfc':color640,
+				   'mew':1,
+				   'marker':'o',}
+	color10 = '#ff5447'
+	style10 = {'color':color10,
+				'mec':adjust_lightness(color10, 0.3),
+				'mfc':color10,
+				'mew':1,
+				'marker':'s',}
+	ax.errorbar(x_dimer, y_dimer, yerr=yerr_dimer, **style640, ls='', zorder=1, label=r'$\sigma = 28\,\mathrm{kHz} \approx 1.4\,E_F$') 
+	ax.plot(xs, ys, ls='-', marker='', color=color640, zorder=2) 
+	ax.errorbar(x_dimer2, y_dimer2, yerr=yerr_dimer2, **style10, ls='', zorder=1, label=r'$\sigma = 100\,\mathrm{kHz} \approx 5 E_F$')
+	ax.plot(xs2, ys2, ls='-', marker='', color=color10, zorder=2) 
+	
+	ax.set(xlim=[-4.21, -3.72],
+		xlabel=r'$\omega$ [MHz]',
+		ylabel=r'$\alpha_d/\Omega_R^2/t_\mathrm{rf} \times 10^{-3}$',
+		ylim=[-2, 8.1]
+	)
+	xticks = [-4.2,-4.1, -4, -3.9,-3.8, -3.7]
+	ax.set_xticks(xticks)
+
+	yticks = [0, 3, 6]
+	ax.set_yticks(yticks)
+	legend = ax.legend(loc='upper right', frameon=False)
+	legend.get_texts()[0].set_color(color640)
+	legend.get_texts()[1].set_color(color10)
+	ax.text(-4.19, 6.3, r'$B=202.14\,$G')
+	from matplotlib import rc
+	rc('text.latex', preamble = '\\usepackage{color}')
+	#ax.text(-4.19, 3.8, r'$\frac{\mathcal{I}_d^{t_{\mathrm{rf}} \approx \tau_F}}{\mathcal{I}_d^{t_{\mathrm{rf}} \gg \tau_F}} = 1.23(13)$')
+	ax.text(-4.19, 3.8, r'$R_{\mathcal{I}_d} = 1.23(13)$')
+
+	ax3 = axs[2]
+	file = 'veryshort_df.xlsx'
+	data = pd.read_excel(os.path.join(data_path, file))
+	data = data.sort_values(by='scaledtime')
+	decotimecut = 1.1 # in t_F
+	data['full'] = (data['scaledtime'] < decotimecut).astype(int)
+
+	averageId = data[data['full']==1]['spectral_weight'].mean()
+	stdId = data[data['full']==1]['spectral_weight'].std()
+
+	# trying to do some manual averaging
+	df = data[data['time'] == 0.003]
+	t3us = df['scaledtime'].values[0]
+	I3us = df['spectral_weight'].mean()
+	I3us_std = np.sqrt(df['em_spectral_weight'].values[0]**2 + df['em_spectral_weight'].values[1]**2)
+
+	df = data[data['time'] == 0.020]
+	t20us = df['scaledtime'].values[0]
+	I20us = df['spectral_weight'].mean()
+	I20us_std = np.sqrt(df['em_spectral_weight'].values[0]**2 + df['em_spectral_weight'].values[1]**2)
+
+	data = data[(data['time'] != 0.003) & (data['time']!=0.020)]
+	lowtimedata = data[data['full']==1]
+	hightimedata = data[data['full']!=1]
+
+	my_color = '#754028'
+	my_style = {'color':my_color,
+				   'mec':adjust_lightness(my_color, 0.3),
+				   'mfc':my_color,
+				   'mew':1,
+				   'marker':'o',
+				   'ls':'none'}
+	# low time data (somewhat arbitrary)
+	x_dimer = lowtimedata['scaledtime']
+	y_dimer = lowtimedata['spectral_weight'] 
+	yerr_dimer = lowtimedata['em_spectral_weight'] 
+	ax3.errorbar(x_dimer, y_dimer, yerr_dimer, **my_style)
+	ax3.errorbar([t3us], [I3us], yerr=[I3us_std], **my_style)
+
+	# high time data (somewhat arb)
+	my_style = {'color':my_color,
+				   'mec':adjust_lightness(my_color, 0.3),
+				   'mfc':'none',
+				   'mew':1,
+				   'marker':'o',
+				   'ls':'none'}
+	x_dimer = hightimedata['scaledtime']
+	y_dimer = hightimedata['spectral_weight'] 
+	yerr_dimer = hightimedata['em_spectral_weight'] 
+	ax3.errorbar(x_dimer, y_dimer, yerr_dimer, **my_style)
+	ax3.errorbar([t20us], [I20us], yerr=[I20us_std], **my_style)
+
+	# line for average of early time results
+	ax3.hlines(averageId, -0.1, decotimecut, colors=my_color, ls='dashed', linewidth=1)
+
+
+	ax3.set(xlabel = r'$t_\mathrm{rf}/\tau_F$',
+		 ylabel = r'$\mathcal{I}_d$ response',
+		 ylim = [-0, 0.015],
+		 xlim = [-0.1, 5.1])
+	ax3.tick_params(axis='y', labelleft=False)
+	# # Smaller, separate axis
+	# ax3 = fig.add_axes([0.15, -0.15,0.9, 0.05])  # Centered lower and smaller
+	# ax3.axis('off')
+	# table_data = [['640','1.6','18(2)', '0.056(7)'],
+	# 		   ['10','100','1','0.069(7)']]
+	# table_cols = [r'$t_\mathrm{rf}\,[\mu s]$', 
+	# 		   r'$\Delta \omega_{\mathrm{rf}}$ [kHz]', 
+	# 		   r'$\sigma/\Delta \omega_\mathrm{rf}$',
+	# 		   r'$\mathcal{I}$']
+	# table = ax3.table(
+	# 	cellText = table_data,
+	# 	colLabels = table_cols,
+	# 	loc='center'
+	# )
+	# for(row, col), cell in table.get_celld().items():
+	# 	cell.set_linewidth(0.5)
+	# 	if row !=0:
+	# 		cell.set_linewidth(0.5)
+	# 		cell.visible_edges = 'LR'
+	# 	if row == 1:
+	# 		cell.get_text().set_color(color640)
+	# 	if row == 2:
+	# 		cell.get_text().set_color(color10)
+	
 	fig.tight_layout()
 	if Save: 
-		save_path = os.path.join(proj_path, 'manuscript_figures/dimer_Eb_v2.pdf')
+		save_path = os.path.join(proj_path, 'manuscript_figures/dimer_Eb_v6.pdf')
 		print(f'saving to {save_path}')
-		plt.savefig(save_path, dpi=300)
+		plt.savefig(save_path, dpi=300, bbox_inches='tight')
 	if Show: plt.show() 
 #endregion
 
