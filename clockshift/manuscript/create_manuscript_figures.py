@@ -40,7 +40,7 @@ Save = False
 Show = True
 
 # choose plot
-Plot = 2
+Plot = 1
 
 #region ######## FIGURE 1: PLOT DIMER AND HFT TOGETHER ON LOG SCALE, NOISE FLOOR, AND 5/2 REGION
 if Plot == 1:
@@ -65,49 +65,70 @@ if Plot == 1:
 	#ax4 = fig.add_subplot(gs[1, 1]) # this plot used to contain a histogram of errorbar sizes
 	ax_br = fig.add_subplot(gs[1, 2:])
 
+
 	yparam = 'ScaledTransfer' #'ScaledTransfer' or 'transfer'
 	# dimer spectrum, long pulse
-	#file = '2024-07-17_J_e.pkl'
-	file = '2024-07-17_J_e_ratio95.pkl'
-	#file = '2024-10-04_H_e_ratio95.pkl'
+	
+	#file = '2024-07-17_J_e_ratio95.pkl'
+	file = '2025-03-19_G_e_pulsetime=0.64.dat.pkl'
 	data = pd.read_pickle(os.path.join(data_path, file))
 	x_dimer = data['detuning']
-	y_dimer = data[yparam]
-	yerr_dimer = data['em_' + yparam]
-	fit = pd.read_pickle(os.path.join(data_path, '2024-07-17_J_e_fit_doubletemp_ratio95.pkl'))
-	fit_Eb = fit['Eb'][0]/1000
-	fit_e_Eb = fit['e_Eb'][0]/1000
+	y_dimer = data['c5_scaledtransfer']
+	yerr_dimer = data['em_c5_scaledtransfer']
+	fit = pd.read_pickle(os.path.join(data_path, 'fit_'+file))
+	xs = fit['xs']/1e6
+	ys=fit['ys']
+	print(xs)
+	#fit_Eb = fit['Eb'][0]/1000
+	#fit_e_Eb = fit['e_Eb'][0]/1000
 
 	# HFT spectrum for ax1
 	file = '2024-10-08_F_e.pkl'
 	data = pd.read_pickle(os.path.join(data_path, file))
 	data = data[data['detuning'] > -1]
-	x_HFT = data['detuning']
-	y_HFT = data[yparam]
-	yerr_HFT = data['em_' +yparam]
-
-	# HFT plot (right)
-	# ax1.errorbar(x_HFT, y_HFT, yerr_HFT, **styles[2])
-	xs = np.linspace(min(x_HFT), max(x_HFT),500)
-	ys = np.interp(xs, x_HFT, y_HFT)
-	ax1.fill(xs, ys, ls='-', color=colors[2])
-	ax1.plot(fit['detuning']/1000, fit['transfer'], ls='-',  marker='', color=colors[2], label='fit with double temp')
-	ax1.fill_between(fit['detuning']/1000, fit['transfer'],0, color=adjust_lightness(colors[2],2))
-	ax1.set(xlim=[-4.2, -3.8])
-	ax1.set_yscale('log')
+	x_all = data['detuning']
+	y_all = data[yparam]
+	yerr_all = data['em_' +yparam]
+	res_bound = 0.030
+	x_res = data[data['detuning'] <= res_bound+0.02]['detuning']
+	y_res = data[data['detuning'] <= res_bound+0.02][yparam]
+	x_HFT = data[data['detuning'] > res_bound]['detuning']
+	y_HFT = data[data['detuning'] > res_bound][yparam]
 
 
 	# dimer plot (left)
-	# ax1_2.errorbar(x_dimer, y_dimer, yerr_dimer, **styles[2])
-	ax1_2.plot(xs, ys, ls='-', marker='', color=colors[2])
-	ax1_2.fill_between(xs, ys, 0, color=adjust_lightness(colors[2],2))
-	ax1_2.fill(fit['detuning']/1000, fit['transfer'], ls='-',color=colors[2], label='fit with double temp')
-	ax1_2.set(xlim=[-0.1, 1])
-	ax1_2.set_yscale('log')
+	peakindex = np.where(ys==ys.max())
+	xpeak = xs[peakindex]
+	#filt = 0.028 # arbitrarily chosen so that the plotted lineshape doesn't have sinc^2 sidebands
+	filt = 1
+	xs_filt = xs[(xs > (xpeak-filt)) & (xs < (xpeak+filt))]
+	ys_filt = ys[(xs > (xpeak-filt)) & (xs < (xpeak+filt))]
+
+	ax1.plot(xs_filt, ys_filt, ls='-',  marker='', color=colors[2])
+	ax1.fill_between(xs_filt, ys_filt,0, color=adjust_lightness(colors[2],2))
+	ax1.plot(x_dimer, y_dimer, **styles[2])
+	ax1.set(xlim=[-4.1, -3.9])
+	ax1.set_yscale('log')
 	ax1.set(
 		xlabel=r'$\omega$ [MHz]',
-		ylabel=r'$\Gamma$'
+		ylabel=r'$\widetilde{\Gamma}$'
 	)
+
+	# HFT plot (right)
+	x_ress = np.linspace(min(x_res), max(x_res), 500)
+	y_ress = np.interp(x_ress, x_res, y_res)
+	x_HFTs = np.linspace(min(x_HFT), max(x_HFT),500)
+	y_HFTs = np.interp(x_HFTs, x_HFT, y_HFT)
+	ax1_2.plot(x_res, y_res, **styles[3])
+	ax1_2.plot(x_HFT, y_HFT, **styles[2])
+	ax1_2.plot(x_HFTs, y_HFTs, ls='-', marker='', color=colors[2])
+	ax1_2.fill_between(x_HFTs, y_HFTs, 0, color=adjust_lightness(colors[2],2))
+	ax1_2.plot(x_ress, y_ress, ls='-', marker='', color=colors[3])
+	ax1_2.fill_between(x_ress, 0, y_ress, color=adjust_lightness(colors[3],1.5))
+
+	ax1_2.set(xlim=[-0.1, 1], ylim=[10e-6, 10e-1])
+	ax1_2.set_yscale('log')
+	
 
 	ax1.spines['right'].set_visible(False)
 	ax1_2.spines['left'].set_visible(False)
@@ -126,36 +147,52 @@ if Plot == 1:
 	ax1_2.plot((-d, +d), (1-d, 1+d), **kwargs)
 	ax1_2.plot((-d, +d), (-d, +d), **kwargs)
 
+	# add text
+	ax1.text(-4.05, 0.1e-1, 'Dimer')
+	ax1_2.text(0.05, 1e-1, 'Res.')
+	ax1_2.text(0.3, 10e-4, 'HFT')
+
 	### PLOT SPACE FOR DIAGRAMS IN TOP RIGHT
-	ax_tr.text(0.3, 0.5, 'Lorem ipsum')
+	ax_tr.text(0.1, 0.5, 'SPACE FOR ENERGY DIAGRAMS')
 
 	### DIMER ZOOM-IN BOTTOM LEFT
-	run = '2024-10-04'
-	runletter = 'H'
-	file = run+'_' + runletter+'_e_ratio95.pkl'
+	# run = '2024-10-04'
+	# runletter = 'H'
+	# file = run+'_' + runletter+'_e_ratio95.pkl'
+	# data = pd.read_pickle(os.path.join(data_path, file))
+	# x_dimer = data['detuning']
+	# y_dimer = data[yparam]
+	# yerr_dimer = data['em_' + yparam]
+	file = '2025-03-19_G_e_pulsetime=0.64.dat.pkl'
 	data = pd.read_pickle(os.path.join(data_path, file))
 	x_dimer = data['detuning']
-	y_dimer = data[yparam]
-	yerr_dimer = data['em_' + yparam]
-	fit = pd.read_pickle(os.path.join(data_path, run+'_fit_ratio95.pkl'))
-	fit_Eb = fit['Eb'][0]/1000
-	fit_e_Eb = fit['e_Eb'][0]/1000
+	y_dimer = data['c5_scaledtransfer']
+	yerr_dimer = data['em_c5_scaledtransfer']
+	#fit = pd.read_pickle(os.path.join(data_path, run+'_fit_ratio95.pkl'))
+	fit = pd.read_pickle(os.path.join(data_path, 'fit_'+file))
+	xs = fit['xs']/1e6
+	ys = fit['ys']
+
+	file2 = '2025-03-19_G_e_pulsetime=0.01.dat.pkl'
+	data = pd.read_pickle(os.path.join(data_path, file2))
+	x_dimer2 = data['detuning']
+	y_dimer2 = data['c5_scaledtransfer']
+	yerr_dimer2 = data['em_c5_scaledtransfer']
+	#fit = pd.read_pickle(os.path.join(data_path, run+'_fit_ratio95.pkl'))
+	fit2 = pd.read_pickle(os.path.join(data_path, 'fit_'+file2))
+	xs2 = fit2['xs']/1e6
+	ys2 = fit2['ys']
 
 	#left, bottom, width, height = [0.3, 0.3, 0.2, 0.3]
 	#ax_inset = fig.add_axes([left, bottom, width, height])
-	ax_bl.errorbar(x_dimer, y_dimer, yerr=yerr_dimer, **styles[0], ls='', zorder=1)
-	ax_bl.plot(fit['detuning']/1000, fit['transfer'], ls='-', marker='', color=colors[0], zorder=2) 
-
-	# was originally using 2024-10-04_H_e
-	file = run + '_' + runletter+'_e_c9.pkl'
-	data = pd.read_pickle(os.path.join(data_path, file))
-	x_dimer = data['detuning']
-	y_dimer = data[yparam]
-	yerr_dimer = data['em_' + yparam]
-
-	ax_bl.set(xlim=[-4.3, -3.7], ylim=[-0.006, 0.011],
+	ax_bl.errorbar(x_dimer, y_dimer, yerr=yerr_dimer, **styles[0], ls='', zorder=1, label=r'$t_\mathrm{rf}=640\,\mu$s') 
+	ax_bl.plot(xs, ys, ls='-', marker='', color=colors[0], zorder=2) 
+	ax_bl.errorbar(x_dimer2, y_dimer2, yerr=yerr_dimer2, **styles[1], ls='', zorder=1, label=r'$t_\mathrm{rf}=10\,\mu$s')
+	ax_bl.plot(xs2, ys2, ls='-', marker='', color=colors[1], zorder=2) 
+	ax_bl.legend()
+	ax_bl.set(xlim=[-4.15, -3.8],
 		xlabel=r'$\omega$ [MHz]',
-		ylabel=r'$\Gamma$')
+		ylabel=r'$\alpha/\Omega_R^2/t_\mathrm{rf}$')
 
 	#### ZOOM-IN HFT SPECTRUM IN BOTTOM RIGHT
 	filter_by_Ut = True
