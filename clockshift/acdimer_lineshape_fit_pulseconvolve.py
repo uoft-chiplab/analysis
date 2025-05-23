@@ -23,7 +23,7 @@ from scipy.optimize import curve_fit
 from scipy.integrate import quad
 import pandas as pd
 import numpy as np
-import corner
+#import corner
 import matplotlib.pyplot as plt
 from library import GammaTilde, pi, h, adjust_lightness
 from clockshift.MonteCarloSpectraIntegration import DimerBootStrapFit, dist_stats
@@ -52,31 +52,33 @@ Bootstrapplots = True
 Correlations = True
 
 # save results
-Save = True
+Save = False
 
 # determines whether convolved lineshape fit to data has offset parameter
 fitWithOffset = False
 
 # select spin states to analyze
 spins = ['c5','c9','sum95']
-spin = spins[2]
+spin = spins[0]
 
 ### save file name
 savefile = './clockshift/acdimer_lineshape_results_' + spin + '.xlsx'
 
 ### metadata
-metadata_filename = 'metadata_dimer_file.xlsx'
+metadata_filename = 'dimer_metadata_file.xlsx' #'metadata_dimer_file.xlsx'
 metadata_file = os.path.join(proj_path, metadata_filename)
 metadata = pd.read_excel(metadata_file)
 
-# if no filename selected, code will run over all files described in metadata (TO DO)
+# if no filename selected, code will run over all files described in metadata
 # filenames = ['2024-08-09_M_e','2024-08-11_P_e','2024-07-17_J_e',
 # 				'2024-08-11_O_e','2024-09-27_B_e','2024-09-27_C_e', '2024-10-04_H_e']
-
 
 filenames = ['2024-07-17_I_e','2024-07-17_J_e', '2024-08-08_J_e', '2024-09-27_B_e', 
 			 '2024-09-27_C_e', '2024-10-01_F_e', '2024-10-02_C_e', '2024-10-03_C_e',
 			 '2024-10-04_H_e', '2024-10-07_C_e', '2024-10-07_G_e']
+
+filenames = ['2024-07-17_J_e']
+filenames = ['2024-09-27_C_e']
 
 # if the filenames list is empty, run over all available files in metadata
 if not filenames:
@@ -161,12 +163,13 @@ for filename in filenames:
 	Vppscope = metadf['Vpp'][0]
 	
 	if load_lineshape:
-		df_ls = pd.read_pickle('./clockshift/convolutions.pkl')
+		df_ls = pd.read_pickle(os.path.join(proj_path, 'convolutions_EFs.pkl'))
 		TTF = round(ToTF,1)
+		EFls = 2 * round(EF/2)
 		if TTF == 0.7:
 			TTF = 0.6
 		TRF = trf*1e6
-		lineshape = df_ls.loc[(df_ls['TTF']==TTF) & (df_ls['TRF']==TRF)]['LS'].values[0]
+		lineshape = df_ls.loc[(df_ls['EF']==EFls) & (df_ls['TTF']==TTF) & (df_ls['TRF']==TRF)]['LS'].values[0]
 	
 	# calculate theoretical contact from Tilman's trap averaging code
 	C_theory = calc_contact(ToTF, EF, barnu)
@@ -350,7 +353,7 @@ for filename in filenames:
 		print('FDNORM: ' + str(FDnorm))
 		def convfunc(tau, t):
 			if pulsetype == 'square':
-	 			return FDinterp(tau)/FDnorm[0] * (Sinc2D(t-tau, trf*1e6)/norm)
+				return FDinterp(tau)/FDnorm[0] * (Sinc2D(t-tau, trf*1e6)/norm)
 			
 
 		def convint(t):
@@ -407,7 +410,7 @@ for filename in filenames:
 		fig_CVs, ax_CV = plt.subplots()
 		ax_CV.plot(xxC, FDinterp(xxC), '-')
 		if pulsetype == 'square':
- 			ax_CV.plot(xxC, Sinc2D(xxC, trf*1e6)/norm, '-', label='FT')
+			ax_CV.plot(xxC, Sinc2D(xxC, trf*1e6)/norm, '-', label='FT')
 		ax_CV.plot(xxC, yyconv, '-', label='conv')
 		ax_CV.set(xlabel = 'Detuning [EF]', ylabel = 'Magnitude')
 		ax_CV.legend()

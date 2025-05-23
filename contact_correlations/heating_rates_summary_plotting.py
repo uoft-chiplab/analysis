@@ -7,6 +7,12 @@ Tilman code bulkvisctrap_class.py.
 
 Relies on data_class.py, library.py, and bulkvisctrap_class.py
 """
+import os
+#analysis_folder = 'E:\\\\Analysis Scripts\\analysis\\'
+analysis_folder = '\\\\UNOBTAINIUM\\E_Carmen_Santiago\\Analysis Scripts\\analysis'
+import sys
+if analysis_folder not in sys.path:
+	sys.path.append(analysis_folder)
 from data_class import Data
 from library import pi, plt_settings, colors, markers, mK, h, hbar, kB, \
 		deBroglie, tintshade, tint_shade_color
@@ -23,8 +29,8 @@ import pickle
 # paths
 proj_path = os.path.dirname(os.path.realpath(__file__))
 root = os.path.dirname(proj_path)
-data_folder = 'data'
-data_path = os.path.join(proj_path, 'data')
+theory_folder = 'theory'
+theory_path = os.path.join(proj_path, theory_folder)
 
 pkl_filename = 'heating_rate_fit_results.pkl'
 pkl_file = os.path.join(proj_path, pkl_filename)
@@ -33,7 +39,7 @@ BVT_pkl_filename = 'BVT.pkl'
 BVT_pkl_file = os.path.join(proj_path, BVT_pkl_filename)
 
 TilmanPRL0p58ToTF_filename = "zetaomega_T0.58.txt"
-TilmanPRL0p58ToTF_file = os.path.join(data_path, TilmanPRL0p58ToTF_filename)
+TilmanPRL0p58ToTF_file = os.path.join(theory_path, TilmanPRL0p58ToTF_filename)
 
 error_band = 0.14
 band_alpha = 0.2
@@ -61,7 +67,7 @@ removed_names = ["2024-03-21_B_f=75_Vpp=0.25",
 				 "2024-04-08_G_f=20_Vpp=1.80"]
 
 plot_legend = False
-load_theory = True # load Tilman lines from previous evaluation, 
+load_theory = False # load Tilman lines from previous evaluation, 
 #false fits all the betamu's for the theory lines and puts them in the pickle file
 #if run doc and get error like BulkViscTrap obj has no attribute BVT.EdottrapsS, change to False
 #true grabs everything needed from the pickle file 
@@ -148,8 +154,16 @@ nus = np.linspace(nu_min*1e3, nu_max*1e3, num)
 label_Drude = 'Drude'
 label_LW = 'L-W'
 label_Qcrit = r'$\arctan(\frac{\omega\tau} {1+\omega^2\tau^2})$'
+label_phiLR = r'$\omega\tau$'
 label_C = 'Contact'
-	
+
+ax_zeta = axs[0,0]
+xlabel = "Drive Frequency $\hbar\omega/E_F$"
+ylabel = "Contact Correlation $\\langle\\tilde{\zeta}(\omega)\\rangle $"
+xlims = [0.05, 15] # omega/EF
+ax_zeta.set(xlabel=xlabel, 
+			ylabel=ylabel, yscale='log', xscale='log', xlim=xlims)
+
 ax = axs[0,1]
 ylabel = "Heating Rate $h \\langle\dot{E}\\rangle/(E_F\\,A)^2$"
 xlabel = "Drive Frequency $\hbar\omega/E_F$"
@@ -157,16 +171,9 @@ ylims=[0,0.1]
 ax.set(xlabel=xlabel, 
 	   ylabel=ylabel, ylim=ylims)
 
-
 ax_res = axs[1,0]
 ylabel = "Measurement/Theory"
 ax_res.set(xlabel=xlabel, ylabel=ylabel)
-
-ax_zeta = axs[0,0]
-ylabel = "Contact Correlation $\\langle\\tilde{\zeta}(\omega)\\rangle $"
-xlims = [0.05, 15] # omega/EF
-ax_zeta.set(xlabel=xlabel, 
-			ylabel=ylabel, yscale='log', xscale='log', xlim=xlims)
 
 ax_EdotSus = axs[1,1]
 ylabel = "$h \\langle\dot{E}\\rangle/(E_F\\,A)^2 N/ \\langle \\tilde{S} \\rangle$"
@@ -249,7 +256,7 @@ for param_set, color, marker, i in zip(param_sets, colors, markers, range(loops)
 	
 	used_colors.append(color)
 	Tmeans.append(Tmean)
-# 	print(ToTF, EF, barnu)
+	print(ToTF, EF, barnu)
 	
 # 	label = r'[{}_{}]  $E_F={:.1f}$kHz, $T/T_F={:.2f}$, $\bar \nu={:.0f}$Hz'.format(df.date.values[0], 
 # 								  df.run.values[0], EFmean, ToTFmean, barnu)
@@ -284,8 +291,9 @@ for param_set, color, marker, i in zip(param_sets, colors, markers, range(loops)
 ### Heating rate theory line(s)
 	if load_theory == False:
 		print("Computing theory curve for ToTF={:.2f}".format(ToTFmean))
-		params_trap = [Tmean*1e3, barnu, -3800] # give T, barnu and mutrap_guess in Hz
-		BVT = BulkViscTrap(*params_trap, nus, ToTF=ToTFmean)
+		#params_trap = [Tmean*1e3, barnu, -3800] # give T, barnu and mutrap_guess in Hz
+		#BVT = BulkViscTrap(*params_trap, nus, ToTF=ToTFmean)
+		BVT = BulkViscTrap(ToTFmean, EFmean*1e3, barnu, nus, mutrap_guess=-3800)
 		BVTs.append(BVT)
 		print("Computation complete.")
 	else:
@@ -299,7 +307,7 @@ for param_set, color, marker, i in zip(param_sets, colors, markers, range(loops)
 			nu_small += 1
 	
 	nusoEF = BVT.nus/BVT.EF
-	C = 0.78
+	C = 0.78 
 # 	dCdkFainv = 1.69
 # 	sumrule = dCdkFainv/(18*pi)
 # 	print(sumrule)
@@ -309,34 +317,39 @@ for param_set, color, marker, i in zip(param_sets, colors, markers, range(loops)
 	# plot Drude form if small frequencies exist
 	if load_theory == False: print('plot Drude')
 	if xx.min() < 2*Tmean:
-		Edots = BVT.Edottraps/Edotnorm
+		Edots = BVT.EdotDrude/Edotnorm
 		ax.plot(nusoEF[:nu_small], Edots[:nu_small], ':', color=color, label=label_Drude)
 		ax.fill_between(nusoEF[:nu_small], Edots[:nu_small]*(1 - error_band), 
 					 Edots[:nu_small]*(1 + error_band), alpha=band_alpha, color=color)
 		
-		ax_zeta.plot(nusoEF[:nu_small], BVT.zetatraps[:nu_small],':', color=color, label=label_Drude)
-		ax_zeta.fill_between(nusoEF[:nu_small], BVT.zetatraps[:nu_small]*(1 - error_band), 
-			  BVT.zetatraps[:nu_small]*(1 + error_band), alpha=band_alpha, color=color)
+		ax_zeta.plot(nusoEF[:nu_small], BVT.zetaDrude[:nu_small],':', color=color, label=label_Drude)
+		ax_zeta.fill_between(nusoEF[:nu_small], BVT.zetaDrude[:nu_small]*(1 - error_band), 
+			  BVT.zetaDrude[:nu_small]*(1 + error_band), alpha=band_alpha, color=color)
 		
-		ax_EdotSus.plot(nusoEF[:nu_small], BVT.Edottraposcalesus[:nu_small], ':', color=color, label=label_Drude)
-		ax_EdotSus.fill_between(nusoEF[:nu_small], BVT.Edottraposcalesus[:nu_small]*(1 - 0.2), 
-					 BVT.Edottraposcalesus[:nu_small]*(1 + 0.2), alpha=band_alpha, color=color)
+        # BVT.Edottraposcalesus
+		plot_param = BVT.EdotSphi[:nu_small]
+		ax_EdotSus.plot(nusoEF[:nu_small], plot_param, ':', color=color, label=label_Drude)
+		ax_EdotSus.fill_between(nusoEF[:nu_small], plot_param*(1 - 0.2), 
+					plot_param*(1 + 0.2), alpha=band_alpha, color=color)
 
 	# plot contact determined lines if large frequencies exist
 	if load_theory == False: print('plot contact')
 	if xx.max() > 2*Tmean:
-		Edots = BVT.EdottrapsC/Edotnorm
+		Edots = BVT.EdotC/Edotnorm
 		ax.plot(nusoEF[nu_small:], Edots[nu_small:],'--', color=color, label=label_C)
 		ax.fill_between(nusoEF[nu_small:], Edots[nu_small:]*(1 - error_band), 
 		 Edots[nu_small:]*(1 + error_band), alpha=band_alpha, color=color)
-		ax_zeta.plot(nusoEF[nu_small:], BVT.zetatrapsC[nu_small:],'--', 
+		ax_zeta.plot(nusoEF[nu_small:], BVT.zetaC[nu_small:],'--', 
 				  color=color, label=label_C)
-		ax_zeta.fill_between(nusoEF[nu_small:], BVT.zetatrapsC[nu_small:]*(1 - error_band), 
-			  BVT.zetatrapsC[nu_small:]*(1 + error_band), alpha=band_alpha, color=color)
+		ax_zeta.fill_between(nusoEF[nu_small:], BVT.zetaC[nu_small:]*(1 - error_band), 
+			  BVT.zetaC[nu_small:]*(1 + error_band), alpha=band_alpha, color=color)
 		
-		ax_EdotCon.plot(nusoEF[nu_small:], BVT.EdottrapsNormC[nu_small:]/(BVT.EF**2), '--',color=color, label=label_C)
-		ax_EdotCon.fill_between(nusoEF[nu_small:], BVT.EdottrapsNormC[nu_small:]/(BVT.EF**2)*(1 - error_band), 
-			  BVT.EdottrapsNormC[nu_small:]/(BVT.EF**2)*(1 + error_band), alpha=band_alpha, color=color)
+		# ax_EdotCon.plot(nusoEF[nu_small:], BVT.EdottrapsNormC[nu_small:]/(BVT.EF**2), '--',color=color, label=label_C)
+		# ax_EdotCon.fill_between(nusoEF[nu_small:], BVT.EdottrapsNormC[nu_small:]/(BVT.EF**2)*(1 - error_band), 
+		# 	  BVT.EdottrapsNormC[nu_small:]/(BVT.EF**2)*(1 + error_band), alpha=band_alpha, color=color)
+		ax_EdotCon.plot(nusoEF[nu_small:], BVT.EdotNormC[nu_small:]/(BVT.EF**2), '--',color=color, label=label_C)
+		ax_EdotCon.fill_between(nusoEF[nu_small:], BVT.EdotNormC[nu_small:]/(BVT.EF**2)*(1 - error_band), 
+			  BVT.EdotNormC[nu_small:]/(BVT.EF**2)*(1 + error_band), alpha=band_alpha, color=color)
 ### Residual ratio
 	residuals = []
 	e_res = []
@@ -344,18 +357,18 @@ for param_set, color, marker, i in zip(param_sets, colors, markers, range(loops)
 	e_res_zeta = []
 	for freq, rate, e_rate, zeta, e_zeta in zip(xx, yy, yerr, zetas, e_zetas):
 		for j in range(len(BVT.nus)):
- 			if BVT.nus[j]/1e3 == freq:
-				 if BVT.nus[j] < 2*BVT.T:
-	 				 residuals.append(rate/(BVT.Edottraps[j]/Edotnorm))
-	 				 residuals_zeta.append(zeta/BVT.zetatraps[j])
-	 				 e_res.append(e_rate/(BVT.Edottraps[j]/Edotnorm))
-	 				 e_res_zeta.append(e_zeta/BVT.zetatraps[j])
-				 else: 
-	 				 residuals.append(rate/(BVT.EdottrapsC[j]/Edotnorm))
-	 				 residuals_zeta.append(zeta/BVT.zetatrapsC[j])
-	 				 e_res.append(e_rate/(BVT.EdottrapsC[j]/Edotnorm))
-	 				 e_res_zeta.append(e_zeta/BVT.zetatrapsC[j])
-				 continue
+			if BVT.nus[j]/1e3 == freq:
+				if BVT.nus[j] < 2*BVT.T:
+					residuals.append(rate/(BVT.EdotDrude[j]/Edotnorm))
+					residuals_zeta.append(zeta/BVT.zetaDrude[j])
+					e_res.append(e_rate/(BVT.EdotDrude[j]/Edotnorm))
+					e_res_zeta.append(e_zeta/BVT.zetaDrude[j])
+				else: 
+					residuals.append(rate/(BVT.EdotC[j]/Edotnorm))
+					residuals_zeta.append(zeta/BVT.zetaC[j])
+					e_res.append(e_rate/(BVT.EdotC[j]/Edotnorm))
+					e_res_zeta.append(e_zeta/BVT.zetaC[j])
+				continue
  	
 	ax_res.errorbar(xx/EF, np.array(residuals), yerr=e_res, capsize=0, fmt=marker, 
 			  label=label, color=dark_color, markerfacecolor=light_color, 
@@ -420,8 +433,8 @@ label_phase = r"Phase Shift: $E_F = 16$kHz, $T/T_F = 0.56$"
 
 freq_indices = [1, 4] # 2 kHz and 5 kHz
 BVT = BVTs[0] # ToTF = 0.50
-residuals = zetas_phase/BVT.zetatraps[freq_indices]
-e_res = zetas_phase_err/BVT.zetatraps[freq_indices]
+residuals = zetas_phase/BVT.zetaDrude[freq_indices]
+e_res = zetas_phase_err/BVT.zetaDrude[freq_indices]
 ax_res.errorbar(freqs/EF, residuals, yerr=e_res, fmt=marker, label=label_phase)
 
 # add phase shift measurements to phi plots
@@ -431,6 +444,9 @@ ax_ps.errorbar(freqs/T, phases, yerr=phases_err, fmt=marker)
 ax_ps.plot(nus/BVT.T, BVT.phaseshiftsQcrit, '-', color='k', label=label_Qcrit)
 ax_ps.fill_between(nus/BVT.T, BVT.phaseshiftsQcrit*(1 - 0.2), 
 		 BVT.phaseshiftsQcrit*(1 + 0.2), alpha=band_alpha, color='k')
+ax_ps.plot(nus/BVT.T, BVT.phiLR, '-', color='r', label=label_phiLR)
+ax_ps.fill_between(nus/BVT.T, BVT.phiLR*(1 - 0.2), 
+		 BVT.phiLR*(1 + 0.2), alpha=band_alpha, color='r')
 ax_ps.legend()
 
 # ax_ps2.errorbar(freqs/T, phases, yerr=phases_err, fmt=marker, label=label_phase)

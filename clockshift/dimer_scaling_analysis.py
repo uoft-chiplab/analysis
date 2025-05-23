@@ -22,6 +22,9 @@ data_path = os.path.join(proj_path, 'data')
 # data file
 data_file = os.path.join(data_path, 'VVAtoVpp_square_43p2MHz.txt')
 
+
+data_path = os.path.join(proj_path, 'saturation_data')
+
 # load data, plot
 cal = pd.read_csv(data_file, sep='\t', skiprows=1, names=['VVA','Vpp'])
 calInterp = lambda x: np.interp(x, cal['VVA'], cal['Vpp'])
@@ -35,7 +38,7 @@ def OmegaR(VVA):
 	VpptoOmegaR = 27.5833 # kHz
 	return  pulseareanew*VpptoOmegaR*calInterp(VVA)
 
-def Linear(x,m,b):
+def Linear(x, m, b):
 	return m*x + b
 
 def Quadratic(x, a, b):
@@ -50,7 +53,7 @@ cutoff_val = 0.15
 cutoff_time = 55
 
 plt.rcParams.update(plt_settings)
-fig, axs = plt.subplots(2,2, figsize=[10,8])
+fig, axs = plt.subplots(2,2, figsize=[10,16])
 ax = axs[0,0]
 axr = axs[1,0]
 axr2 = axs[1,1]
@@ -70,7 +73,7 @@ transfer_10us = []
 e_transfer_10us = []
 
 for i, file in enumerate(files):
-	data = Data(file)
+	data = Data(file, path=data_path)
 	
 	# compute OmegaR
 	VVA = VVAs[i]
@@ -102,10 +105,6 @@ for i, file in enumerate(files):
 	xsat = satdf[xname]
 	ysat = satdf[yname]
 	yerrsat =satdf['em_' + yname]
-	
-	# for waterfall plotting
-	y += 0.1*i
-	ysat += 0.1*i
 		
 	# define colrs, and markers
 	color = colors[i]
@@ -125,8 +124,8 @@ for i, file in enumerate(files):
 	xlist = np.linspace(min(x),max(x),1000)
  	
 	# plot fits
-	ax.plot(xlist,Linear(xlist,*popt),linestyle='-',marker='', color=color)
-	ax.plot(xlist, Quadratic(xlist, *popt2), linestyle='--', marker='', color=color)
+	ax.plot(xlist,Linear(xlist,*popt)+0.1*i,linestyle='-',marker='', color=color)
+	ax.plot(xlist, Quadratic(xlist, *popt2)+0.1*i, linestyle='--', marker='', color=color)
 	ax.set(xlim=[-2,62])
 	ax.set_xlabel('Pulse duration [us]')
 	ax.set_ylabel('Transfer [arb.]')
@@ -136,6 +135,10 @@ for i, file in enumerate(files):
 	ax.hlines(i*0.1,-2,1, linestyle='--', color=color)
 	print(r"m = {:.4f} ± {:.4f}, b = {:.4f} ± {:.4f}".format(popt[0], 
 										  perr[0], popt[1]-0.1*i, perr[1]))
+	
+	# for waterfall plotting
+	y += 0.1*i
+	ysat += 0.1*i
 	
 	# plot residuals
 	yreslin = y - Linear(x, *popt)
@@ -155,6 +158,7 @@ for i, file in enumerate(files):
 	label = r'$\chi_l^2$={:.2f}, $\chi_q^2$={:.2f}, VVA={}'.format(chi2lin, chi2qua, VVA)
 	
 	# plot data, with labels not used in legend
+	
 	ax.errorbar(x, y, yerr, label=label, ecolor=dark_color, marker=marker)
 	ax.errorbar(xsat, ysat, yerrsat, ecolor=dark_color, marker=marker, mfc='white')
 		

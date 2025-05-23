@@ -23,7 +23,7 @@ if parent_dir not in sys.path:
 	sys.path.append(parent_dir)
 proj_path = os.path.dirname(os.path.realpath(__file__))
 root = os.path.dirname(proj_path)
-data_path = os.path.join(proj_path, 'data')
+data_path = os.path.join(proj_path, 'data/Eb_measurements')
 
 from library import pi, h, hbar, mK, a0, plt_settings, styles, colors, FreqMHz
 from data_helper import remove_indices_formatter
@@ -38,9 +38,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.optimize import fsolve
 
-Pickle = True
+Pickle = False
 
-### ac binding energy theory
+### ac binding energy theory and functions
 def a13(B):
 	''' ac scattering length '''
 	abg = 167.6*a0
@@ -76,6 +76,58 @@ Ebs_full = [EbMHz_full_sol(B, re) for B in Bs]
 Ebs_o1 = EbMHz_expansion_corr(Bs, re, 1)
 Ebs_o2 = EbMHz_expansion_corr(Bs, re, 2)
 Ebs_naive = EbMHz_naive(Bs)
+
+####
+# iterate over Eb measurements, extract and plot
+### metadata
+metadata_filename = 'Eb_metadata_file.xlsx'
+metadata_file = os.path.join(data_path, metadata_filename)
+metadata = pd.read_excel(metadata_file)
+files =  metadata.loc[metadata['exclude'] != 1]['filename'].values
+
+# files = [] # for manual override
+
+for file in files:
+	print("Analyzing file: ", file)
+	meta_df = metadata.loc[metadata['filename'] == file].reset_index()
+	if meta_df.empty:
+		print("Dataframe is empty! Check metadata file.")
+		continue
+	filename = file + ".dat"
+	ff = meta_df['ff'][0]
+	trf = meta_df['trf'][0]
+	VVA = meta_df['VVA'][0]
+	rfsource = meta_df['PhaseOorMicrO?'][0]
+	Vpp_micro = meta_df['Vpp_micro'][0]
+	Bfield = meta_df['Bfield'][0]
+	
+	### Vpp calibration
+
+	if filename[:4] == '2024':
+		# VpptoOmegaR = 27.5833 # kHz/Vpp, older calibration
+		VpptoOmegaR47 = 17.05/0.728 # kHz/Vpp - 2024-09-16 calibration with 4GS/s scope measure of Vpp
+		VpptoOmegaR43 = 14.44/0.656 # kHz/Vpp - 2024-09-25 calibration 
+		phaseO_OmegaR = lambda VVA, freq: 2*pi*VpptoOmegaR47 * Vpp_from_VVAfreq(VVA, freq)
+		
+	elif filename[:4] == '2025':
+		VpptoOmegaR47 = 12.01/0.452 # kHz/Vpp - 2025-02-12 calibration 
+		VpptoOmegaR43 = 14.44/0.656 *VpptoOmegaR47/(17.05/0.728) # fudged 43MHz calibration
+		phaseO_OmegaR = lambda VVA, freq: 2*pi*VpptoOmegaR47 * Vpp_from_VVAfreq(VVA, freq)
+		
+	else:
+		raise ValueError("filename does not start with 2024 or 2025.")
+	if rfsource == 'micro':
+		micrO_OmegaR = 2*pi*VpptoOmegaR43*meta_df['Vpp_dimer'][0]
+	else: 
+		micrO_OmegaR = 0
+		
+	# create data structure
+	run = Data(filename, path=data_path)
+	runfolder=filename
+
+	
+
+
 
 Eb_df = pd.DataFrame(
 	{

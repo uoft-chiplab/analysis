@@ -60,8 +60,8 @@ else:
     img2 = np.copy(plt.imread(img2_path)[:,:,0])
 
 # process images
-img1 -= img1.mean()
-img2 -= img2.mean()
+img1 - img1.mean()
+img2 - img2.mean()
 
 # get max to plot on same color scale
 vmin = np.min([img1.min(), img2.min()])

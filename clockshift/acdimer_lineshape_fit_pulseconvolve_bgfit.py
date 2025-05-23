@@ -23,7 +23,6 @@ from scipy.optimize import curve_fit
 from scipy.integrate import quad
 import pandas as pd
 import numpy as np
-import corner
 import matplotlib.pyplot as plt
 from library import GammaTilde, pi, h, adjust_lightness
 from clockshift.MonteCarloSpectraIntegration import DimerBootStrapFit, dist_stats
@@ -72,9 +71,9 @@ metadata = pd.read_excel(metadata_file)
 # if no filename selected, code will run over all files described in metadata (TO DO)
 
 #filenames = ['2024-10-02_C_e']
-filenames = ['2024-06-12_S_e']
+#filenames = ['2024-06-12_S_e']
 #filenames = ['2024-07-17_I_e']
-#filenames = ['2024-07-17_J_e']
+filenames = ['2024-07-17_J_e']
 # if the filenames list is empty, run over all available files in metadata
 if not filenames:
 	filenames = metadata.filename
@@ -158,7 +157,7 @@ for filename in filenames:
 	Vppscope = metadf['Vpp'][0]
 	
 	if load_lineshape:
-		df_ls = pd.read_pickle('./clockshift/convolutions_EFs_640us.pkl')
+		df_ls = pd.read_pickle(os.path.join(proj_path, 'convolutions_EFs_640us.pkl'))
 		TTF = round(ToTF,1)
 		if TTF == 0.7:
 			TTF = 0.6
@@ -424,8 +423,8 @@ for filename in filenames:
 	ax_ls.plot(xx, yyconvls, '-', linewidth=3, color = 'tab:green', label='bg avg')
 	ax_ls.errorbar(x, yhi, yerrhi, marker='o', ls='', markersize = 6, capsize=1, mew=1, mfc='none', color='tab:blue', elinewidth=1)
 	ax_ls.errorbar(x, ylo, yerrlo, marker='o', ls='', markersize = 6, capsize=1, mew=1, mfc='none', color='tab:red', elinewidth=1)
-	ax_ls.plot(xx, yyconvls_hi, '--', linewidth=1, color='tab:blue', label= 'bg lo')
-	ax_ls.plot(xx, yyconvls_lo, '--', linewidth=1, color='tab:red', label='bg hi')
+	#ax_ls.plot(xx, yyconvls_hi, '--', linewidth=1, color='tab:blue', label= 'bg lo')
+	#ax_ls.plot(xx, yyconvls_lo, '--', linewidth=1, color='tab:red', label='bg hi')
 
 	# integration has to deal with constant term depending on fit option
 	if fitWithOffset:

@@ -343,7 +343,7 @@ def TrapFreqCD(data,guess=None):
 
 def RabiFreq(data):
 	"""
-	Returns:  A*(np.sin(b * x - x0))**2 + C
+	Returns:  A*(np.sin(b/2 * x - x0))**2 + C
 	"""
 	param_names = ['Amplitude','b','Center','Offset']
 	guess = [1,1,1,0]

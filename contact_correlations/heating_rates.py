@@ -30,13 +30,13 @@ from contact_correlations.field_wiggle_calibration import Bamp_from_Vpp
 from contact_correlations.UFG_analysis import BulkViscTrap, BulkViscUniform
 
 ### paths
-data_path = os.path.join(proj_path, 'data')
-data_path = os.path.join(proj_path, 'data/reanalyzed')
+#data_path = os.path.join(proj_path, 'data')
+data_path = os.path.join(proj_path, 'heating/reanalyzed')
 figfolder_path = os.path.join(proj_path, 'figures')
 
 ### flags
 Analysis = False
-Save = True # analysis results and figures
+Save = False # analysis results and figures
 Summary_Plot = True
 Load = True
 

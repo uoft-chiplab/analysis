@@ -49,7 +49,7 @@ if __name__ == '__main__':
 	results_list = []
 	
 	detunings = [
-				-4,
+# 				-4,
 				-2,
 				-1,
 				0,
@@ -59,7 +59,7 @@ if __name__ == '__main__':
 				8,
 				]
 	files = [
-		  "2025-02-27_C_e_detuning=-4.dat",
+# 		  "2025-02-27_C_e_detuning=-4.dat",
 		  "2025-02-27_C_e_detuning=-2.dat",
 		  "2025-02-27_C_e_detuning=-1.dat",
 		  "2025-02-26_E_e_detuning=0.dat",

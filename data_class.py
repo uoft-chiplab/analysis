@@ -17,7 +17,6 @@ from fit_functions import *
 from scipy.optimize import curve_fit
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib
 import numpy as np
 from tabulate import tabulate
 
@@ -160,13 +159,13 @@ class Data:
 		func, default_guess, param_names = fit_func(fit_data)
 			
 		if guess is None:	
- 			guess = default_guess
+			guess = default_guess
 		if hasattr(self, 'avg_data'): # check for averaging
- 			self.popt, self.pcov = curve_fit(func, self.avg_data[f"{names[0]}"], 
+			self.popt, self.pcov = curve_fit(func, self.avg_data[f"{names[0]}"], 
 						  self.avg_data[f"{names[1]}"],p0=guess, 
 						  sigma=self.avg_data[f"em_{names[1]}"])
 		else:
- 			self.popt, self.pcov = curve_fit(func, self.data[f"{names[0]}"], 
+			self.popt, self.pcov = curve_fit(func, self.data[f"{names[0]}"], 
 						  self.data[f"{names[1]}"],p0=guess)
 		self.perr = np.sqrt(np.diag(self.pcov))
 		residuals = self.data[f"{names[1]}"] - func( self.data[f"{names[0]}"]**2,*self.popt)
@@ -176,7 +175,7 @@ class Data:
 		print(self.parameter_table)
 		
 		if label==None:
- 			label = self.filename
+			label = self.filename
  			
  #plotting data pts 
 		if hasattr(self, 'avg_data'): # check for averaging
@@ -207,7 +206,7 @@ class Data:
 				label = label,marker='o')
  			
 		if axes_labels == None:
- 			axes_labels = [f"{names[0]}", f"{names[1]}"]
+			axes_labels = [f"{names[0]}", f"{names[1]}"]
  			
 		self.ax[0].set_yscale('log')
 		self.ax[0].set_xscale('log')
@@ -250,11 +249,11 @@ class Data:
 		print(self.parameter_table)
 # 		
 		if fit_func == TrapFreq2:
- 			freq = self.popt[2]*10**3/2/np.pi
- 			er = self.perr[2]*10**3/2/np.pi
- 			ot = self.popt[1]*self.popt[2]
- 			print('The trap frequency is {:.6f} +/-{:.2}'.format(freq,er))
- 			print('omega*tau is',ot)
+			freq = self.popt[2]*10**3/2/np.pi
+			er = self.perr[2]*10**3/2/np.pi
+			ot = self.popt[1]*self.popt[2]
+			print('The trap frequency is {:.6f} +/-{:.2}'.format(freq,er))
+			print('omega*tau is',ot)
  							
 		if hasattr(self, 'ax'): # check for plot
 			num = 500

@@ -17,18 +17,19 @@ from rfcalibrations.Vpp_from_VVAfreq import Vpp_from_VVAfreq
 from contact_correlations.contact_interpolation import contact_interpolation as C_interp
 
 plotting = True
-
+# KX TESTING
+correct_ac_loss = False
 datasets = [
-# 				'2025-02-26_C_e.dat',
-				'2025-02-28_C_e_ODT2=1.dat',
-				'2025-02-28_C_e_ODT2=2.dat',
-				'2025-02-28_C_e_ODT2=3.dat',
-				'2025-02-28_C_e_ODT2=4.dat',
-				'2025-02-28_C_e_ODT2=6.dat',
-				]
+# 			'2025-02-26_C_e.dat',
+			'2025-02-28_C_e_ODT2=1.dat',
+			'2025-02-28_C_e_ODT2=2.dat',
+			'2025-02-28_C_e_ODT2=3.dat',
+			'2025-02-28_C_e_ODT2=4.dat',
+			'2025-02-28_C_e_ODT2=6.dat',
+			]
 
 reduced_imaging_light = [
-				'2025-02-28_F_e.dat', # reduced imaging light overall
+						'2025-02-28_F_e.dat', # reduced imaging light overall
 						]
 
 equalized_light = [
@@ -41,9 +42,9 @@ blanks_rescaled = [
 
 
 low_OD = [
-			'2025-03-04_H_e.dat', # hot and low atom num
-			'2025-03-04_K_e.dat', # coldish and low atom num
-			]
+		'2025-03-04_H_e.dat', # hot and low atom num
+		'2025-03-04_K_e.dat', # coldish and low atom num
+		]
 
 drop_data = [
 			'2025-03-04_O_e_drop time=0.8.dat',
@@ -51,18 +52,18 @@ drop_data = [
 			]
 
 labels = [' ',
-# 		  'less light',
-# 		  'equal light',
-# 		  'blanks',
+		  'less light',
+		  'equal light',
+		  'blanks',
 		  'low OD',
 		  'hot data',
 		  ]
 
 included_data = [
 				datasets, 
-# 				reduced_imaging_light, 
-# 				equalized_light,
-# 				blanks_rescaled,
+				reduced_imaging_light, 
+				equalized_light,
+				blanks_rescaled,
 				low_OD,
 				drop_data,
 				]
@@ -80,9 +81,9 @@ ToTFs = [
 		0.446, 
 		0.533,
 		0.63,
-# 		0.355,
-# 		0.355,
-# 		0.32,
+		0.355,
+		0.355,
+		0.32,
 		1.20,
 		0.445,
 		0.822,
@@ -96,9 +97,9 @@ EFs = [
 	   14.95,
 	   15.38,
 	   15.61,
-# 	   13.67,
-# 	   13.67,
-# 	   15.6,
+	   13.67,
+	   13.67,
+	   15.6,
 	   14.3,
 	   11.0,
 	   15.7,
@@ -106,15 +107,15 @@ EFs = [
 	   ]
 
 pulse_times = [
-# 				200,
-			   200,
-			   200,
-			   200,
-			   200,
-			   200,
 # 			   200,
-# 			   200,
-# 			   200,
+			   200,
+			   200,
+			   200,
+			   200,
+			   200,
+			   200,
+			   200,
+			   200,
 			   400,
 			   200,
 			   200,
@@ -153,8 +154,12 @@ for filename, ToTF, EF, pulse_time in zip(filenames, ToTFs, EFs, pulse_times):
 	# saturation correction
 	if ToTF > 0.35:
 		sat_scale = saturation_scale(OmegaR**2/(2*np.pi)**2, HFT_x0_hot)
+		corr_c = 0.66 if correct_ac_loss else 1
+		corr_a = 0.98 if correct_ac_loss else 1
 	else:
 		sat_scale = saturation_scale(OmegaR**2/(2*np.pi)**2, HFT_x0_cold)
+		corr_c = 0.76 if correct_ac_loss else 1
+		corr_a = 0.99 if correct_ac_loss else 1
 		
 # 	sat_scale = 1
 	print("Saturation scale is {:.2f}".format(sat_scale))
@@ -166,18 +171,25 @@ for filename, ToTF, EF, pulse_time in zip(filenames, ToTFs, EFs, pulse_times):
 	acbgs = bgs.iloc[(bgs['sweep'] == 45.90).values]
 	
 	# counts
-	acbgc9 = acbgs['c9'].reset_index(drop=True)
-	acbgc5 = acbgs['c5'].reset_index(drop=True)
+	acbgc9 = acbgs['c9'].reset_index(drop=True)/corr_a
+	acbgc5 = acbgs['c5'].reset_index(drop=True)/corr_c
 	
-	bcbgc9 = bcbgs['c9'].reset_index(drop=True)
-	bcbgc5 = bcbgs['c5'].reset_index(drop=True)
+	bcbgc9 = bcbgs['c9'].reset_index(drop=True)/corr_a
+	bcbgc5 = bcbgs['c5'].reset_index(drop=True)/corr_c
 	
 	# count weighted counts
-	acbgc9cwc = acbgs['c9cwc'].reset_index(drop=True)
-	acbgc5cwc = acbgs['c5cwc'].reset_index(drop=True)
-	
-	bcbgc9cwc = bcbgs['c9cwc'].reset_index(drop=True)
-	bcbgc5cwc = bcbgs['c5cwc'].reset_index(drop=True)
+# 	acbgc9cwc = acbgs['c9cwc'].reset_index(drop=True)
+# 	acbgc5cwc = acbgs['c5cwc'].reset_index(drop=True)
+# 	
+# 	bcbgc9cwc = bcbgs['c9cwc'].reset_index(drop=True)
+# 	bcbgc5cwc = bcbgs['c5cwc'].reset_index(drop=True)
+# 	
+# 	# count weighted counts
+# 	acbgc9cwc = acbgs['c9cwc'].reset_index(drop=True)
+# 	acbgc5cwc = acbgs['c5cwc'].reset_index(drop=True)
+# 	
+# 	bcbgc9cwc = bcbgs['c9cwc'].reset_index(drop=True)
+# 	bcbgc5cwc = bcbgs['c5cwc'].reset_index(drop=True)
 		
 	# acquire signal dataframe
 	datapts = run.data.iloc[((run.data['VVA'] > 0)).values]
@@ -186,30 +198,31 @@ for filename, ToTF, EF, pulse_time in zip(filenames, ToTFs, EFs, pulse_times):
 	ac = datapts.iloc[(datapts['sweep'] == 45.90).values]	
 	
 	# counts
-	acc9 = ac['c9'].reset_index(drop=True)
-	acc5 = ac['c5'].reset_index(drop=True)
+	acc9 = ac['c9'].reset_index(drop=True)/corr_a
+	acc5 = ac['c5'].reset_index(drop=True)/corr_c
 	
-	bcc9 = bc['c9'].reset_index(drop=True)
-	bcc5 = bc['c5'].reset_index(drop=True)
+	bcc9 = bc['c9'].reset_index(drop=True)/corr_a
+	bcc5 = bc['c5'].reset_index(drop=True)/corr_c
 	
 	# count weighted counts
-	acc9cwc = ac['c9cwc'].reset_index(drop=True)
-	acc5cwc = ac['c5cwc'].reset_index(drop=True)
-	
-	bcc9cwc = bc['c9cwc'].reset_index(drop=True)
-	bcc5cwc = bc['c5cwc'].reset_index(drop=True)
+# 	acc9cwc = ac['c9cwc'].reset_index(drop=True)
+# 	acc5cwc = ac['c5cwc'].reset_index(drop=True)
+# 	
+# 	bcc9cwc = bc['c9cwc'].reset_index(drop=True)
+# 	bcc5cwc = bc['c5cwc'].reset_index(drop=True)
 	
 	# now average and std dev lists
 	data_lists = [acbgc9, acbgc5, bcbgc9, bcbgc5,
 				  acc9, acc5, bcc9, bcc5,
-				  acc9cwc, acc5cwc, bcc9cwc, bcc5cwc,
-				  acbgc9cwc, acbgc5cwc, bcbgc9cwc, bcbgc5cwc]
+# 				  acc9cwc, acc5cwc, bcc9cwc, bcc5cwc,
+# 				  acbgc9cwc, acbgc5cwc, bcbgc9cwc, bcbgc5cwc,
+				  ]
 	
 	# names of quantities
 	keys = ['Na_bg', 'Nc_bg', 'Nb_bg', 'Nc2_bg',
 			'Na', 'Nc', 'Nb', 'Nc2',
-			'Na_bg_cwc', 'Nc_bg_cwc', 'Nb_bg_cwc', 'Nc2_bg_cwc',
-			'Na_cwc', 'Nc_cwc', 'Nb_cwc', 'Nc2_cwc',
+# 			'Na_bg_cwc', 'Nc_bg_cwc', 'Nb_bg_cwc', 'Nc2_bg_cwc',
+# 			'Na_cwc', 'Nc_cwc', 'Nb_cwc', 'Nc2_cwc',
 			]
 	
 	values = []
@@ -224,7 +237,7 @@ for filename, ToTF, EF, pulse_time in zip(filenames, ToTFs, EFs, pulse_times):
 	# keys for final df, need to interleave e_keys
 	df_keys = []
 	for key_pair in zip(keys, e_keys):
-	    df_keys.extend(key_pair)
+		df_keys.extend(key_pair)
 	
 	# make dataframe of averaged values
 	df = pd.DataFrame([dict(zip(df_keys, values))])
@@ -305,8 +318,8 @@ if plotting == True:
 				'Na bg - signal',
 				'Contact',
 				'Contact from Loss',
-				'Na count weighted counts',
-				'Nb count weighted counts',
+				'Na',
+				'Nc',
 				'Anomalous loss',
 				'Anomalous loss',
 				]
@@ -361,15 +374,15 @@ if plotting == True:
 		
 		# count weighted counts
 		ax = axs[5]
-		ax.errorbar(subdf[xname], subdf['Na_cwc']/subdf['Na'], 
-			  yerr=subdf['e_Na_cwc']/subdf['Na'], **sty, label=label)
-		ax.plot(subdf[xname], subdf['two2D_a2'], **sty, label=label)
+# 		ax.errorbar(subdf[xname], subdf['Na_cwc']/subdf['Na'], 
+# 			  yerr=subdf['e_Na_cwc']/subdf['Na'], **sty, label=label)
+		ax.plot(subdf[xname], subdf['Na'], **sty, label=label)
 		
 		# count weighted counts
 		ax = axs[6]
-		ax.errorbar(subdf[xname], subdf['Nb_cwc']/subdf['Nb'], 
-			  yerr=subdf['e_Nb_cwc']//subdf['Nb'], **sty, label=label)
-		ax.errorbar(subdf[xname], subdf['two2D_a2'], **sty, label=label)
+# 		ax.errorbar(subdf[xname], subdf['Nb_cwc']/subdf['Nb'], 
+# 			  yerr=subdf['e_Nb_cwc']//subdf['Nb'], **sty, label=label)
+		ax.errorbar(subdf[xname], subdf['Nc'], **sty, label=label)
 		
 		# transfer vs anomalous loss
 		ax = axs[7]

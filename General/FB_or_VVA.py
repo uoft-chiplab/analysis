@@ -13,26 +13,27 @@ if root not in sys.path:
 	sys.path.insert(0, root)
 
 from data_class import Data
-from fit_functions import Sinc2
+from fit_functions import Sinc2, Parabola
 import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit
-
-import numpy as np
 
 plt.rcParams.update({"figure.figsize": [5,3.5]})
 
-FB = False
-FB_val = 3.309
-file = "2025-02-25_S_e.dat"
+scan = 'VVA'
+FB_val = 3.3
+file = "2025-04-16_F_e.dat"
 
 fit_func = Sinc2
 
-if FB == True:
+if scan == 'FB':
 	names = ['FB', 'fraction95']
 	guess = [0.5, FB_val, 0.1, 0]
-else:
+elif scan == 'VVA':
 	names = ['VVA', 'fraction95']
 	guess = [1, 2, 1, 0]
+elif scan == 'grad':
+	fit_func = Parabola
+	names = ['grad', 'sum95']
+	guess = None
 
 print("--------------------------")
 Data(file).fit(fit_func, names, guess=guess)

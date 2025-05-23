@@ -28,7 +28,7 @@ data_path = os.path.join(proj_path, 'theory')
 # density n=k_F^3/(3\pi^2)
 # columns: T/T_F, mu/E_F, u/(E_F*n), s/(k_B*n), p/(E_F*n), C/k_F^4
 df = pd.read_csv(os.path.join(data_path,'luttward-thermodyn.txt'),skiprows=4,sep=' ')
-test_contact_plot =False
+test_contact_plot = True
 xlabel = 'T/T_F'
 ylabel = 'C/k_F^4'
 df[ylabel] = df[ylabel] * 3*np.pi**2 # contact density c/(k_F n) = C/k_F^4 * (3 pi^2)

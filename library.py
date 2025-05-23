@@ -35,23 +35,45 @@ plt_settings = {"axes.linewidth": frame_size,
 				"axes.edgecolor":'black',
 				"scatter.edgecolors":'black',
 				"lines.linewidth":2,
-				 "font.size": 12,
-				 "legend.fontsize": 10,
-				 "legend.framealpha": 1.0,
-				 "xtick.major.width": frame_size,
-				 "xtick.minor.width": frame_size*0.75,
-				 "xtick.direction":'in',
-				 "xtick.major.size": 3.5*frame_size,
-				 "xtick.minor.size": 2.0*frame_size,
-				 "ytick.major.width": frame_size,
-				 "ytick.minor.width": frame_size*0.75,
-				 "ytick.major.size": 3.5*frame_size,
-				 "ytick.minor.size": 2.0*frame_size,
-				 "ytick.direction":'in',
-				 "lines.linestyle":'',
-				 "lines.marker":"o",
-				 "lines.markeredgewidth": 2,
-				 "figure.dpi": 300}
+				"font.size": 12,
+				"legend.fontsize": 10,
+				"legend.framealpha": 1.0,
+				"xtick.major.width": frame_size,
+				"xtick.minor.width": frame_size*0.75,
+				"xtick.direction":'in',
+				"xtick.major.size": 3.5*frame_size,
+				"xtick.minor.size": 2.0*frame_size,
+				"ytick.major.width": frame_size,
+				"ytick.minor.width": frame_size*0.75,
+				"ytick.major.size": 3.5*frame_size,
+				"ytick.minor.size": 2.0*frame_size,
+				"ytick.direction":'in',
+				"lines.linestyle":'',
+				"lines.marker":"o",
+				"lines.markeredgewidth": 2,
+				"figure.dpi": 300}
+
+paper_settings = {
+				'font.size': 8,          # Base font size
+				'axes.labelsize': 8,       # Axis label font size
+				'axes.titlesize': 8,       # Title font size (if used)
+				'xtick.labelsize': 7,      # Tick label font size (x-axis)
+				'ytick.labelsize': 7,      # Tick label font size (y-axis)
+				'legend.fontsize': 7,      # Legend font size
+				'figure.dpi': 300,        # Publication-ready resolution
+				'lines.linewidth': 1,      # Thinner lines for compactness
+				"lines.linestyle":'',
+				'axes.linewidth': 0.5,      # Thin axis spines
+				'xtick.major.width': 0.5,    # Tick mark width
+				'ytick.major.width': 0.5,
+				'xtick.direction': 'in',     # Ticks pointing inward
+				'ytick.direction': 'in',
+				'xtick.major.size': 3,      # Shorter tick marks
+				'ytick.major.size': 3,
+				'font.family': 'sans-serif',
+				# 'text.usetex': True,       # Use LaTeX for typesetting, needs local LaTeX install
+				'axes.grid': False,       # No grid for PRL figures}
+				}
 
 # plot color and markers
 colors = ["blue", "orange", "green", "red", 
@@ -61,8 +83,6 @@ colors = ["blue", "orange", "green", "red",
 # matplotlib default colors
 colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
  '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
-
-MW_colors = ['hotpink', 'cornflowerblue']
 
 light_colors = []
 dark_colors = []
@@ -110,6 +130,16 @@ styles = [{'color':dark_color, 'mec':dark_color, 'mfc':light_color,
 MW_styles = [{'color':dark_color, 'mec':dark_color, 'mfc':light_color,
 					 'marker':marker} for dark_color, light_color, marker in \
 						   zip(MW_dark_colors, MW_light_colors, markers)]
+	
+def generate_plt_styles(colors, markers=markers, ts=tintshade):
+	""" Generates style dictionary for use in plt.plot and plt.errorbar """
+	light_colors = [tint_shade_color(color, amount=1+ts) for color in colors]
+	dark_colors = [tint_shade_color(color, amount=1-ts) for color in colors]
+	styles = [{'color':dark_color, 'mec':dark_color, 'mfc':light_color,
+					 'marker':marker} for dark_color, light_color, marker in \
+						   zip(dark_colors, light_colors, markers)]
+	return styles
+	
 
 def set_marker_color(color):
 	"""
@@ -150,13 +180,13 @@ def save_to_Excel(filename, df, sheet_name='Sheet1', mode='replace'):
 			raise ValueError(mode + " mode not implemented yet")
 						
 	except PermissionError:
-		 print("Can't write to Excel file " + filename + ".")
-		 print('Is the .xlsx file open?')
-		 print()
+		print("Can't write to Excel file " + filename + ".")
+		print('Is the .xlsx file open?')
+		print()
 	except FileNotFoundError: # there is no save file
-		 print("Save file does not exist.")
-		 print("Creating file " + filename + " and writing header")
-		 df.to_excel(filename, index=False, sheet_name=sheet_name)
+		print("Save file does not exist.")
+		print("Creating file " + filename + " and writing header")
+		df.to_excel(filename, index=False, sheet_name=sheet_name)
 		 
 def quotient_propagation(f, A, B, sA, sB, sAB):
 	return f* (sA**2/A**2 + sB**2/B**2 - 2*sAB/A/B)**(1/2)
@@ -276,3 +306,12 @@ def guessACdimer(field):
 
 def a97(B, B0=202.14, B0zero=209.07, abg=167.6*a0): 
 	return abg * (1 - (B0zero - B0)/(B - B0));
+
+def BlackmanFourier2(omega):
+	A = 1060.9629086785837
+	B = -3.5209670498557566
+	C = 0.002744323946881455
+	D = 6234.181826176155
+	E = -197.39208802178717
+	return np.abs((2 *np.sin(omega/2) * (A+B*omega**2 + C*omega**4))/ \
+		(D*omega + E*omega**3 + omega**5))**2

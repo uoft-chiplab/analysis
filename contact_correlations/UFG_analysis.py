@@ -22,7 +22,7 @@ from contact_correlations.baryrat import BarycentricRational
 
 # paths
 proj_path = os.path.dirname(os.path.realpath(__file__))
-data_path = os.path.join(proj_path, 'data')
+data_path = os.path.join(proj_path, 'theory')
 
 # print results
 print_results = False
@@ -32,8 +32,8 @@ print_results = False
 #
 
 eosfit = {'nodes': np.array([5.45981500e+01, 3.35462628e-04, 4.48168907e+00, 1.28402542e+00]), 
-          'values': np.array([2.66603452e+01, 3.35574145e-04, 5.63725236e+00, 1.91237718e+00]), 
-          'weights': np.array([ 0.52786226, -0.10489219, -0.69208542,  0.48101646])}
+		  'values': np.array([2.66603452e+01, 3.35574145e-04, 5.63725236e+00, 1.91237718e+00]), 
+		  'weights': np.array([ 0.52786226, -0.10489219, -0.69208542,  0.48101646])}
 eosrat = BarycentricRational(eosfit['nodes'],eosfit['values'],eosfit['weights'])
 
 def eos_ufg(betamu):
@@ -46,89 +46,90 @@ def Theta(betamu):
 	return (4*pi)/((3*pi**2)* eos_ufg(betamu))**(2/3)
 
 sumrulefit = {'nodes': np.array([1.22144641e+01, 8.33717634e-03, 3.05244000e+00, 3.48110474e-01]), 
-              'values': np.array([1.46259386e+00, 1.24595501e-04, 5.81003381e-01, 5.49151117e-02]), 
-              'weights': np.array([ 0.33160786, -0.30343046, -0.66528124,  0.59612671])}
+			  'values': np.array([1.46259386e+00, 1.24595501e-04, 5.81003381e-01, 5.49151117e-02]), 
+			  'weights': np.array([ 0.33160786, -0.30343046, -0.66528124,  0.59612671])}
 sumrat = BarycentricRational(sumrulefit['nodes'],sumrulefit['values'],sumrulefit['weights'])
 
 def zeta(betamu,betaomega):
-    """dimensionless bulk viscosity of unitary gas: zeta-tilde(beta*mu,beta*omega)"""
-    z = np.exp(betamu)
-    sumruleT = np.where(betamu<-4.8,0.36*z**(5/3),sumrat(z)) # area under viscosity peak in units of T
-    gammaT = 1.739-0.0892*z+0.00156*z**2 # width of viscosity peak in units of T
-    return sumruleT*gammaT/(betaomega**2+gammaT**2)
+	"""dimensionless bulk viscosity of unitary gas: zeta-tilde(beta*mu,beta*omega)"""
+	z = np.exp(betamu)
+	sumruleT = np.where(betamu<-4.8,0.36*z**(5/3),sumrat(z)) # area under viscosity peak in units of T
+	gammaT = 1.739-0.0892*z+0.00156*z**2 # width of viscosity peak in units of T
+	return sumruleT*gammaT/(betaomega**2+gammaT**2)
 
 def sumrule(betamu):
-    """sumrule in temperature units"""
-    z = np.exp(betamu)
-    sumruleT = np.where(betamu<-4.8,0.36*z**(5/3),sumrat(z)) # area under viscosity peak in units of T
-    return sumruleT
+	"""sumrule in temperature units"""
+	z = np.exp(betamu)
+	sumruleT = np.where(betamu<-4.8,0.36*z**(5/3),sumrat(z)) # area under viscosity peak in units of T
+	return sumruleT
 
 def sumruleint(betamu):
-    """sumrule in temperature units from integral of zeta over betaomega"""
-    integral, int_err = quad(lambda betaomega: zeta(betamu,betaomega),0,np.inf,epsrel=1e-4)
-    sumruleT = 2/pi*integral
-    return sumruleT
+	"""sumrule in temperature units from integral of zeta over betaomega"""
+	integral, int_err = quad(lambda betaomega: zeta(betamu,betaomega),0,np.inf,epsrel=1e-4)
+	sumruleT = 2/pi*integral
+	return sumruleT
 
 def phaseshift_Drude(betamu,betaomega):
-    """ arctan(omega zeta/sum_rule) """
-    z = np.exp(betamu)
-    gammaT = 1.739-0.0892*z+0.00156*z**2 # width of viscosity peak in units of T
-    return betaomega * gammaT/(betaomega**2+gammaT**2)
+	""" arctan(omega zeta/sum_rule) """
+	z = np.exp(betamu)
+	gammaT = 1.739-0.0892*z+0.00156*z**2 # width of viscosity peak in units of T
+	return betaomega * gammaT/(betaomega**2+gammaT**2)
 
 def phaseshift_zeta(nu, zeta, sumrule):
-    """ arctan(omega zeta/sum_rule) """
-    return np.arctan(nu * zeta/sumrule)
+	""" arctan(omega zeta/sum_rule) """
+	return np.arctan(nu * zeta/sumrule)
 
 def thermo_bulk(betamu, T): # Had to add T as an argument here - CD
-    """compute thermodynamics of homogeneous gas (energies E=h*nu=hbar*omega given as nu in Hz)"""
-    f_n = eos_ufg(betamu) # phase space density
-    theta = 4*np.pi/(3*np.pi**2*f_n)**(2/3)
-    f_p,f_p_err = quad(lambda v: eos_ufg(betamu-v),0,np.inf,epsrel=1e-4) # pressure by integrating density over mu
-    Ebulk = (3/2)*f_p*T # internal energy density of UFG is 3/2 times pressure, for two spin components (in units of lambda^-3)
-    return f_n,theta,f_p,Ebulk
+	"""compute thermodynamics of homogeneous gas (energies E=h*nu=hbar*omega given as nu in Hz)"""
+	f_n = eos_ufg(betamu) # phase space density
+	theta = 4*np.pi/(3*np.pi**2*f_n)**(2/3)
+	f_p,f_p_err = quad(lambda v: eos_ufg(betamu-v),0,np.inf,epsrel=1e-4) # pressure by integrating density over mu
+	Ebulk = (3/2)*f_p*T # internal energy density of UFG is 3/2 times pressure, for two spin components (in units of lambda^-3)
+	return f_n,theta,f_p,Ebulk
 
 def heating_bulk(T,betamu,betaomega):
-    """compute viscous heating rate E-dot in homogeneous system"""
-    Zbulk = eos_ufg(betamu)**(1/3)*zeta(betamu,betaomega)
-    Edot = 9*np.pi*(T*betaomega)**2/(3*np.pi**2)**(2/3)*Zbulk
-    return Edot
+	"""compute viscous heating rate E-dot in homogeneous system"""
+	Zbulk = eos_ufg(betamu)**(1/3)*zeta(betamu,betaomega)
+	Edot = 9*np.pi*(T*betaomega)**2/(3*np.pi**2)**(2/3)*Zbulk
+	return Edot
 
 def heating_from_zeta(T,betamu,betaomega,zeta):
-    """compute viscous heating rate E-dot in homogeneous system"""
-    Zbulk = eos_ufg(betamu)**(1/3)*zeta
-    Edot = 9*np.pi*(T*betaomega)**2/(3*np.pi**2)**(2/3)*Zbulk
-    return Edot
+	"""compute viscous heating rate E-dot in homogeneous system"""
+	Zbulk = eos_ufg(betamu)**(1/3)*zeta
+	Edot = 9*np.pi*(T*betaomega)**2/(3*np.pi**2)**(2/3)*Zbulk
+	return Edot
 
 def C_bulk(betamu):
-    """compute Contact Density for bulk gas"""
-    Cbulk = ContactInterpolation(Theta(betamu))
-    return Cbulk
+	"""compute Contact Density for bulk gas"""
+	Cbulk = ContactInterpolation(Theta(betamu))
+	return Cbulk
 
 def heating_C(T, betaomega, C):
-    """compute heating rate at high frequency from contact density"""
-    pifactors = (3*pi**2)**(1/3)/(36*pi*(2*pi)**(3/2))
-    Edot_C = 9*pi*(T*betaomega)**2/(betaomega)**(3/2)*pifactors*C
-    return Edot_C
+	"""compute heating rate at high frequency from contact density"""
+	"""C is just the integrated contact density without prefactors"""
+	pifactors = (3*pi**2)**(1/3)/(36*pi*(2*pi)**(3/2))
+	Edot_C = 9*pi*(T*betaomega)**2/(betaomega)**(3/2)*pifactors*C
+	return Edot_C
 
 def zeta_C(betamu, betaomega):
-    """compute heating rate at high frequency from contact density"""
-    pifactors = 3*pi**2/(36*pi*(2*pi)**(3/2))
-    zetaC = pifactors*eos_ufg(betamu) * ContactInterpolation(Theta(betamu)) / (betaomega)**(3/2)
-    return zetaC
+	"""compute heating rate at high frequency from contact density"""
+	pifactors = 3*pi**2/(36*pi*(2*pi)**(3/2))
+	zetaC = pifactors*eos_ufg(betamu) * ContactInterpolation(Theta(betamu)) / (betaomega)**(3/2)
+	return zetaC
 
 def sumruleintC(betamu, Theta):
-    """sumrule in temperature units from integral of zeta over betaomega, but using
+	"""sumrule in temperature units from integral of zeta over betaomega, but using
 	zeta from contact for omega > T, i.e. betaomega > 1, if Theta=1, or 
 	omega > EF, i.e. betaomega > 1/Theta if Theta=Theta"""
-    integrand = lambda x: np.piecewise(x, [x<(1/Theta), x>=(1/Theta)], [zeta(betamu, x), zeta_C(betamu, x)])
-    integral, int_err = quad(integrand,0,np.inf,epsrel=1e-4)
-    sumruleT = 2/pi*integral
-    return sumruleT
+	integrand = lambda x: np.piecewise(x, [x<(1/Theta), x>=(1/Theta)], [zeta(betamu, x), zeta_C(betamu, x)])
+	integral, int_err = quad(integrand,0,np.inf,epsrel=1e-4)
+	sumruleT = 2/pi*integral
+	return sumruleT
 
 def sumrule_zetaint(nus, zetas):
-    """sumrule in Hz"""
-    sumrule = 2/pi*np.trapz(zetas, x=nus)
-    return sumrule
+	"""sumrule in Hz"""
+	sumrule = 2/pi*np.trapz(zetas, x=nus)
+	return sumrule
 
 class BulkViscUniform:
 	def __init__(self, T, mubulk, nus):
@@ -167,13 +168,14 @@ class BulkViscUniform:
 		self.sumruleint = sumruleint(betamubulk)*self.T
 		self.sumruleintC = sumruleintC(betamubulk, 1)*self.T # using nu=T as the change freq for zeta calc
 															# could also use nu=EF by replaced 1 with self.Theta
-		
+		self.tau = 1/tau_inv(betamubulk, self.T) # inverse scattering rate
 		self.phaseshifts = np.array([phaseshift_Drude(betamubulk,
 									betaomega) for betaomega in betaomegas])
 		self.phaseshiftsC = np.array([phaseshift_zeta(betaomega*T, zetaC, 
 			self.sumruleintC) for betaomega, zetaC in zip(betaomegas, self.zetasC)])
-		self.phaseshiftsQcrit = np.array([phaseshift_qcrit(T, betaomega, betamubulk) for betaomega in betaomegas])
-		
+		self.phaseshiftsQcrit = np.arctan(2*np.pi*self.nus * self.tau / (1 + (2*np.pi*self.nus*self.tau)**2))
+		self.phiLR = np.arctan(2*np.pi*self.nus * self.tau)
+
 		self.betamubulk = betamubulk
 		
 		#
@@ -203,14 +205,14 @@ def mutrap_est(ToTF):
 	return a*ToTF + b
 
 def weight_harmonic(v,betabaromega):
-    """area of equipotential surface of potential value V/T=v=0...inf"""
-    return 2/(betabaromega**3)*np.sqrt(v/np.pi)
+	"""area of equipotential surface of potential value V/T=v=0...inf"""
+	return 2/(betabaromega**3)*np.sqrt(v/np.pi)
 
 def number_per_spin(betamu,betabaromega,weight_func):
-    """compute number of particles per spin state for trapped unitary gas:
-       N_sigma = int_0^infty dv w(v) f_n_sigma*lambda^3(mu-v)"""
-    N_sigma,Nerr = quad(lambda v: weight_func(v,betabaromega)*eos_ufg(betamu-v)/2,0,np.inf,epsrel=eps)
-    return N_sigma
+	"""compute number of particles per spin state for trapped unitary gas:
+	   N_sigma = int_0^infty dv w(v) f_n_sigma*lambda^3(mu-v)"""
+	N_sigma,Nerr = quad(lambda v: weight_func(v,betabaromega)*eos_ufg(betamu-v)/2,0,np.inf,epsrel=eps)
+	return N_sigma
 
 def psd_trap(betamu,betabaromega,weight_func):
  	"""compute density averaged over the trap"""
@@ -219,56 +221,63 @@ def psd_trap(betamu,betabaromega,weight_func):
  	return psd
 
 def Epot_trap(betamu,betabaromega,weight_func):
-    """compute trapping potential energy (in units of T):
-       E_trap = int_0^infty dv w(v) f_n*lambda^3(mu-v) v"""
-    Epot,Eerr = quad(lambda v: weight_func(v,betabaromega)*eos_ufg(betamu-v)*v,0,np.inf,epsrel=eps)
-    return Epot
+	"""compute trapping potential energy (in units of T):
+	   E_trap = int_0^infty dv w(v) f_n*lambda^3(mu-v) v"""
+	Epot,Eerr = quad(lambda v: weight_func(v,betabaromega)*eos_ufg(betamu-v)*v,0,np.inf,epsrel=eps)
+	return Epot
 
 def thermo_trap(T,betamu,betabaromega,weight_func):
-    """compute thermodynamics of trapped gas"""
-    Ns = number_per_spin(betamu,betabaromega,weight_func)
-    EF = T*betabaromega*(6*Ns)**(1/3) # in Hz, without 2pi
-    Theta = T/EF
-    Epot = T*Epot_trap(betamu,betabaromega,weight_func) # in Hz, without 2pi
-    return Ns,EF,Theta,Epot
+	"""compute thermodynamics of trapped gas"""
+	Ns = number_per_spin(betamu,betabaromega,weight_func)
+	EF = T*betabaromega*(6*Ns)**(1/3) # in Hz, without 2pi
+	Theta = T/EF
+	Epot = T*Epot_trap(betamu,betabaromega,weight_func) # in Hz, without 2pi
+	return Ns,EF,Theta,Epot
 
 def heating_trap(T,betamu,betaomega,betabaromega,weight_func):
 	"""compute viscous heating rate E-dot averaged over the trap"""
 	Ztrap,Ztraperr = quad(lambda v: weight_func(v,
 			   betabaromega)*eos_ufg(betamu-v)**(1/3)*zeta(betamu-v,betaomega),0,np.inf,epsrel=1e-4)
-    # Ztrap_norm,Ztraperr_norm = quad(lambda v: weight(v,betabaromega)*eos_ufg(betamu-v)**(1/3),0,np.inf,epsrel=1e-4)
+	# Ztrap_norm,Ztraperr_norm = quad(lambda v: weight(v,betabaromega)*eos_ufg(betamu-v)**(1/3),0,np.inf,epsrel=1e-4)
 	Edot = 9*np.pi*(T*betaomega)**2/(3*np.pi**2)**(2/3)*Ztrap
 	return Edot #, Ztrap/Ztrap_norm # modified to return trap avged zeta
 
 def tau_inv(betamu, T):
+	'''This is in units of angular frequency, 2pi Hz'''
 	z = np.exp(betamu)
-	tauinv = (1.739 - 0.0892*z + 0.00156*z**2) * T
+	tauinv = ((1.739 - 0.0892*z + 0.00156*z**2) * T) * (2*pi)
 	return tauinv
 
 # unused; this gives weird results
 def heating_trap_sumrule(T,betamu,betaomega,betabaromega,weight_func):
- 	"""compute viscous heating rate E-dot averaged over the trap normalized by scale sus"""
- 	tau = 1/tau_inv(betamu, T) # inverse scattering rate
- 	drude_form = tau / (1 + (betaomega*T*tau)**2)
+	"""compute viscous heating rate E-dot averaged over the trap normalized by scale sus"""
+	 
+	  	# Strap,Straperr = quad(lambda v: weight_func(v,
+	# 			   betabaromega)*eos_ufg(betamu-v)**(1/3)*sumrule(betamu-v),0,np.inf,epsrel=1e-4)
+	tau = 1/tau_inv(betamu, T) # inverse scattering rate
+	drude_form = tau / (1 + (2*pi*betaomega*T*tau)**2)
+	Edot = 9*np.pi*(T*betaomega)**2/(3*np.pi**2)**(2/3)*drude_form
+	return Edot 
 
- 	# Strap,Straperr = quad(lambda v: weight_func(v,
-# 			   betabaromega)*eos_ufg(betamu-v)**(1/3)*sumrule(betamu-v),0,np.inf,epsrel=1e-4)
- 	Edot = 9*np.pi*(T*betaomega)**2/(3*np.pi**2)**(2/3)*drude_form
- 	return Edot 
-
-def phaseshift_qcrit(T, betaomega, betamu):
-	"""phi = arctan(omegatau/(1+(omegatau**2)) Eq.(30) in May note"""
-	tau = 1/tau_inv(betamu, T)
-	phiqcrit = np.arctan(betaomega*T * tau / (1 + (betaomega*T*tau)**2))
-	return phiqcrit
+# def phaseshift_qcrit(T, betaomega, betamu):
+# 	"""phi = arctan(omegatau/(1+(omegatau**2)) Eq.(30) in May note"""
+# 	tau = 1/tau_inv(betamu, T)
+# 	phiqcrit = np.arctan((2*pi*betaomega)*T * tau / (1 + (2*pi*betaomega*T*tau)**2))
+# 	return phiqcrit
 
 def phaseshift_arg_trap(betamu,betaomega,betabaromega,weight_func):
-    """compute viscous heating rate E-dot averaged over the trap"""
-    argtrap,argtraperr = quad(lambda v: weight_func(v,
+	"""compute viscous heating rate E-dot averaged over the trap"""
+	argtrap,argtraperr = quad(lambda v: weight_func(v,
 		   betabaromega)*eos_ufg(betamu-v)**(1/3)*phaseshift_Drude(betamu-v,betaomega),0,np.inf,epsrel=1e-4)
-    argtrap_norm,argtraperr_norm = quad(lambda v: weight_func(v,betabaromega)*eos_ufg(betamu-v)**(1/3),0,
+	argtrap_norm,argtraperr_norm = quad(lambda v: weight_func(v,betabaromega)*eos_ufg(betamu-v)**(1/3),0,
 										np.inf,epsrel=eps)
-    return argtrap/argtrap_norm #, Ztrap/Ztrap_norm # modified to return trap avged zeta
+	return argtrap/argtrap_norm #, Ztrap/Ztrap_norm # modified to return trap avged zeta
+
+# def phiLR(T, betaomega, betamu):
+# 	"""phi = arctan(omegatau) based on LR theory"""
+# 	tau = 1/tau_inv(betamu, T)
+# 	phiLR = np.arctan(2*pi*betaomega*T * tau)
+# 	return phiLR
 
 def find_betamu(T, ToTF, betabaromega, weight_func, guess=None):
 	"""solves for betamu that matches T, EF and betabaromega of trap"""
@@ -277,15 +286,15 @@ def find_betamu(T, ToTF, betabaromega, weight_func, guess=None):
 	return sol.root, sol.iterations
 
 def sumrule_trap(betamu, betabaromega, weight_func):
-    """sumrule in temperature units"""
-    sumruleT, sumruleTerr = quad(lambda v: weight_func(v, betabaromega)*sumrule(betamu-v),
+	"""sumrule in temperature units"""
+	sumruleT, sumruleTerr = quad(lambda v: weight_func(v, betabaromega)*sumrule(betamu-v),
 								 0,np.inf,epsrel=eps)
-    return sumruleT
+	return sumruleT
 
 def C_trap(betamu, betabaromega,weight_func):
-    """compute Contact Density averaged over the trap"""
-    Ctrap,Ctraperr = quad(lambda v: weight_func(v,betabaromega)*eos_ufg(betamu-v)**(4/3)*ContactInterpolation(Theta(betamu-v)),0,np.inf,epsrel=eps)
-    return Ctrap
+	"""compute Contact Density averaged over the trap"""
+	Ctrap,Ctraperr = quad(lambda v: weight_func(v,betabaromega)*eos_ufg(betamu-v)**(4/3)*ContactInterpolation(Theta(betamu-v)),0,np.inf,epsrel=eps)
+	return Ctrap
 
 
 class BulkViscTrap:
@@ -327,6 +336,7 @@ class BulkViscTrap:
 		#
 		# compute trap properties
 		#
+		self.tau = 1/tau_inv(self.betamutrap, self.T)
 		self.Ns,self.EF,self.Theta,Epot = thermo_trap(self.T,self.betamutrap,self.betabaromega,self.weight_func)
 		self.kF = np.sqrt(4*pi*mK*self.EF/hbar) # global k_F, i.e. peak k_F
 		self.Etotal = 2*Epot # virial theorem valid at unitarity, 
@@ -334,7 +344,7 @@ class BulkViscTrap:
 		self.EdotDrude = self.A**2*np.array([heating_trap(self.T,self.betamutrap,
 						betaomega,self.betabaromega,self.weight_func) for betaomega in betaomegas])
 		
-		self.ns = psd_trap(self.betamutrap,self.betabaromega,self.weight_func)/self.lambda_T**3
+		self.ns = psd_trap(self.betamutrap,self.betabaromega,self.weight_func)/self.Ns # /self.lambda_T**3
 	
 		self.Ctrap =  C_trap(self.betamutrap, self.betabaromega, self.weight_func)/(self.kF*self.lambda_T)*(3*pi**2)**(1/3)/self.Ns/2
 		self.EdotC = self.A**2*np.array([heating_C(self.T,betaomega,
@@ -348,11 +358,13 @@ class BulkViscTrap:
 		self.sumruletrap = sumrule_trap(self.betamutrap, self.betabaromega, self.weight_func) * self.T/self.EF
 		
 		self.EdotDrudeS = self.EdotDrude / self.sumruletrap
-
-		self.phaseshiftsQcrit = np.array([phaseshift_qcrit(self.T, betaomega, self.betamutrap) for betaomega in betaomegas])
+		self.EdotDrudeSalt = self.A**2*np.array([heating_trap_sumrule(self.T,self.betamutrap, 
+							betaomega, self.betabaromega, self.weight_func) for betaomega in betaomegas])
+		self.phaseshiftsQcrit = np.arctan(2*np.pi*self.nus * self.tau / (1 + (2*np.pi*self.nus*self.tau)**2))
+	
+		self.phiLR = np.arctan(2*np.pi*self.nus * self.tau)
 		
-		
-		self.Edottraposcalesus = np.array([np.tan(phi)*betaomega*self.T/self.EF * \
+		self.EdotSphi = np.array([np.tan(phi)*betaomega*self.T/self.EF * \
 								 9*pi/self.kF**2/self.lambda_T**2 for phi, 
 								 betaomega in zip(self.phaseshiftsQcrit, betaomegas)])
 		
@@ -623,7 +635,7 @@ if __name__ == "__main__":
 	the_table.auto_set_font_size(False)
 	the_table.set_fontsize(10)
 	the_table.scale(1,1.5)
-	fig.savefig("figures/uniform_density_plots.pdf")
+	fig.savefig(os.path.join(proj_path,"figures/uniform_density_plots.pdf"))
 	plt.tight_layout()
 	plt.show()
 
@@ -714,9 +726,12 @@ if __name__ == "__main__":
 		# plot "normalized" heating rates
 		ax_EdotS.plot(BVT.nus/BVT.EF, BVT.EdotDrudeS/BVT.Etotal, ':', color=color,label=label)
 				
-# 		sumrulezetaint = sumrule_zetaint(BVT.nus, BVT.zetatraps)
-# 		ax_EdotS.plot(BVT.nus/BVT.EF, BVT.Edottraps/sumrulezetaint/BVT.Etotal, '--',color=color, label=label)
-# 		ax_EdotS.plot(BVT.nus/BVT.EF, BVT.EdottrapsS2/BVT.Etotal, '--',color=color,label=label)
+		BVT.zetas = np.concatenate([BVT.zetaDrude[:nu_small], BVT.zetaC[nu_small:]])
+		sumrulezetaint = sumrule_zetaint(BVT.nus, BVT.zetas)
+		ax_EdotS.plot(BVT.nus/BVT.EF, BVT.EdotDrude/sumrulezetaint/BVT.Etotal, '--',color=color, label='EdotDrude/sumrulezetaint')
+		# ax_EdotS.plot(BVT.nus/BVT.EF, BVT.EdotDrudeS/BVT.Etotal, '.',color=color,label='EdotDrudeS')
+		# ax_EdotS.plot(BVT.nus/BVT.EF, BVT.EdotDrudeSalt/BVT.Etotal, '.-',color=color,label='EdotDrudeSalt')
+		# ax_EdotS.plot(BVT.nus/BVT.EF, BVT.EdotSphi/BVT.Etotal, '^',color=color,label='EdotSphi')
 		ax_EdotC.plot(BVT.nus[nu_small:]/BVT.EF, BVT.EdotNormC[nu_small:]/BVT.Etotal, '--',color=color,label=label)
 		
 		ax_zeta.plot(BVT.nus/BVT.EF, BVT.zetaDrude, ':', label=label_Drude, color=color)

@@ -36,7 +36,7 @@ import matplotlib.patches as patches
 import pickle as pkl
 
 # options
-Save = True
+Save = False
 Show = True
 
 # choose plot

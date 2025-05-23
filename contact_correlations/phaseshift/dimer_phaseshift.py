@@ -8,11 +8,13 @@ Refactored analysis script for dimer phase shift measurements of April-June 2024
 """
 
 # paths
-import os
-proj_path = os.path.dirname(os.path.realpath(__file__))
-root = os.path.dirname(proj_path)
-data_path = os.path.join(proj_path, 'data')
 
+import os
+analysis_folder = 'E:\\\\Analysis Scripts\\analysis\\'
+import sys
+if analysis_folder not in sys.path:
+	sys.path.append(analysis_folder)
+data_path = os.path.join(analysis_folder, 'contact_correlations\\phaseshift\\data')
 from library import pi, h, hbar, mK, a0, plt_settings, styles, colors
 #from fit_functions import Gaussian, Sinc2
 from data_helper import remove_indices_formatter
@@ -130,9 +132,7 @@ def dimer_transfer(Rab, fa, fb):
 		are determined from averaged bg shots.'''
 	return (fa - Rab*fb)/(1/2-Rab)
 
-
-
-# this calibration is quite old and rough  -- figure out when
+# this calibration is quite old and rough  -- from ??
 def BfromFmEB(f, b=9.51554, m=0.261):
     return (f + b) / m
 
@@ -172,8 +172,8 @@ for filename in files:
 		continue
 	
 	def FixedSinkHz(t, A, p, C):
-	    omega = meta_df['drive_freq'][0] / 1000 * 2 * np.pi  # kHz
-	    return A*np.sin(omega * t - p) + C
+		omega = meta_df['drive_freq'][0] / 1000 * 2 * np.pi  # kHz
+		return A*np.sin(omega * t - p) + C
 	
 	if SAVE_INTERMEDIATE==True :
 		interm_folder = os.path.join(data_path, filename)
@@ -406,9 +406,10 @@ for filename in files:
 				
 				except RuntimeError as e:
 				# Handle the exception (e.g., print a message or assign default values)
-				    print(f"Error in curve fitting Bfield: {e}, time {time}")
+					amp, e_amp, f0, e_f0, bg, e_bg = 0.01,0.01,0.01,0.01,0.01,0.01
+					print(f"Error in curve fitting Bfield: {e}, time {time}")
 				    # You can assign default values to the variables in case of failure
-				    amp, e_amp, f0, e_f0, bg, e_bg = 0.01,0.01,0.01,0.01,0.01,0.01
+					
 
 				### the popt[1] used later on to find the FM needs to be the fit from the 
 				### detuning_EF not Bfield 
@@ -426,9 +427,10 @@ for filename in files:
 							  p0 = guess)
 				except RuntimeError as e:
     # Handle the exception (e.g., print a message or assign default values)
-				    print(f"Error in curve fitting frequency for FM etc: {e} at time {time}")
+					amp, e_amp, f0, e_f0, bg, e_bg = 0.01,0.01,0.01,0.01,0.01,0.01
+					print(f"Error in curve fitting frequency for FM etc: {e} at time {time}")
 				    # You can assign default values to the variables in case of failure
-				    amp, e_amp, f0, e_f0, bg, e_bg = 0.01,0.01,0.01,0.01,0.01,0.01
+				    
 								
 			else:
 				x = sub_df[freq_name]
@@ -529,8 +531,8 @@ for filename in files:
 		fig_scl.savefig(os.path.join(interm_folder, 'scaledtransferfits.png'))
 		# dump results into pickle
 		with open(interm_pkl_file, 'wb') as f:
-		        pkl.dump(inter_df, f)
-	
+			pkl.dump(inter_df, f)
+
 	### Calculate contact amplitude and phase shifts
 	resp_names = ['counts_', 'SW_', 'FM_', 'CS_', 'Ctilde_', 'Ctilde/counts']
 	drive_name = 'f0_'

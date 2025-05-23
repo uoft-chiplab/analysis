@@ -1,16 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Nov  4 13:49:33 2024
+@author: Chip Lab 2024-11-04
 
-@author: coldatoms
+This script interpolates trap-averaged contact calculations. 
 """
-
 import numpy as np
 import matplotlib.pyplot as plt
-from contact_correlations.UFG_analysis import calc_contact
-
-# ToTFs = np.array([0.2  , 0.225, 0.25 , 0.275, 0.3  , 0.325, 0.35 , 0.375, 0.4,
-#         0.425, 0.45 , 0.475, 0.5  , 0.525, 0.55 , 0.575, 0.6  ])
 
 ToTFs = np.linspace(0.2, 1.2, 29)
 
@@ -25,17 +20,12 @@ contact_interpolation = lambda x: np.interp(x, ToTFs, Cs)
 
 if __name__ == "__main__":
 	
-	EF = 14e3 # Hz
-	barnu = 320 # Hz
-	Cs = np.array([calc_contact(ToTF, EF, barnu)[0] for ToTF in ToTFs])
-	
+	# plot interpolation and data
 	plt.figure(figsize=(6,4))
 	plt.xlabel(r"$T/T_F$")
 	plt.ylabel(r"Contact, $C$ [$k_F/N$]")
 
-	plt.plot(ToTFs, Cs)
-	
-	contact_interpolation = lambda x: np.interp(x, ToTFs, Cs)
+	plt.plot(ToTFs, Cs, 'o')
 	plt.plot(ToTFs, contact_interpolation(ToTFs), '--')
 		
 	plt.show()

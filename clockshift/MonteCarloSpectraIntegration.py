@@ -19,6 +19,16 @@ def MonteCarlo_estimate_std_from_function(func, inputs, input_errors, num=100, *
 		i += 1
 	return np.array(dist).mean(), np.array(dist).std()
 
+def Multivariate_MonteCarlo_estimate_std_from_function(func, means, cov, num=100, **kwargs):
+	""" Sample output of function from calibration values distributed normally
+		with covariance cov about their means to obtain std."""
+	dist = []
+	i = 0
+	while i < num:
+		dist.append(func(*np.random.multivariate_normal(means, cov), **kwargs))
+		i += 1
+	return np.array(dist).mean(), np.array(dist).std()
+
 
 def dist_stats(dist, CI):
 	""" Computes the median, upper confidence interval (CI), lower CI, mean 
