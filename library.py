@@ -9,7 +9,7 @@ import os
 current_dir = os.path.dirname(__file__)
 
 from scipy.constants import pi, hbar, h, k as kB
-from scipy.integrate import simps, cumtrapz
+from scipy.integrate import simpson, cumulative_trapezoid
 from scipy.optimize import fsolve
 import numpy as np
 
@@ -284,19 +284,19 @@ def ScaleTransfer(detuning, transfer, EF, OmegaR, trf):
 
 def SumRule(data):
 	"""
-	integrated with simpsons rule
+	integrated with simpsonons rule
 	"""
 	return [np.trapz(data[:,1], x=data[:,0]), 
-		 cumtrapz(data[:,1], x=data[:,0])[-1],
-		 simps(data[:,1], x=data[:,0])]
+		 cumulative_trapezoid(data[:,1], x=data[:,0])[-1],
+		 simpson(data[:,1], x=data[:,0])]
 
 def FirstMoment(data):
 	"""
-	integrated with simpsons rule
+	integrated with simpsonons rule
 	"""
 	return [np.trapz(data[:,1]*data[:,0], x=data[:,0]), 
-		 cumtrapz(data[:,1]*data[:,0], x=data[:,0])[-1],
-		 simps(data[:,1]*data[:,0], x=data[:,0])]
+		 cumulative_trapezoid(data[:,1]*data[:,0], x=data[:,0])[-1],
+		 simpson(data[:,1]*data[:,0], x=data[:,0])]
 
 def tail3Dswave(w, C, gamma):
 	return C*w**gamma

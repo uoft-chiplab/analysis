@@ -6,10 +6,22 @@ Created on Wed Apr 23 08:33:01 2025
 """
 import numpy as np
 import matplotlib.pyplot as plt
+import os
+import sys
+# this is a hack to access modules in the parent directory
+# Get the current script's directory
+current_dir = os.path.dirname(os.path.abspath(__file__))
+# Get the parent directory (clockshift)
+parent_dir = os.path.dirname(current_dir)
+# get the parent's parent directory (analysis)
+analysis_dir = os.path.dirname(parent_dir)
+# Add the parent parent directory to sys.path
+if analysis_dir not in sys.path:
+	sys.path.append(analysis_dir)
+
 from library import paper_settings, generate_plt_styles
 import pickle as pkl
 import pandas as pd
-import os
 
 data_path = 'clockshift/saturation_data'
 

@@ -16,6 +16,8 @@ parent_dir = os.path.dirname(current_dir)
 if parent_dir not in sys.path:
 	sys.path.append(parent_dir)
 
+sys.path.append(os.path.dirname(parent_dir))
+
 from data_class import Data
 from data_helper import remove_indices_formatter, bg_freq_formatter
 from save_df_to_xlsx import save_df_row_to_xlsx
@@ -54,8 +56,8 @@ Correlations = False
 
 # save results
 Save = False
-save_lineshape = True
-save_data = True
+save_lineshape = False
+save_data = False
 # determines whether convolved lineshape fit to data has offset parameter
 fitWithOffset = False
 # select spin states to analyze
@@ -78,7 +80,7 @@ metadata = pd.read_excel(metadata_file)
 #filenames = ['2024-07-17_J_e']
 #filenames = ['2024-09-27_B_e', '2024-10-01_F_e','2024-10-04_H_e']
 #filenames = ['2025-03-19_G_e_pulsetime=0.64']
-filenames = ['2024-10-03_C_e']
+filenames = ['2024-07-17_J_e']
 # if the filenames list is empty, run over all available files in metadata
 if not filenames:
 	filenames = metadata.filename

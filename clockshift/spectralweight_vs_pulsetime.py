@@ -16,7 +16,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
-Save = True
+Save = False
 
 files = ["2025-04-23_C_e.dat",
 	"2025-04-24_B_e.dat",

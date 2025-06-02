@@ -22,7 +22,7 @@ parent_dir = os.path.dirname(os.path.dirname(current_dir))
 if parent_dir not in sys.path:
 	sys.path.append(parent_dir)
 
-data_path = os.path.join(parent_dir, 'analysis\\clockshift\\data\\Eb_measurements')
+data_path = os.path.join(parent_dir, 'clockshift\\data\\Eb_measurements')
 
 from library import pi, h, hbar, mK, a0, plt_settings, styles, colors, FreqMHz
 from data_helper import remove_indices_formatter
@@ -36,7 +36,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.optimize import fsolve
-
+Save_final = True
 Save_results = False
 spin = 'c5'
 
@@ -48,6 +48,8 @@ else:
 # fit function
 def gaussian(x, A, x0, sigma, C):
 	return A*np.exp(-(x-x0)**2/(2*sigma**2)) + C
+def gaussian_nobg(x, A, x0, sigma):
+	return A*np.exp(-(x-x0)**2/(2*sigma**2)) 
 
 ### ac binding energy theory and functions
 def a13(B):
@@ -89,8 +91,8 @@ metadata_file = os.path.join(data_path, metadata_filename)
 metadata = pd.read_excel(metadata_file)
 files =  metadata.loc[metadata['exclude'] != 1]['filename'].values
 inset_files = ['2023-09-22_P',
-			   '2024-10-30_B',
-			   '2025-03-27_E']
+			   '2025-03-27_E',
+			   '2024-10-30_B']
 # files = [] # for manual override
 fig, axs = plt.subplots(int(np.sqrt(len(files)))+1, int(np.sqrt(len(files))+1),
 						figsize=(15, 15))
@@ -183,7 +185,8 @@ for i,file in enumerate(files):
 	avg_df['e_amp'] = perr[0]
 	avg_df['B'] = Bfield
 	avg_df['rescaledf'] = avg_df['freq']/avg_df['f0']
-	avg_df['rescaledamp'] = -avg_df['amp']*spin_correction_factor/((OmegaR*1e3)**2 * trf)
+	avg_df['rescaledamp'] = -avg_df['amp']*spin_correction_factor/((OmegaR*1e3)**2 * trf**2 * pi)
+	avg_df['em_rescaledamp'] = perr[0]*spin_correction_factor/((OmegaR*1e3)**2 * trf**2 * pi)
 	if file in inset_files:
 		df_list.append(avg_df)
 	# add results to lists
@@ -316,8 +319,16 @@ fig.tight_layout()
 #plt.savefig('\\\\UNOBTAINIUM\\E_Carmen_Santiago\\Analysis Scripts\\analysis\\clockshift\\manuscript\\manuscript_figures\\dimer_Eb_v3.pdf', dpi=600)
 
 
-# data binning
+# data binning by weighted means
 def bin_data(x, y, yerr, nbins, xerr=None):
+	
+	# weighted mean calculation will fail if yerr list has any zeros, this can happen if dataset had no repeats
+	# "fix" by filling zero with something else
+	if np.any(yerr == 0):
+		avg_nonzero_yerr = np.mean(yerr[yerr>0])
+		yerr[yerr == 0] = avg_nonzero_yerr
+		
+	# find weighted means and counts inside bins and calculates bin mean and sem
 	n, _ = np.histogram(x, bins=nbins)
 	sy, _ = np.histogram(x, bins=nbins, weights=y/(yerr*yerr))
 	syerr2, _ = np.histogram(x, bins=nbins, weights=1/(yerr*yerr))
@@ -344,23 +355,57 @@ def bin_data(x, y, yerr, nbins, xerr=None):
 		sxerr, _ = np.histogram(x, bins=nbins, weights=xerr)
 		mean_xerr = sxerr / n
 		return xbins, mean, e_mean, mean_xerr
-	
+	 
 	else:
+		print(xbins)
+		print(mean)
+		print(e_mean)
+		print(syerr2)
 		return xbins, mean, e_mean
 	# data binning
 
 
-fig, ax = plt.subplots()
+fig, ax = plt.subplots() 
+# annoyingly, the fields are not in order so I have to do this
+holder = df_list[1].copy()
+df_list[1] = df_list[2]
+df_list[2] = holder
+save_path  = '\\\\UNOBTAINIUM\\E_Carmen_Santiago\\Analysis Scripts\\analysis\\clockshift\\manuscript\\manuscript_data'
 for i, df in enumerate(df_list):
-	bins = np.arange(0.994, 1.006, 0.0008)
-	df['binx'] = pd.cut(df['rescaledf'], bins=bins)
-	binx = df.groupby('binx')['rescaledf'].mean()
-	biny = df.groupby('binx')['rescaled_amp'].mean()
+	#bins = np.arange(0.994, 1.006, 0.0008)
+	bins = [0.994, 0.996, 0.997, 0.998, 0.9985, 0.999,  0.9995, 1,  1.0005 ,1.001, 1.0015, 1.002, 1.003,1.004, 1.006]
 	
-	#ax.errorbar(df['rescaledf'], df['amp'], yerr=df['e_amp'], **styles[i], label=f'{df.B.iloc[0]} G')
-	ax.plot(binx, biny, **styles[i], label=f'{df.B.iloc[0]} G')
-	#ax.errorbar(df['rescaledf'], df['sctransfer'], yerr=df['em_sctransfer'], **styles[i], label=f'{df.B.iloc[0]} G')
+	binx, biny, binyerr = bin_data(df['rescaledf'], df['sctransfer'], df['em_sctransfer'], nbins=bins)
+	ax.errorbar(binx, biny, yerr=binyerr, **styles[i], label=f'{df.B.iloc[0]} G')
+	
+	
+	biny[np.isnan(biny)] = 0
+	binyerr[np.isinf(binyerr)]=0
+	popt, perr = curve_fit(gaussian_nobg, binx, biny, sigma=binyerr, p0=[df['sctransfer'].max(), 1, 0.001])
+	xs = np.linspace(binx.min(), binx.max(), 100)
+	ys = gaussian_nobg(xs, *popt)
+	
+	ax.errorbar(binx, biny, yerr=binyerr, **styles[i], label=f'{df.B.iloc[0]} G')
+	ax.plot(xs, ys, '-')
+	
+	if Save_final:
+		out = pd.DataFrame({
+			'x':binx,
+			'y':biny,
+			'yerr':binyerr})
+		out.to_excel(os.path.join(path, 'Eb_inset_' + str(df.B.iloc[0])+'.xlsx'))
+		
+		out_fit = pd.DataFrame({
+			'xs':xs,
+			'ys':ys})
+		out_fit.to_excel(os.path.join(path, 'Eb_inset_fit_' + str(df.B.iloc[0]) + '.xlsx'))
+	
 #ax.errorbar(test_df['freq']/df_list[0]['f0'][0], test_df['c5_scaledtransfer'], yerr=test_df['em_c5_scaledtransfer'], **styles[0], label='202.14 G')
-ax.set(yscale = 'log', xlabel=r'$\omega/\omega_d$', ylabel=r'$\alpha/\Omega_R^2/t_\mathrm{rf}$')
+ax.set(yscale = 'linear', xlabel=r'$\omega/\omega_d$', ylabel=r'$\alpha/\Omega_R^2/t_\mathrm{rf}$')
 ax.legend()
 plt.show()
+
+if Save_final:
+	path = '\\\\UNOBTAINIUM\\E_Carmen_Santiago\\Analysis Scripts\\analysis\\clockshift\\manuscript\\manuscript_data'
+	df1 = pd.DataFrame({
+		'x':binx})

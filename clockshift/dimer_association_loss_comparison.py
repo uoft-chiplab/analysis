@@ -9,7 +9,13 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 from scipy.optimize import curve_fit
-
+import sys 
+import os 
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = 'e:\\Analysis Scripts\\analysis'
+# Add the parent directory to sys.path
+if parent_dir not in sys.path:
+	sys.path.append(parent_dir)
 from data_class import Data
 from library import plt_settings, dark_colors, light_colors, colors, markers
 from cycler import Cycler
@@ -34,7 +40,7 @@ def spin_map(spin):
 # 		"2024-10-07_C_e.dat",
 # 		"2024-06-12_S_e.dat"]
 
-Save_df = True
+Save_df = False
 
 files = ["2024-10-30_D_e.dat",
 		 "2024-10-30_B_e.dat",

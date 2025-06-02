@@ -7,10 +7,13 @@ Produces the current Fig. 3 in the clockshift manuscript.
 """
 
 # paths
+import sys
 import os
 proj_path = os.path.dirname(os.path.realpath(__file__))
 root = os.path.dirname(proj_path)
 data_path = os.path.join(proj_path, 'data')
+if root not in sys.path:
+	sys.path.append(root)
 
 from library import pi, h, hbar, mK, a0, paper_settings, generate_plt_styles
 from data_helper import remove_indices_formatter
@@ -19,6 +22,9 @@ from data_class import Data
 from rfcalibrations.Vpp_from_VVAfreq import Vpp_from_VVAfreq
 from clockshift.MonteCarloSpectraIntegration import MonteCarlo_estimate_std_from_function, \
 								Multivariate_MonteCarlo_estimate_std_from_function
+fullroot = os.path.dirname(root)
+contactcorrroot = os.path.join(fullroot, 'Fast-Modulation-Contact-Correlation-Project')
+contactcorrfolder = os.path.join(contactcorrroot, 'contact_correlations')
 from contact_correlations.UFG_analysis import calc_contact
 from contact_correlations.contact_interpolation import contact_interpolation as C_interp
 from scipy.optimize import curve_fit
@@ -48,7 +54,7 @@ Plot_HFT_Data = True
 
 # This turns on (True) and off (False) saving the data/plots 
 Save = False
-Tabulate_Results = True # tabulate final results only; for plotting purposes
+Tabulate_Results = False # tabulate final results only; for plotting purposes
 
 ### Analysis options
 Filter_Low_Atom_Number_Shots = True
@@ -1256,7 +1262,7 @@ if plot_options['Binned']:
 	ax.errorbar(binx, biny, yerr=binyerr, xerr=binxerr, label='dimer', 
 			 **styles[sty_i])
 	
-	d_binx = binx
+	d_binx = binx.copy
 	d_biny = biny.copy()
 	e_d_binx = binxerr
 	e_d_biny = binyerr

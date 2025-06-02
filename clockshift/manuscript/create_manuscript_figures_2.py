@@ -65,7 +65,7 @@ Save = True
 Show = True
 
 # choose plot
-Plot =3
+Plot =2
 
 #region ######## FIGURE 1: PLOT DIMER AND HFT TOGETHER ON LOG SCALE, NOISE FLOOR, AND 5/2 REGION
 if Plot == 1:
@@ -412,7 +412,7 @@ if Plot == 2:
 				"Loss Contact": False,
 				"Open Channel Fraction": True,
 				"Sum Rule 0.5": True,
-				"Binned": False
+				"Binned": True
 	}
 
 	def spin_map(spin):
@@ -477,7 +477,7 @@ if Plot == 2:
 	if plot_options['Binned']:
 		#num_bins=8
 		#summary['bins'] = pd.cut(summary['ToTF'], num_bins)
-		bins = [0.2,0.3,0.4,0.5,0.6,0.8,1]
+		bins = [0.2,0.25,0.3,0.35,0.4,0.45,0.5,0.55,0.6,0.7,0.8,1]
 		summary['bins'] = pd.cut(summary['ToTF'], bins=bins)
 		df_means = summary.groupby('bins')[['C_data', 'SW_ratio95', 'SW_c5', 'SW_c9', 'FM_ratio95', 'FM_c5', 'FM_c9', 'a13kF', 'ToTF', 'ToTF_diff','raw_transfer_fraction']].mean().reset_index()
 		df_errs = summary.groupby('bins')[['C_data_std', 'e_SW_ratio95', 'e_SW_c5', 'e_SW_c9', 'e_FM_ratio95', 'e_FM_c5', 'e_FM_c9', 'e_raw_transfer_fraction']].apply(
@@ -490,10 +490,21 @@ if Plot == 2:
 	# divide I_d by a13 kF,
 	other_corr = 1.08 # from a not-small kappatilde
 	I_d = sum_rule * kF/(pi*kappa) * 1/(1+re/a13(Bfield)) * C / a13kF * open_channel_fraction * other_corr
+	just_I_d = I_d*a13kF
 	# compute clock shift
 	CS_d = -2*I_d *a13kF /kF**2 * kappa**2 # convert I_d to CS_d to avoid rewriting sum_rule and o_c_f
 	FM_d =  CS_d * a13kF  # assumes ideal SR=0.5, factor of 2 already accounted for if sum_rule=0.5
-		
+	#sqw from josephs mathematical file 	
+	def etaUnitary(n):
+		return (n + 1/2)*pi
+	def etax(x,j):
+		return etaUnitary(j) + x / (etaUnitary(j))
+	def refSqWxOverr0(x, j):
+		return 1 - ( (etax(x, j)**2) / (3 * (etax(x, j) - np.tan(etax(x,j)))**2) ) + (1 / (-etax(x,j)**2 + etax(x, j)*np.tan(etax(x,j))))
+	def aSSqWxOverr0(x,j):
+		return 1 - np.tan(etax(x,j))/etax(x,j)
+	def I_d_SqW(x):
+		return sum_rule * kF/(pi*kappa) * 1/(1+refSqWxOverr0(x, 100)/aSSqWxOverr0(x,100)) * C / a13kF * open_channel_fraction * other_corr
 	### PJ CCC
 	# spectral weight, clock shift, first moment
 	I_d_CCC = sum_rule*kF* 42 *a0 * C / a13kF 
@@ -510,20 +521,23 @@ if Plot == 2:
 	CS_d_max = -2*I_d_max *a13kF /kF**2 * kappa**2
 	FM_d_max = CS_d_max * a13kF # assumes ideal SR=0.5
 
-	fig, (ax0, ax1) = plt.subplots(2, 1, height_ratios=[1,3])
+	fig, (ax0, ax1) = plt.subplots(2, 1, figsize=[5,5])
 
 	### MAIN AREA: THEORY CURVES
 	theory_labels = [r'1ch square well', r'CCC', r'CCC w/ spin corr.', r'zero range']
+	ax1.plot(C, I_d_SqW(C), linestyle = '--', marker='', label='Joseph SqW')
 	ax1.plot(C, I_d, '-', color=colors[0], label=theory_labels[0])
 	ax1.plot(C, I_d_CCC_sc, '-', color=colors[3], label=theory_labels[2])
-	ax1.plot(C, I_d_max, '-', color='black', label=theory_labels[3])
+	ax1.plot(C, I_d_max, '--', color='black', label=theory_labels[3])
 	# MAIN AREA: EXPERIMENTAL DATA
 	x = summary['C_data']
 	xerr = summary['C_data_std']
 	y = summary['SW_'+spin] / summary['a13kF']
 	yerr = np.abs(summary['e_SW_'+spin]) / summary['a13kF']
 	ax1.errorbar(x, y, yerr=yerr, xerr=summary['C_data_std'], **styles[0])
-	
+	ax2 = ax1.twinx()
+	ax2.plot(C,just_I_d, marker='')
+	ax2.set_ylabel(r'$I_d$')
 	ax1.legend(loc='upper left')
 	ax1.set(xlabel=r"Contact/N [$k_F$]",
  		   ylabel=r"$I_d/k_Fa_{13}$",

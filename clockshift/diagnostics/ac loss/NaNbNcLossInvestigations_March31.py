@@ -81,6 +81,7 @@ for i, file in enumerate(files):
 			spin_bg = bg[spin].mean()
 			spin_bg_err = bg[spin].sem()
 			sg_mean = sg_gb.mean()[spin] - spin_bg
+			sg_sem = sg_gb.sem()[spin]
 			sg_err = np.sqrt(sg_sem**2 + spin_bg_err**2)
 		else:
 			sg_mean=sg_gb.mean()[spin]

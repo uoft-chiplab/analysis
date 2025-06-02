@@ -23,7 +23,7 @@ root = os.path.dirname(proj_path)
 
 # plot error bands for saturation curves
 fill_between = True
-save = True
+save = False
 
 # chosen average saturation Rabi
 OmegaRabi2 = 3272

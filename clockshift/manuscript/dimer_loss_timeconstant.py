@@ -42,7 +42,9 @@ ToTFs = [0.58, 0.32]
 e_ToTFs = [0.02, 0.01]
 
 # plotting
-colors = ['#1b9e77','#d95f02','#7570b3','#e7298a','#66a61e']
+colors = [
+	# '#1b9e77','#d95f02',
+		  '#7570b3','#e7298a','#66a61e']
 
 styles = generate_plt_styles(colors, ts=0.6)
 styles = [styles[1], styles[0]]
@@ -55,8 +57,8 @@ font_size = paper_settings['legend.fontsize']
 fig_width = 3.4 # One-column PRL figure size in inches
 subplotlabel_font = 10
 
-fig, axes = plt.subplots(2,2, figsize=(fig_width, 7/10*fig_width))
-axs = axes.flatten()
+fig, axes = plt.subplots(1,1, figsize=(fig_width, 7/10*fig_width))
+# axs = axes.flatten()
 if Save:
 	fig_m, ax_m = plt.subplots(figsize=(fig_width, 3/5*fig_width))
 
@@ -108,13 +110,15 @@ for j, file in enumerate(filenames):
 # 	perr = np.sqrt(np.diag(pcov))
 	xlims=[0, 5.6]
 	ylims = [0.48,0.52]
-	ynames=['b/a', 'loss_b', 'loss_a', 'loss_b/loss_a', ]
+	ynames=[
+		# 'b/a', 'loss_b', 'loss_a',
+		  'loss_b/loss_a', ]
 	
 	x = data['time']
 	
 	# loop over axs
-	for i in range(len(axs)):
-		ax = axs[i]
+	for i in range(len(ynames)):
+		ax = axes#axs[i]
 		yname = ynames[i]
 		
 		ax.set(xlabel='hold time [ms]', ylabel=yname)
@@ -166,6 +170,7 @@ for ax in axs:
 	
 fig.tight_layout()
 # plt.autoscale()
+
 
 
 if Save:

@@ -24,13 +24,13 @@ import pickle as pkl
 lineshape = 'sinc2'
 spins = ['c5', 'c9', 'ratio95']
 spins=['c5']
-
+binning=False
 correct_spinloss = True
 saturation_correction = False
-gaussian_cloud = True
+gaussian_cloud = False
 fixed_width = True
 fixed_x0 = False
-free_offset = False
+free_offset = True
 save=False
 plot_raw=False
 # Omega^2 [kHz^2] 1/e saturation value
@@ -83,6 +83,13 @@ def sinc2_10us_EF(x, A, x0, C):
 	return np.piecewise(x, [(x==x0), (x!=x0)], 
 	 [lambda x: A+C,  
 	   lambda x: A*np.sin((x-x0)*T*np.pi)**2/((x-x0)*T*np.pi)**2 + C])
+
+def sinc2_10us(x, A, x0, C):
+	T=10e-6 #us 
+	# if I don't piecewise this then x=x0 gives a nan
+	return np.piecewise(x, [(x==x0), (x!=x0)], 
+	 [lambda x: A+C,  
+	   lambda x: A*np.sin((x-x0)*T*np.pi)**2/((x-x0)*T*np.pi)**2 + C])
 					
 
 def sinc2_nobg_fixedx0(x, A, T):
@@ -99,7 +106,6 @@ def Int2DGaussian(a, sx, sy):
 
 
 # data binning
-binning=False
 def bin_data(x, y, yerr, nbins, xerr=None):
 	n, _ = np.histogram(x, bins=nbins)
 	sy, _ = np.histogram(x, bins=nbins, weights=y/(yerr*yerr))
@@ -139,8 +145,8 @@ kappa = np.sqrt((Eb*h*10**6) *mK/hbar**2) # convert Eb back to kappa
 
 ### Vpp calibration
 VpptoOmegaR47 = 12.01/0.452 # kHz/Vpp - 2025-02-12 calibration 
-VpptoOmegaR43 = 14.44/0.656 *VpptoOmegaR47/(17.05/0.728) # fudged 43MHz calibration
-phaseO_OmegaR = lambda VVA, freq: 2*pi*VpptoOmegaR47 * Vpp_from_VVAfreq(VVA, freq)
+VpptoOmegaR43_2025 = 14.44/0.656 *VpptoOmegaR47/(17.05/0.728) # fudged 43MHz calibration for 2025
+VpptoOmegaR43_2024 = 14.44/0.656  
 
 def spin_map(spin):
 	if spin == 'c5' and not correct_spinloss:
@@ -158,71 +164,107 @@ def spin_map(spin):
 	
 # okay start analyzing
 files = [
-# 		'2025-03-13_F_e_pulsetime=0.01.dat',
-# 		'2025-03-13_F_e_pulsetime=0.64.dat',
-# 		'2025-03-14_F_e.dat',  # 70mG wiggle
-# 		'2025-03-18_H_e.dat',  # finely scanned
+		'2025-03-13_F_e_pulsetime=0.01.dat',
+		'2025-03-13_F_e_pulsetime=0.64.dat',
+		'2025-03-14_F_e.dat',  # 70mG wiggle
+		'2025-03-18_H_e.dat',  # finely scanned
 		'2025-03-19_G_e_pulsetime=0.64.dat',
 		'2025-03-19_G_e_pulsetime=0.01.dat',
+		'2024-09-27_B_e.dat',
+		'2024-10-07_G_e.dat',
+		'2024-07-17_J_e.dat'
 		]
 
 Vpps = [
-# 		2.32,
-# 		0.29,
-# 		0.29,
-# 		0.29,
+		2.32,
+		0.29,
+		0.29,
+		0.29,
 		0.29,
 		2.32,
-		] # Vpp
+		2.32, # VVA was 5, but not sure if phaseO or micrO, check
+		2.32, # VVA was 5, but not sure if phaseO or micrO, check,
+		0.1124 		] # Vpp
 trfs = [
-# 		10,
-# 		640,
-# 		640,
-# 		640,
+		10,
+		640,
+		640,
+		640,
 		640,
 		10,
+		10,
+		10,
+		640
 		] # us
 ToTFs = [
-# 		0.476,
-# 		0.476,
-# 		0.485,
-# 		0.573,
+		0.476,
+		0.476,
+		0.485,
+		0.573,
 		0.55,
 		0.55,
+		0.54,
+		0.68,
+		0.34
 		]
 EFs = [
-# 	   0.0167,
-# 	   0.0167,
-# 	   0.0167,
-# 	   0.0191,
+	   0.0167,
+	   0.0167,
+	   0.0167,
+	   0.0191,
 	   0.0199,
 	   0.0199,
+	   0.0182,
+	   0.0168,
+	   0.0133
 	  ] # MHz
-
+ffs = [0.88,
+	   0.88,
+	   1, # 1 means need to check
+	   1,
+	   1,
+	   1,
+	   1.0,
+	   1,
+	   0.82
+	   ]
+ids_to_run = [6,8]
+files_run = [files[i] for i in ids_to_run]
+Vpps_run = [Vpps[i] for i in ids_to_run]
+trfs_run = [trfs[i] for i in ids_to_run]
+ToTFs_run = [ToTFs[i] for i in ids_to_run]
+EFs_run = [EFs[i] for i in ids_to_run]
+ffs_run = [ffs[i] for i in ids_to_run]
 res_freq = 47.2227
 dimer_freq = 43.238
-ff = 0.88
+
 
 plt.rcParams.update(plt_settings) # from library.py
-fig, axs = plt.subplots(1,3, figsize=(12, 6))
+fig, axs = plt.subplots(1,2, figsize=(12, 6))
+
 fig.suptitle(r"Dimer spectral weight comparison for $T \approx 0.6 T_F$")
 
 
-for i, file in enumerate(files):
+for i, file in enumerate(files_run):
 	print()
 	print("*-------------------------------------*")
 	print("Analyzing file ", file)
 	run = Data(file, path=parent_dir + '\\clockshift\\data')
 	
 	# Omega Rabi of square pulse
-	OmegaR = 2*pi*VpptoOmegaR43*Vpps[i] # 2 pi kHz
+	if file[0:4] == '2025':
+		OmegaR = 2*pi*VpptoOmegaR43_2025*Vpps_run[i] # 2 pi kHz
+	elif file[0:4] == '2024':
+		OmegaR = 2*pi*VpptoOmegaR43_2024*Vpps_run[i] # 2 pi kHz
+		
 	print("OmegaR = {:.3f} 1/ms".format(OmegaR))
 	
 	# dataset parameters
-	trf = trfs[i]
-	ToTF = ToTFs[i]
-	Vpp = Vpps[i]
-	EF = EFs[i]
+	trf = trfs_run[i]
+	ToTF = ToTFs_run[i]
+	Vpp = Vpps_run[i]
+	EF = EFs_run[i]
+	ff = ffs_run[i]
 	print("Vpp = {:.3f}V".format(Vpp))
 	print("trf = {:.0f} us".format(trf))
 	print("EF = {:.1f} us".format(EF*1e3))  # kHz
@@ -312,7 +354,10 @@ for i, file in enumerate(files):
 		df['f9'] = df['c9']/df['sum95']
 		
 	# compute saturation correction
-	sat_scale_dimer = saturation_scale(OmegaR**2/(2*np.pi)**2, trf)
+	if saturation_correction:
+		sat_scale_dimer = saturation_scale(OmegaR**2/(2*np.pi)**2, trf)
+	else:
+		sat_scale_dimer = 1
 	print(sat_scale_dimer)
 	
 	# compute transfer for loss and ratio
@@ -341,8 +386,8 @@ for i, file in enumerate(files):
 		
 		# average results
 		# make sure you pair the right dimensions together
-		# xparam = 'detuning_Hz'
-		# yparam = spin+ '_transfer'
+# 		xparam = 'detuning_Hz'
+# 		yparam = spin+ '_transfer'
 		xparam='detuning_EF'
 		yparam = spin+ '_scaledtransfer'
 		if yparam == spin + '_transfer':
@@ -375,7 +420,7 @@ for i, file in enumerate(files):
 		
 		if binning == True:
 			xdata, ydata, ydataerr = bin_data(avg_df[xparam], avg_df[yparam],
-						 avg_df['em_' + yparam], 12, xerr = None)
+						 avg_df['em_' + yparam], 16, xerr = None)
 		else:
 			xdata =avg_df[xparam]
 			ydata = avg_df[yparam]
@@ -400,17 +445,28 @@ for i, file in enumerate(files):
 							p0=myp0,
 	 						#sigma=ydataerr,
 							)
+				if free_offset:
+					offs = popt[-1]
+				else: 
+					offs = 0
 				ys = fitfunc(xs, *popt)
 				perr = np.sqrt(np.diag(pcov))
 				cov02 = pcov[0,2]
 
 		elif trf == 10:
 			if not fixed_width:
-				popt, pcov = curve_fit(sinc2_nobg, np.array(xdata), ydata, 
-							p0=p0,
+				fitfunc = sinc2
+				myp0 = np.append(p0, 0)
+				popt, pcov = curve_fit(fitfunc, np.array(xdata), ydata, 
+							p0=myp0,
 	 						#  sigma=ydataerr,
 							)	
-				ys = sinc2_nobg(xs, *popt)
+				if free_offset:
+					offs = popt[-1]
+				else: 
+					offs = 0
+				ys = fitfunc(xs, *popt) 
+
 				perr = np.sqrt(np.diag(pcov))
 				cov02 = 0
 			else:
@@ -425,27 +481,42 @@ for i, file in enumerate(files):
 									p0=myp0, 
 	 							 # sigma=ydataerr,
 									)
-					ys = fitfunc(xs, *popt)
+					if free_offset:
+						offs = popt[-1]
+					else: 
+						offs = 0
+					ys = fitfunc(xs, *popt) 
+
 					perr = np.sqrt(np.diag(pcov))
 					if len(myp0) < 3:
 						popt = np.append(popt, trf*EF)
 						perr = np.append(perr, 0.1/1e6)  # made up time unceratinty
 					cov02 = 0
 				if xparam == 'detuning_Hz':
-
-					popt, pcov = curve_fit(sinc2_nobg_10us, np.array(xdata), ydata, 
-									p0=[p0[0], p0[1]], 
+					if free_offset:
+						fitfunc = sinc2_10us
+						myp0 = [p0[0],p0[1],0]
+					else:
+						fitfunc = sinc2_nobg_10us
+						myp0 = [p0[0],p0[1]]
+					popt, pcov = curve_fit(fitfunc, np.array(xdata), ydata, 
+									p0=myp0, 
 		# 							  sigma=ydataerr,
 									)
-					ys = sinc2_nobg_10us(xs, *popt)
+					if free_offset:
+						offs = popt[-1]
+					else: 
+						offs = 0
+					ys = fitfunc(xs, *popt) 
 					perr = np.sqrt(np.diag(pcov))
 					popt = np.append(popt, trf/1e6)
 					perr = np.append(perr, 0.1/1e6)  # made up time unceratinty
 					cov02 = 0
 			
 # 		axs[j].plot(xs, sinc2_nobg(xs, *p0), ls='-', marker='', color=colors[i])
-		SW_int = np.abs(np.trapz(ys, xs))
+		SW_int = np.abs(np.trapz(ys-offs, xs))
 		SW = popt[0]/popt[2]
+
 		
 		# gotta do the covariance propagation correctly
 		e_SW = SW*np.sqrt((perr[0]/popt[0])**2+(perr[2]/popt[2])**2 + \
@@ -465,11 +536,11 @@ for i, file in enumerate(files):
 			print(f'sat scale dimer: {sat_scale_dimer:.2f}')
 			
 		# plotting
-		label = f'trf={trfs[i]} us, SW = {SW:.3f}({1000*e_SW:.0f})'
+		label = f'trf={trfs[i]} us, SW_int = {SW_int:.4f}, SW_calc = {SW:.3f}({1000*e_SW:.1f})'
 # 		label = ''
-		axs[j].errorbar(xdata, ydata, ydataerr,
+		axs[j].errorbar(xdata, ydata-offs, ydataerr,
 				   **styles[i], label=label)
-		axs[j].plot(xs, ys, ls='-', marker='', color=colors[i])
+		axs[j].plot(xs, ys-offs, ls='-', marker='', color=colors[i])
 # 		axs[j].hlines(popt[-1], min(xdata), max(xdata), 
 # 				color=colors[i*(j+1)], ls='--')
 		axs[j].set(
@@ -477,7 +548,9 @@ for i, file in enumerate(files):
 			 title = spin_map(spin),
 			 ylabel=ylabel,
 			 xlabel=xlabel,
-			 xlim=[min(xdata), max(xdata)])
+			 xlim = [-305, -200]
+# 			 xlim=[-4.2*1e6,-3.8*1e6]
+			 )
 		
 		axs[j].legend()
 		
@@ -487,7 +560,6 @@ for i, file in enumerate(files):
 			
 			save_path = '\\\\UNOBTAINIUM\\E_Carmen_Santiago\\Analysis Scripts\\analysis\\clockshift\\manuscript\\manuscript_data\\'
 			fit = {'xs':xs,'ys':ys}
-			
 			avg_df.to_pickle(save_path + file + '.pkl')
 			with open(save_path+'fit_'+file+'.pkl', 'wb') as handle:
 				pkl.dump(fit, handle)

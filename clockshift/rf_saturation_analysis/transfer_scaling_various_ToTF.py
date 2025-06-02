@@ -24,7 +24,7 @@ root = os.path.dirname(proj_path)
 
 # plot error bands for saturation curves
 fill_between = True
-save = True
+save = False
 only_100kHz_detuning = True
 
 pkl_file = os.path.join(data_path, "various_ToTF_saturation_curves.pkl")
