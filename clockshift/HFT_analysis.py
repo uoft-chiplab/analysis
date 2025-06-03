@@ -12,11 +12,13 @@ BOOTSRAP_TRAIL_NUM = 1000
 
 # paths
 import os
+import sys
 proj_path = os.path.dirname(os.path.realpath(__file__))
 root = os.path.dirname(proj_path)
 data_path = os.path.join(proj_path, 'data')
 figfolder_path = os.path.join(proj_path, 'figures')
-
+if root not in sys.path:
+	sys.path.append(root)
 from library import pi, h, hbar, mK, a0, plt_settings, GammaTilde, chi_sq, \
 	styles, colors, dark_colors
 from data_helper import check_for_col_name, bg_freq_formatter, remove_indices_formatter

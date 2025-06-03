@@ -53,7 +53,7 @@ Calc_CTheory_std = False
 Plot_HFT_Data = True
 
 # This turns on (True) and off (False) saving the data/plots 
-Save = False
+Save = True
 Tabulate_Results = False # tabulate final results only; for plotting purposes
 
 ### Analysis options
@@ -1055,7 +1055,7 @@ ell_d_SqW = 160
 I_d_SqW = kF * C/pi * ell_d_SqW * a0 / a13kF
 # I_d_SqW = C/a13kF * kF * 1/(pi*kappa) / (1 + re*kappa)
 I_d_ZR = C/pi * open_channel_fraction
-
+just_I_d = I_d_SqW * a13kF
 # compute clock shift
 #CS_d = sum_rule*-2*kappa/(pi*kF) * (1/1+re/a13(Bfield)) * C 
 CS_d_SqW = -I_d_SqW * a13kF**2 * 2 * (kappa/kF)**2 # convert I_d to CS_d to avoid rewriting sum_rule and o_c_f
@@ -1121,13 +1121,15 @@ alpha = 0.3
 sty_i = 0
 
 ### intitialize plots
-fig, axs = plt.subplots(3,1, figsize=[fig_width, fig_width*7/5], height_ratios=[0.8,1.2,1.2])
+fig, axs = plt.subplots(2,1, figsize=[fig_width, fig_width*5/5], height_ratios=[0.8,1.2
+																				# ,1.2
+																				])
 axes = axs.flatten()
 
-contact_label = r"Contact  $C/N k_F$"
-spectral_weight_label = r"Spectral Weight  $I_d/k_Fa_{13}$"
-clock_shift_label = r"Clock Shift  $\tilde\Omega k_Fa_{13}$"
-temperature_label = r"Temperature  $T/T_F$"
+contact_label = r"Contact,  $C/N k_F$"
+spectral_weight_label = r"Spectral Weight,  $I_d/k_Fa_{13}$"
+clock_shift_label = r"Clock Shift,  $\tilde\Omega k_Fa_{13}$"
+temperature_label = r"Temperature,  $T/T_F$"
 
 #-- spectral weight vs. C
 ax = axes[1]
@@ -1137,13 +1139,17 @@ ax.set(xlabel=contact_label, ylabel=spectral_weight_label,
 i = 0
 
 # theory curves
-ax.plot(C, I_d_ZR, 'k:')#, label='zero range')
-ax.text(0.75, 0.24, 'zero range', rotation=39, rotation_mode='anchor', size=font_size)
+ax.plot(C, I_d_ZR, 'k:'
+		, label='zero range'
+		)
+# ax.text(0.75, 0.24, 'zero range', rotation=46, rotation_mode='anchor', size=font_size)
 ax.plot(C, I_d_SqW, '-', color=colors[sty_i], label='SqW')
 ax.fill_between(C, I_d_SqW*(1-SWvC_error(C)), I_d_SqW*(1+SWvC_error(C)), 
 				color=colors[sty_i], alpha=alpha)
 ax.plot(C, I_d_CCC, '--', color=colors[sty_i+1], label='CCC')
-
+ax2 = ax.twinx()
+ax2.plot(C,just_I_d, marker='')
+ax2.set_ylabel(r'Dimer Weight, $I_d$')
 ax.legend(frameon=False, loc='lower right')
 
 if Tabulate_Results == True:
@@ -1215,129 +1221,129 @@ if plot_options['not Binned']:
 
 
 #-- Clock Shift vs. C
-ax = axes[2]
-ax.set(xlabel=contact_label, ylabel=clock_shift_label, xlim=[0, C.max()+0.05])
+# ax = axes[2]
+# ax.set(xlabel=contact_label, ylabel=clock_shift_label, xlim=[0, C.max()+0.05])
 
-i = 0
-label = 'C ratio'
+# i = 0
+# label = 'C ratio'
 	
-# theory curve
-ax.plot(C, CS_HFT, '-', color=colors[sty_i+1], label='HFT')
-# ax.fill_between(C, FM_HFT*(1-HFT_error(C)), FM_HFT*(1+HFT_error(C)), 
-# 				color=colors[sty_i+1], alpha=alpha)
+# # theory curve
+# ax.plot(C, CS_HFT, '-', color=colors[sty_i+1], label='HFT')
+# # ax.fill_between(C, FM_HFT*(1-HFT_error(C)), FM_HFT*(1+HFT_error(C)), 
+# # 				color=colors[sty_i+1], alpha=alpha)
 
-CS_tot = CS_HFT+CS_d
-ax.plot(C, CS_HFT+CS_d, '-', color=colors[sty_i+2], label='total')
+# CS_tot = CS_HFT+CS_d
+# ax.plot(C, CS_HFT+CS_d, '-', color=colors[sty_i+2], label='total')
 
-CS_tot_err = np.sqrt((CS_d*dimer_error)**2 + (CS_HFT*HFT_error(C))**2)
-# ax.fill_between(C, FM_tot-FM_tot_err, FM_tot+FM_tot_err, 
-# 				color=colors[sty_i+2], alpha=alpha)
-# ax.plot(C, FM_d_CCC_sc, '--', color=colors[sty_i+1], label=theory_labels[2])
+# CS_tot_err = np.sqrt((CS_d*dimer_error)**2 + (CS_HFT*HFT_error(C))**2)
+# # ax.fill_between(C, FM_tot-FM_tot_err, FM_tot+FM_tot_err, 
+# # 				color=colors[sty_i+2], alpha=alpha)
+# # ax.plot(C, FM_d_CCC_sc, '--', color=colors[sty_i+1], label=theory_labels[2])
 
-ax.plot(C, CS_d, '-', color=colors[sty_i], label='dimer')
-# ax.fill_between(C, FM_d*(1-dimer_error), FM_d*(1+dimer_error), 
-# 				color=colors[sty_i], alpha=alpha)
+# ax.plot(C, CS_d, '-', color=colors[sty_i], label='dimer')
+# # ax.fill_between(C, FM_d*(1-dimer_error), FM_d*(1+dimer_error), 
+# # 				color=colors[sty_i], alpha=alpha)
 
-if Tabulate_Results == True:
-	tab_theory = {
-		'C':C,
-		'CS_HFT': CS_HFT,
-		'CS_tot' : CS_tot,
-		'CS_d':CS_d,
-	}
-	tab_theory_df = pd.DataFrame(tab_theory)
-	tab_theory_df.to_csv('clockshift/tabulated_results/subplot_c_theory.csv')
+# if Tabulate_Results == True:
+# 	tab_theory = {
+# 		'C':C,
+# 		'CS_HFT': CS_HFT,
+# 		'CS_tot' : CS_tot,
+# 		'CS_d':CS_d,
+# 	}
+# 	tab_theory_df = pd.DataFrame(tab_theory)
+# 	tab_theory_df.to_csv('clockshift/tabulated_results/subplot_c_theory.csv')
 
-ax.legend(frameon=False)
+# ax.legend(frameon=False)
 
-# binned data
-if plot_options['Binned']:
-	x = df_total['C_data']
-	xerr = df_total['e_C_data']
+# # binned data
+# if plot_options['Binned']:
+# 	x = df_total['C_data']
+# 	xerr = df_total['e_C_data']
 	
-	# FM dimer
-	y = df_total['CS_c5'] * df_total['a13kF']
-	yerr = np.abs(df_total['e_CS_c5']) * df_total['a13kF']
-	binx, biny, binyerr, binxerr = bin_data(x, y, yerr, nbins, xerr=xerr)
-	ax.errorbar(binx, biny, yerr=binyerr, xerr=binxerr, label='dimer', 
-			 **styles[sty_i])
+# 	# FM dimer
+# 	y = df_total['CS_c5'] * df_total['a13kF']
+# 	yerr = np.abs(df_total['e_CS_c5']) * df_total['a13kF']
+# 	binx, biny, binyerr, binxerr = bin_data(x, y, yerr, nbins, xerr=xerr)
+# 	ax.errorbar(binx, biny, yerr=binyerr, xerr=binxerr, label='dimer', 
+# 			 **styles[sty_i])
 	
-	d_binx = binx.copy
-	d_biny = biny.copy()
-	e_d_binx = binxerr
-	e_d_biny = binyerr
+# 	d_binx = binx.copy
+# 	d_biny = biny.copy()
+# 	e_d_binx = binxerr
+# 	e_d_biny = binyerr
 	
-	# save these ones for later
-	CS_tot = biny
-	e_CS_tot = binyerr
+# 	# save these ones for later
+# 	CS_tot = biny
+# 	e_CS_tot = binyerr
 	
-	# FM HFT
-	y = x / (2 * pi) * kappa/kF * a13kF / sum_rule
-	yerr = xerr / (2 * pi) * kappa/kF * a13kF / sum_rule
-	binx, biny, binyerr, binxerr = bin_data(x, y, yerr, nbins, xerr=xerr)
-	ax.errorbar(binx, biny, yerr=binyerr, xerr=binxerr, label='HFT', 
-			 **styles[sty_i+1])
-	HFT_binx = binx
-	HFT_biny = biny
-	e_HFT_binx = binxerr
-	e_HFT_biny = binyerr
+# 	# FM HFT
+# 	y = x / (2 * pi) * kappa/kF * a13kF / sum_rule
+# 	yerr = xerr / (2 * pi) * kappa/kF * a13kF / sum_rule
+# 	binx, biny, binyerr, binxerr = bin_data(x, y, yerr, nbins, xerr=xerr)
+# 	ax.errorbar(binx, biny, yerr=binyerr, xerr=binxerr, label='HFT', 
+# 			 **styles[sty_i+1])
+# 	HFT_binx = binx
+# 	HFT_biny = biny
+# 	e_HFT_binx = binxerr
+# 	e_HFT_biny = binyerr
 	
-	# FM tot
-	CS_tot += biny
-	e_CS_tot = np.sqrt(e_CS_tot**2 + binyerr**2)
-	ax.errorbar(binx, CS_tot, yerr=e_CS_tot, xerr=binxerr,
-			  label='total', **styles[sty_i+2])
+# 	# FM tot
+# 	CS_tot += biny
+# 	e_CS_tot = np.sqrt(e_CS_tot**2 + binyerr**2)
+# 	ax.errorbar(binx, CS_tot, yerr=e_CS_tot, xerr=binxerr,
+# 			  label='total', **styles[sty_i+2])
 	
-	mask = ~np.isnan(CS_tot) # some bins are empty, so mask them
-	popt_CS_tot, pcov_CS_tot = curve_fit(slope, binx[mask], CS_tot[mask], 
-									  sigma=e_CS_tot[mask])
-	perr_CS_tot = np.sqrt(np.diag(pcov_CS_tot))
-	fit_sys_err = np.sqrt(HFT_error_const**2 + dimer_error**2)
+# 	mask = ~np.isnan(CS_tot) # some bins are empty, so mask them
+# 	popt_CS_tot, pcov_CS_tot = curve_fit(slope, binx[mask], CS_tot[mask], 
+# 									  sigma=e_CS_tot[mask])
+# 	perr_CS_tot = np.sqrt(np.diag(pcov_CS_tot))
+# 	fit_sys_err = np.sqrt(HFT_error_const**2 + dimer_error**2)
 	
 	
-	if Tabulate_Results == True:
-		tab_data = {
-			'C':binx,
-			'e_C':e_d_binx,
-			'CS_d': d_biny,
-			'e_CS_d':e_d_biny,
-			'CS_HFT': HFT_biny,
-			'e_CS_HFT':e_HFT_biny ,
-			'CS_tot':CS_tot,
-			'e_CS_tot':e_CS_tot,
-		}
-		tab_data_df = pd.DataFrame(tab_data)
-		tab_data_df.to_csv('clockshift/tabulated_results/subplot_c_data.csv')
-	# slope of HFT line is A_HFT/pi
-	# slope of dimer line is -2A_d/pi * kappa * a13
+# 	if Tabulate_Results == True:
+# 		tab_data = {
+# 			'C':binx,
+# 			'e_C':e_d_binx,
+# 			'CS_d': d_biny,
+# 			'e_CS_d':e_d_biny,
+# 			'CS_HFT': HFT_biny,
+# 			'e_CS_HFT':e_HFT_biny ,
+# 			'CS_tot':CS_tot,
+# 			'e_CS_tot':e_CS_tot,
+# 		}
+# 		tab_data_df = pd.DataFrame(tab_data)
+# 		tab_data_df.to_csv('clockshift/tabulated_results/subplot_c_data.csv')
+# 	# slope of HFT line is A_HFT/pi
+# 	# slope of dimer line is -2A_d/pi * kappa * a13
 	
-	print("Slope of Clock Shift fit:")
-	print("fit slope = {:.3f}({:.0f})({:.0f})".format(popt_CS_tot[0], 
-				1e3*perr_CS_tot[0], 1e3*np.abs(popt_CS_tot[0])*fit_sys_err))
+# 	print("Slope of Clock Shift fit:")
+# 	print("fit slope = {:.3f}({:.0f})({:.0f})".format(popt_CS_tot[0], 
+# 				1e3*perr_CS_tot[0], 1e3*np.abs(popt_CS_tot[0])*fit_sys_err))
 	
-	CS_firstord = -1/pi*(1-pi**2/8*re/a13(202.14))	
-	print("first order re/a13 predicted slope = {:.3f}".format(CS_firstord))
+# 	CS_firstord = -1/pi*(1-pi**2/8*re/a13(202.14))	
+# 	print("first order re/a13 predicted slope = {:.3f}".format(CS_firstord))
 	
-	if plot_options['plot_fits'] == True:
-		ax.plot(binx, slope(binx, *popt_CS_tot), '--', color=colors[sty_i+2])
+# 	if plot_options['plot_fits'] == True:
+# 		ax.plot(binx, slope(binx, *popt_CS_tot), '--', color=colors[sty_i+2])
 		
-	if plot_options['CS_pred'] == True:
-		ax.plot(binx, slope(binx, CS_firstord), '--', color=colors[sty_i+2])
+# 	if plot_options['CS_pred'] == True:
+# 		ax.plot(binx, slope(binx, CS_firstord), '--', color=colors[sty_i+2])
 
-# data
-if plot_options['not Binned']:
-	for df, sty, label in zip(dfs, styles, labels):
-		x = np.array(df['C_data'])
-		xerr = np.array(df['e_C_data']) 
-		dimertype = dimertype2025
-		y = np.array(df['FM_' + dimertype]) * df['a13kF']
-		yerr = np.array(np.abs(df['e_FM_' + dimertype])) * df['a13kF']
+# # data
+# if plot_options['not Binned']:
+# 	for df, sty, label in zip(dfs, styles, labels):
+# 		x = np.array(df['C_data'])
+# 		xerr = np.array(df['e_C_data']) 
+# 		dimertype = dimertype2025
+# 		y = np.array(df['FM_' + dimertype]) * df['a13kF']
+# 		yerr = np.array(np.abs(df['e_FM_' + dimertype])) * df['a13kF']
 		
-		ax.errorbar(x, y, yerr=yerr, xerr=xerr, label=label, **sty)
-		ax.hlines(0, 0, x.max(), ls='dashed', color='black')
-		ax.legend()
+# 		ax.errorbar(x, y, yerr=yerr, xerr=xerr, label=label, **sty)
+# 		ax.hlines(0, 0, x.max(), ls='dashed', color='black')
+# 		ax.legend()
 	
-		i += 1
+# 		i += 1
 
 	
 #-- C vs. ToTF
@@ -1402,12 +1408,21 @@ if plot_options['not Binned']:
 # fig.suptitle(plot_title)
 
 fig.tight_layout()  # note this is done before the labels on purpose
-subplot_labels = ['(a)', '(b)', '(c)']
+subplot_labels = ['(a)', '(b)'
+				#   , '(c)'
+				  ]
 for n, ax in enumerate(axs):
 	label = subplot_labels[n]
 	ax.text(-0.18, 1.12, label, transform=ax.transAxes, size=subplotlabel_font)
 	
 plt.subplots_adjust(top=0.95)
+output_dir = os.path.join(proj_path, '\manuscript\manuscript_figures')
+os.makedirs(output_dir, exist_ok=True)
 
-fig.savefig('clockshift/manuscript/manuscript_figures/spectral_weight_.pdf')
+# Now save the figure
+fig.savefig(os.path.join(output_dir, 'spectral_weight_2025-06-03.pdf'))
+# fig.savefig('clockshift/manuscript/manuscript_figures/spectral_weight_2025-06-03.pdf')
 plt.show()	
+
+def getDataFrame():
+	return df_total

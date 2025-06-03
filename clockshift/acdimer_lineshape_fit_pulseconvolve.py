@@ -52,7 +52,7 @@ Bootstrapplots = True
 Correlations = True
 
 # save results
-Save = False
+Save = True
 
 # determines whether convolved lineshape fit to data has offset parameter
 fitWithOffset = False
@@ -78,7 +78,6 @@ filenames = ['2024-07-17_I_e','2024-07-17_J_e', '2024-08-08_J_e', '2024-09-27_B_
 			 '2024-10-04_H_e', '2024-10-07_C_e', '2024-10-07_G_e']
 
 filenames = ['2024-07-17_J_e']
-filenames = ['2024-09-27_C_e']
 
 # if the filenames list is empty, run over all available files in metadata
 if not filenames:
@@ -159,7 +158,8 @@ for filename in filenames:
 	gain = metadf['gain'][0]
 	remove_indices = metadf['remove_indices'][0]
 	track_bg = metadf['track_bg'][0]
-	load_lineshape = metadf['load_lineshape'][0]
+	#load_lineshape = metadf['load_lineshape'][0]
+	load_lineshape=0
 	Vppscope = metadf['Vpp'][0]
 	
 	if load_lineshape:

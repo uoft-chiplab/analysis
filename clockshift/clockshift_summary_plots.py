@@ -4,13 +4,15 @@
 """
 # paths
 import os
+import sys
 # print(os.getcwd())
 proj_path = os.path.dirname(os.path.realpath(__file__))
 # print(proj_path)
 root = os.path.dirname(proj_path)
 data_path = os.path.join(proj_path, 'data')
 figfolder_path = os.path.join(proj_path, 'figures')
-
+if root not in sys.path:
+	sys.path.append(root)
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -24,7 +26,7 @@ pd.set_option('display.width', 9999)
 # save files 
 files = [
 # 		'HFT_analysis_results.xlsx',
-		 'corrected_HFT_analysis_results.xlsx',
+		 'analysis_results/corrected_HFT_analysis_results.xlsx',
  		 # 'corrected_loss_HFT_analysis_results.xlsx',
 # 		 'acdimer_lineshape_results_c5.xlsx',
 # 		 'acdimer_lineshape_results_c9.xlsx',
@@ -171,7 +173,7 @@ fig.savefig(summaryfig_path)
 
 # print(sorted_transfer_df[['ToTF','C_median','Transfer','x']])
 # print(sorted_dimerc5_df[['ToTF','CS_median','Transfer','y']])
-# 	
+	
 # y = np.array(y)
 # x = np.array(x)
 

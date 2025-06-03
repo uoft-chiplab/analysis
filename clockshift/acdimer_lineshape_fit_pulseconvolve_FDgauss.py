@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
 """
-AC dimer association spectra analysis script.
+AC dimer association spectra analysis script. 
+This variant script is being used to save convolved lineshapes for use as lines to guide the eye in the manuscript.
 @author: Chip Lab
 """
-
 import os
 import sys
 # this is a hack to access modules in the parent directory
@@ -67,7 +67,7 @@ spin = spins[0]
 
 ### metadata
 metadata_filename = 'dimer_metadata_file.xlsx'
-metadata_file = os.path.join(root, metadata_filename)
+metadata_file = os.path.join(proj_path, metadata_filename)
 metadata = pd.read_excel(metadata_file)
 
 # if no filename selected, code will run over all files described in metadata (TO DO)
@@ -123,7 +123,7 @@ def a13(B):
 
 # using 43.2 MHz VVA calibration (very minor difference at this VVA)
 plot_VVAcal = False
-data_file = os.path.join(root + '\\data', 'VVAtoVpp_square_43p2MHz.txt')
+data_file = os.path.join(data_path, 'VVAtoVpp_square_43p2MHz.txt')
 cal = pd.read_csv(data_file, sep='\t', skiprows=1, names=['VVA','Vpp'])
 calInterp = lambda x: np.interp(x, cal['VVA'], cal['Vpp'])
 if plot_VVAcal:
