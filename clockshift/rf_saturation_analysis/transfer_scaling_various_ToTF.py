@@ -6,21 +6,26 @@
 Modified in 2025 to include new lower temperature data.
 
 """
+import os
+import sys
+
+# paths
+proj_path = os.path.dirname(os.path.realpath(__file__))
+data_path = os.path.join(proj_path, 'saturation_data')
+root = os.path.dirname(proj_path)
+rootroot = os.path.dirname(root)
+if rootroot not in sys.path:
+	sys.path.append(rootroot)
+
 from data_class import Data
 from scipy.optimize import curve_fit
 from library import paper_settings, styles, colors
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import os
 import pickle as pkl
 
 from rfcalibrations.Vpp_from_VVAfreq import Vpp_from_VVAfreq
-
-# paths
-proj_path = os.path.dirname(os.path.realpath(__file__))
-data_path = os.path.join(proj_path, 'saturation_data')
-root = os.path.dirname(proj_path)
 
 # plot error bands for saturation curves
 fill_between = True
@@ -166,8 +171,8 @@ if __name__ == '__main__':
 				
 				if only_100kHz_detuning:
 					if detuning != 100:
-	 					continue
-				
+						continue
+					
 				results = {}
 				
 				print(f"Analyzing for detuning = {detuning} and ToTF = {ToTF}")

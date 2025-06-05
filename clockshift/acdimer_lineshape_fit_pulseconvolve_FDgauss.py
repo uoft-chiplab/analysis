@@ -336,8 +336,8 @@ for filename in filenames:
 		FDinterp = lambda x: np.interp(x, xxC, lsFD(xxC, 0, arbscale, FDnum))
 		FDnorm = quad(FDinterp, -qrange, qrange, points=xxC, limit=2*xxC.shape[0])
 		print('FDNORM: ' + str(FDnorm))
-		#transferfunc = norm_gaussian_fixed_sigma
-		transferfunc = norm_sinc2_10us_EF
+		transferfunc = norm_gaussian_fixed_sigma
+		#transferfunc = norm_sinc2_10us_EF
 		def convfunc(tau, t):
 			return FDinterp(tau)/FDnorm[0] * (transferfunc(t-tau, 0))
 			

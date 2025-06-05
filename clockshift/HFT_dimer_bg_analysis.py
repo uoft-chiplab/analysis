@@ -33,6 +33,8 @@ from warnings import catch_warnings, simplefilter
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+import matplotlib.image as mpimg
 import pickle as pkl
 
 from warnings import filterwarnings	
@@ -1143,10 +1145,10 @@ ax.plot(C, I_d_ZR, 'k:'
 		, label='zero range'
 		)
 # ax.text(0.75, 0.24, 'zero range', rotation=46, rotation_mode='anchor', size=font_size)
-ax.plot(C, I_d_SqW, '-', color=colors[sty_i], label='SqW')
-ax.fill_between(C, I_d_SqW*(1-SWvC_error(C)), I_d_SqW*(1+SWvC_error(C)), 
-				color=colors[sty_i], alpha=alpha)
-ax.plot(C, I_d_CCC, '--', color=colors[sty_i+1], label='CCC')
+ax.plot(C, I_d_SqW, '--', color=colors[sty_i+2], label='SqW')
+# ax.fill_between(C, I_d_SqW*(1-SWvC_error(C)), I_d_SqW*(1+SWvC_error(C)), 
+# 				color=colors[sty_i], alpha=alpha)
+ax.plot(C, I_d_CCC, '-', color=colors[sty_i+3], label='CCC')
 ax2 = ax.twinx()
 ax2.plot(C,just_I_d, marker='')
 ax2.set_ylabel(r'Dimer Weight, $I_d$')
@@ -1350,13 +1352,22 @@ if plot_options['not Binned']:
 ax = axes[0]
 ax.set(ylabel=contact_label, xlabel=temperature_label, xlim=[0.2, 0.85])
 
+imgpath = os.path.join(proj_path,'Capture.png')
+
+img = mpimg.imread(imgpath)
+
+# Create inset
+axins = inset_axes(ax, width="30%", height="75%", loc='upper right')
+axins.imshow(img, zorder=0)
+axins.axis('off')  # Hide axes for image
+
 sty_i = 1
 
 # plot trap-averaged contact
 xs = np.linspace(min(df_total['ToTF'])*0.9, max(df_total['ToTF'])*1.1, 100)
-ax.plot(xs, C_interp(xs), '--', color=colors[sty_i], label='trap-averaged theory')
+ax.plot(xs, C_interp(xs), '--', color=colors[sty_i], label='trap-averaged theory', zorder=10)
 ax.fill_between(xs, C_interp(xs)*(1-HFT_error(xs)), C_interp(xs)*(1+HFT_error(xs)), 
-				color=colors[sty_i], alpha=alpha)
+				color=colors[sty_i], alpha=alpha, zorder=10)
 # ax.legend(frameon=False)
 
 
@@ -1368,7 +1379,7 @@ if plot_options['Binned']:
 	y = df_total['C_data']
 	yerr = df_total['e_C_data']
 	binx, biny, binyerr, binxerr = bin_data(x, y, yerr, nbins, xerr=xerr)
-	ax.errorbar(binx, biny, yerr=binyerr, xerr=binxerr, label='binned', **styles[sty_i])
+	ax.errorbar(binx, biny, yerr=binyerr, xerr=binxerr, label='binned', **styles[sty_i], zorder=10)
 	
 	if Tabulate_Results:
 		a_binx = binx
@@ -1402,7 +1413,7 @@ if plot_options['not Binned']:
 		xerr = df['e_ToTF']
 		y = df['C_data']
 		yerr = df['e_C_data']
-		ax.errorbar(x, y, yerr=yerr, xerr=xerr, **sty)
+		ax.errorbar(x, y, yerr=yerr, xerr=xerr, **sty, zorder=10)
 
 # final plot settings
 # fig.suptitle(plot_title)
