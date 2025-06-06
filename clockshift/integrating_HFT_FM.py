@@ -100,17 +100,17 @@ FM_list = []
 FM_FSE_list = []
 xi_list = []
 for i in range(0, 5):
- 	cut_i = xx[i]
- 	print(f'Initial cutoff = {cut_i} :')
- 	cut = [(cut_i < xx) & (xx < omegamax)]
- 	cut_FSE = [(cut_i < xx) & (xx < omegamaxFSE)]
- 	FM = np.trapz(xx[cut]*yy[cut], xx[cut])
- 	FM_FSE = np.trapz(xx[cut_FSE]*yyFSE[cut_FSE], xx[cut_FSE])
- 	print(f'FM = {FM:.2f} EF')
- 	print(f'FM FSE = {FM_FSE:.2f} EF') 
- 	FM_list.append(FM)
- 	FM_FSE_list.append(FM_FSE)
- 	xi_list.append(xx[i])
+    cut_i = xx[i]
+    print(f'Initial cutoff = {cut_i} :')
+    cut = [(cut_i < xx) & (xx < omegamax)]
+    cut_FSE = [(cut_i < xx) & (xx < omegamaxFSE)]
+    FM = np.trapz(xx[cut]*yy[cut], xx[cut])
+    FM_FSE = np.trapz(xx[cut_FSE]*yyFSE[cut_FSE], xx[cut_FSE])
+    print(f'FM = {FM:.2f} EF')
+    print(f'FM FSE = {FM_FSE:.2f} EF') 
+    FM_list.append(FM)
+    FM_FSE_list.append(FM_FSE)
+    xi_list.append(xx[i])
 ax.plot(xi_list, FM_list, 'b', ls='--')
 ax.plot(xi_list, FM_FSE_list, 'b', ls='-')
 ax.set(ylabel='FM', xlabel='initial xi [EF]')

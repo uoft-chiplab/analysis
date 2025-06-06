@@ -35,10 +35,18 @@ def Saturation(x, A, x0):
 	return A*(1-np.exp(-x/x0))
 
 # plotting options
-colors = ['#1b9e77', '#d95f02', '#7570b3', '#e7298a']
-colors = ['#a6cee3','#1f78b4','#b2df8a','#33a02c']
-colors = ['#1b9e77','#d95f02','#7570b3','#e7298a','#66a61e']
-
+# colors = ['#1b9e77', '#d95f02', '#7570b3', '#e7298a']
+# colors = ['#a6cee3','#1f78b4','#b2df8a','#33a02c']
+# colors = ['#1b9e77','#d95f02','#7570b3','#e7298a','#66a61e']
+# colors = ['#1034A6', '#412F88', '#722B6A', '#A2264B', '#D3212D']
+colors = ['#1b1044', '#812581', '#c03a76', '#f3655c', '#fde0a2']
+colors = [
+	colors[0],
+	# colors[1],
+	# colors[2],
+	colors[3],
+	# colors[4]
+]
 styles = generate_plt_styles(colors, ts=0.6)
 
 linestyles = ['--', 
@@ -56,9 +64,11 @@ subplotlabel_font = 10
 fig, axs = plt.subplots(1, 2, figsize=(fig_width*6/5, fig_width*3/5)
 						)
 
-axs[0].set(xlabel=r'RF Power $\Omega_{23}/\Omega_{D,0}$', 
-		   ylabel=r'Transfer $\alpha_D/\alpha_{D,0}$',
-		   ylim=[-0.02, 1])
+axs[0].set(xlabel=r'rf power $\Omega_{23}^2$ [kHz$^2$]', 
+		   ylabel=r'Transfer $\alpha_D$',
+		   ylim=[-0.02, .22],
+		#    xlim = [0,12000]
+		   )
 
 # loop over dimers
 dimer_file = 'dimer_saturation_curves.pkl'
@@ -77,6 +87,8 @@ for i, data in enumerate(dimer_data):
 	df = data['df']
 	
 	popt = data['popt_b']
+	pcovd = data['pcov_b']
+	perrd = np.sqrt(np.diag(pcovd))
 	data['e_ToTF'] = data['ToTF']*0.03
 	alpha0d = popt[0]
 	# dimer
@@ -92,11 +104,11 @@ for i, data in enumerate(dimer_data):
 	
 	# rescale x-axis
 	ax = axs[0]
-	x = df['OmegaR2']/OmegaRabi2
+	x = df['OmegaR2']
 	
-	ax.errorbar(x, y/alpha0d, yerr=yerr, label=label, **sty)
-	ax.plot(xs/OmegaRabi2, Saturation(xs, *popt)/alpha0d, '-', color=color)
-	ax.plot(xs/OmegaRabi2, Linear(xs, popt[0]/popt[1], 0)/alpha0d, linestyles[i], 
+	ax.errorbar(x, y, yerr=yerr, label=label, **sty)
+	ax.plot(xs, Saturation(xs, *popt), '-', color=color)
+	ax.plot(xs, Linear(xs, popt[0]/popt[1], 0), linestyles[i], 
 	  color=color)
 	
 
@@ -118,71 +130,115 @@ for i, file in enumerate(files):
 # turn dictionary list into dataframe
 df = pd.DataFrame(loaded_data)
 
-ax = axs[1]
+# ax = axs[1]
 
-ax.set(xlabel=r'RF Power $\Omega_{23}/\Omega_{HFT,0}$', 
-		   ylabel=r'Transfer $\alpha_{HFT}/\alpha_{HFT,0}$',
- 		   ylim=[-0.04, 1.08]
-		   )
+# ax.set(xlabel=r'RF Power $\Omega_{23}/\Omega_{HFT,0}$', 
+# 		   ylabel=r'Transfer $\alpha_{HFT}/\alpha_{HFT,0}$',
+#  		   ylim=[-0.04, 1.08]
+# 		   )
 sub_df = df.loc[(df.detuning == 100)]
 
 ToTFs = sub_df.ToTF.unique()
 ToTFs.sort()
-# ToTFs = [ToTFs[0], ToTFs[1], ToTFs[2], ToTFs[3], ToTFs[4]]
+ToTFs = [
+	ToTFs[0],
+		#   ToTFs[1],
+		#  ToTFs[2], 
+		#  ToTFs[3],
+		  ToTFs[4]
+		  ]
 
 # chosen average saturation Rabi
 OmegaRabi2 = np.mean([716.46, 962.81])
 
+ax = axs[1]
+
+ax.set(xlabel=r'rf power $\Omega_{23}^2$ [kHz$^2$]', 
+		ylabel=r'Transfer $\alpha_{HFT}$',
+		ylim=[0, .8],
+		xlim = [0,2200]
+)
+plot_data = []
 for i, ToTF in enumerate(ToTFs):
 	sty = styles[i]
 	color = colors[i]
 	e_ToTF = ToTF * 0.03
-	label = r'$T/T_F$ = {:.2f}({:.0f})'.format(ToTF, e_ToTF*1e2)
-	label = r'{:.2f}({:.0f}) $T_F$'.format(ToTF, e_ToTF*1e2)
-	
-	# squeeze turns this into a series, so we can access each column without fuss
+	label = r'{:.2f}({:.0f}) $T_F$'.format(ToTF, e_ToTF * 1e2)
+
 	data = sub_df.loc[sub_df.ToTF == ToTF].squeeze()
-	
-	xs = np.linspace(0, 4.05*OmegaRabi2, 100)
-	
+	xs = np.linspace(0, 4.05 * OmegaRabi2, 100)
 	popt = data.popt
+	# pcovhft = data.pcov
+	# perrhft = np.sqrt(np.diag(pcovhft))
 	Gammas_Sat = Saturation(xs, *popt)
-	Gammas_Lin = xs*popt[0]/popt[1]
-	
+	Gammas_Lin = xs * popt[0] / popt[1]
 	alpha0 = popt[0]
 
-	# raw data plots 
-	ax.plot(xs/OmegaRabi2, Gammas_Sat/alpha0, '-', color=color)
-	ax.plot(xs/OmegaRabi2, Gammas_Lin/alpha0, linestyles[i], color=color)
+
+	# raw data plots
+	ax.plot(xs , Gammas_Sat , '-', color=color)
+	ax.plot(xs , Gammas_Lin , linestyles[i], color=color)
 	
 	x = data.df['OmegaR2']
-	y = data.df['transfer']/alpha0
+	y = data.df['transfer'] 
 	yerr = data.df['em_transfer']
-	
-	ax.errorbar(x/OmegaRabi2, y, yerr=yerr, **sty, label=label)
+
+	plot_data.append({
+		'ToTF': ToTF,
+		'label': label,
+		'color': color,
+		'style': sty,
+		'linestyle': linestyles[i],
+		'xs': xs.tolist(),
+		'Gammas_Sat': Gammas_Sat.tolist(),
+		'Gammas_Lin': Gammas_Lin.tolist(),
+		'x': x.tolist(),
+		'y': y.tolist(),
+		'yerr': yerr.tolist()
+	})
+	ax.errorbar(x , y, yerr=yerr, **sty, label=label)
 
 
+pklpath = os.path.join(parent_dir,"saturation_plot_data.pkl")
+
+with open(pklpath, "wb") as f:
+	pkl.dump(plot_data, f)	
+colors_list = colors
+# Save only what you need to rebuild sm
+sm_config = {
+    'colors': colors_list,  # list of hex or RGB colors you used
+    'vmin': min(ToTFs),
+    'vmax': max(ToTFs)
+}
+
+pklsmpath = os.path.join(parent_dir,"sm_config.pkl")
+
+with open(pklsmpath, "wb") as f:
+    pkl.dump(sm_config, f)
+# make_transfer_plot(ax, sub_df, ToTFs, styles, colors, OmegaRabi2, linestyles)
 cmap = mcolors.LinearSegmentedColormap.from_list('my_cmap', colors)
 norm = mcolors.Normalize(min(ToTFs), max(ToTFs))
 sm = matplotlib.cm.ScalarMappable(cmap=cmap, norm=norm)
 sm.set_array([])
 
-fig.colorbar(sm, ax=ax)
+cbar = fig.colorbar(sm, ax=ax, 
+)
+cbar.set_label(r'$T/T_F$', fontsize=7)
 
 fig.tight_layout()
 subplot_labels = ['(a)', '(b)']
-# for n, ax in enumerate(axs):
+for n, ax in enumerate(axs):
 	# ax.legend(frameon=False, handletextpad=0)
-	# label = subplot_labels[n]
-	# ax.text(-0.2, 1.0, label, 
-	# 	 transform=ax.transAxes, 
-	# 	 size=subplotlabel_font
-	# 	 )
+	label = subplot_labels[n]
+	ax.text(-0.3, 1.05, label, 
+		 transform=ax.transAxes, 
+		 size=subplotlabel_font
+		 )
 	
 plt.subplots_adjust(top=0.9)
 # fig.tight_layout()
 proj_path = os.path.dirname(os.path.realpath(__file__))
-output_dir = os.path.join(proj_path, '\manuscript\manuscript_figures')
-fig.savefig(os.path.join(output_dir, 'dimer_and_HFT_saturation_curves-2025-06-04.pdf'))
+output_dir = os.path.join(proj_path, r'\manuscript\manuscript_figures')
+fig.savefig(os.path.join(output_dir, 'dimer_and_HFT_saturation_curves-v3.pdf'))
 # plt.savefig("clockshift/manuscript/manuscript_figures/dimer_and_HFT_saturation_curves.pdf")
 plt.show()
