@@ -14,7 +14,7 @@ root = os.path.dirname(proj_path)
 data_path = os.path.join(proj_path, 'data')
 if root not in sys.path:
 	sys.path.append(root)
-
+import inspect
 from library import pi, h, hbar, mK, a0, paper_settings, generate_plt_styles
 from data_helper import remove_indices_formatter
 from save_df_to_xlsx import save_df_row_to_xlsx
@@ -29,6 +29,8 @@ from contact_correlations.UFG_analysis import calc_contact
 from contact_correlations.contact_interpolation import contact_interpolation as C_interp
 from scipy.optimize import curve_fit
 from warnings import catch_warnings, simplefilter
+
+# from manuscript.saturation_curve_plots import Saturation, make_transfer_plot, sub_df, ToTFs, styles, colors, OmegaRabi2, linestyles
 
 import numpy as np
 import pandas as pd
@@ -49,13 +51,13 @@ styles = generate_plt_styles(colors, ts=0.6)
 
 ### Script options
 Talk = False
-Reevaluate = False
+Reevaluate = True
 Reevaluate_last_only = False
 Calc_CTheory_std = False
 Plot_HFT_Data = True
 
 # This turns on (True) and off (False) saving the data/plots 
-Save = True
+Save = False
 Tabulate_Results = False # tabulate final results only; for plotting purposes
 
 ### Analysis options
@@ -253,7 +255,9 @@ def sinc2(x, trf):
 	"""sinc^2 normalized to sinc^2(0) = 1"""
 	t = x*trf
 	return np.piecewise(t, [t==0, t!=0], [lambda t: 1, 
-					   lambda t: (np.sin(np.pi*t)/(np.pi*t))**2])
+					   lambda t: (np.sin(np.pi*t/2)/(np.pi*t/2))**2])
+   # KX added the 1/2 June 2025 to make the function definition more clear. 
+   # prior to this, sinc2 seems to have been previously given the input trf/2, which is confusing.
 
 def Int2DGaussian(a, sx, sy):
 	return 2*a*np.pi*sx*sy
@@ -778,7 +782,7 @@ for filename in files:
 		
 		results['SW_'+spin] = scaledtransfer/results['trf_dimer']/results['EF']
 		results['e_SW_'+spin] = e_scaledtransfer/scaledtransfer*results['SW_'+spin]
-		
+	
 		results['FM_'+spin] = results['SW_'+spin] * dimer_freq/results['EF']
 		results['e_FM_'+spin] = np.abs(e_scaledtransfer/scaledtransfer*results['FM_'+spin])
 		
@@ -827,10 +831,17 @@ for filename in files:
 	for i, spin in enumerate(spins):
 		sty = styles[i]
 		yy = results['scaledtransfer_'+spin] * sinc2(xx-dimer_freq/results['EF'], 
-							results['EF']*results['trf_dimer']/2)
+							results['EF']*results['trf_dimer'])
 		ax_fit.plot(xx, yy, '--', label=spin_map(spin))
 		ax_fit.errorbar([dimer_freq/results['EF'], dimer_freq/results['EF']], 
 			  [0, scaledtransfer], yerr=e_scaledtransfer*np.array([1,1]), **sty)
+		
+		results['SW_int_' + spin] = np.trapz(yy, xx)
+		tempSW = results['SW_' + spin]
+		intSW = results['SW_int_' + spin]
+		ratSW = tempSW/intSW
+		print(f'SW = {tempSW}, SWint = {intSW}')
+		print(f'ratio = {ratSW}')
 	
 	# plot transfer for each spin
 	ax = axes[j]
@@ -1123,7 +1134,7 @@ alpha = 0.3
 sty_i = 0
 
 ### intitialize plots
-fig, axs = plt.subplots(2,1, figsize=[fig_width, fig_width*5/5], height_ratios=[0.8,1.2
+fig, axs = plt.subplots(2,1, figsize=[fig_width, fig_width*5/5], height_ratios=[0.8,0.9
 																				# ,1.2
 																				])
 axes = axs.flatten()
@@ -1352,14 +1363,28 @@ if plot_options['not Binned']:
 ax = axes[0]
 ax.set(ylabel=contact_label, xlabel=temperature_label, xlim=[0.2, 0.85])
 
-imgpath = os.path.join(proj_path,'Capture.png')
+# sub_df, ToTFs, styles, colors, OmegaRabi2, linestyles = plot_things()
+# inset_ax = fig.add_axes([0.6, 0.6, 0.3, 0.3])  # [left, bottom, width, height] in figure coordinates
+# make_transfer_plot(inset_ax, sub_df, ToTFs, styles, colors, OmegaRabi2, linestyles)
 
-img = mpimg.imread(imgpath)
 
-# Create inset
-axins = inset_axes(ax, width="30%", height="75%", loc='upper right')
-axins.imshow(img, zorder=0)
-axins.axis('off')  # Hide axes for image
+# imgpath = os.path.join(proj_path,'Capture.png')
+
+# img = mpimg.imread(imgpath)
+
+# # Create inset
+# with open("saturation_plot_data.pkl", "rb") as f:
+# 	plot_data = pkl.load(f)
+
+# # axins = inset_axes(ax, width="30%", height="100%", loc='upper right')
+# inset_ax = fig.add_axes([0.58, 0.67, 0.25, 0.32]) 
+# for item in plot_data:
+# 	inset_ax.plot(item['xs'], item['Gammas_Sat'], '-', color=item['color'])
+# 	inset_ax.plot(item['xs'], item['Gammas_Lin'], item['linestyle'], color=item['color'])
+# 	inset_ax.errorbar(item['x'], item['y'], yerr=item['yerr'], label=item['label'], **item['style'])
+
+# inset_ax.imshow(img, zorder=0)
+# inset_ax.axis('off')  # Hide axes for image
 
 sty_i = 1
 
