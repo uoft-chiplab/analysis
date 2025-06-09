@@ -64,8 +64,8 @@ subplotlabel_font = 10
 fig, axs = plt.subplots(1, 2, figsize=(fig_width*6/5, fig_width*3/5)
 						)
 
-axs[0].set(xlabel=r'rf power $\Omega_{23}^2$ [kHz$^2$]', 
-		   ylabel=r'Transfer $\alpha_D$',
+axs[0].set(xlabel=r'rf power $\Omega_{\mathrm{23}}^2/(2\pi)^2$ [kHz$^2$]', 
+		   ylabel=r'Transfer $\alpha_\mathrm{d}$',
 		   ylim=[-0.02, .22],
 		#    xlim = [0,12000]
 		   )
@@ -153,8 +153,8 @@ OmegaRabi2 = np.mean([716.46, 962.81])
 
 ax = axs[1]
 
-ax.set(xlabel=r'rf power $\Omega_{23}^2$ [kHz$^2$]', 
-		ylabel=r'Transfer $\alpha_{HFT}$',
+ax.set(xlabel=r'rf power $\Omega_{\mathrm{23}}^2/(2\pi)^2$ [kHz$^2$]', 
+		ylabel=r'Transfer $\alpha_{\mathrm{HFT}}$',
 		ylim=[0, .8],
 		xlim = [0,2200]
 )
@@ -239,6 +239,6 @@ plt.subplots_adjust(top=0.9)
 # fig.tight_layout()
 proj_path = os.path.dirname(os.path.realpath(__file__))
 output_dir = os.path.join(proj_path, r'\manuscript\manuscript_figures')
-fig.savefig(os.path.join(output_dir, 'dimer_and_HFT_saturation_curves-v3.pdf'))
+fig.savefig(os.path.join(output_dir, 'dimer_and_HFT_saturation_curves-2025-06-09-only2.pdf'))
 # plt.savefig("clockshift/manuscript/manuscript_figures/dimer_and_HFT_saturation_curves.pdf")
 plt.show()

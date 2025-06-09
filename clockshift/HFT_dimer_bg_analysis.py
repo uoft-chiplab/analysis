@@ -30,13 +30,14 @@ from contact_correlations.contact_interpolation import contact_interpolation as 
 from scipy.optimize import curve_fit
 from warnings import catch_warnings, simplefilter
 
-# from manuscript.saturation_curve_plots import Saturation, make_transfer_plot, sub_df, ToTFs, styles, colors, OmegaRabi2, linestyles
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-import matplotlib.image as mpimg
+from matplotlib.ticker import FixedLocator, FuncFormatter
+import matplotlib.ticker as mticker
+from matplotlib import colors as colorsmpl
+import matplotlib.cm as cm
 import pickle as pkl
 
 from warnings import filterwarnings	
@@ -51,7 +52,7 @@ styles = generate_plt_styles(colors, ts=0.6)
 
 ### Script options
 Talk = False
-Reevaluate = True
+Reevaluate = False
 Reevaluate_last_only = False
 Calc_CTheory_std = False
 Plot_HFT_Data = True
@@ -255,7 +256,7 @@ def sinc2(x, trf):
 	"""sinc^2 normalized to sinc^2(0) = 1"""
 	t = x*trf
 	return np.piecewise(t, [t==0, t!=0], [lambda t: 1, 
-					   lambda t: (np.sin(np.pi*t/2)/(np.pi*t/2))**2])
+					   lambda t: (np.sin(np.pi*t)/(np.pi*t))**2])
    # KX added the 1/2 June 2025 to make the function definition more clear. 
    # prior to this, sinc2 seems to have been previously given the input trf/2, which is confusing.
 
@@ -430,6 +431,7 @@ for filename in files:
 		
 	# compute number of total data points
 	num = len(run.data)
+	print(num/4)
 	
 	###
 	### VPP AND OMEGA RABI CALIBRATION
@@ -782,7 +784,14 @@ for filename in files:
 		
 		results['SW_'+spin] = scaledtransfer/results['trf_dimer']/results['EF']
 		results['e_SW_'+spin] = e_scaledtransfer/scaledtransfer*results['SW_'+spin]
-	
+		results['SW_alpha_'+spin] = results['transfer_'+spin] / (results['trf_dimer']/1e6)**2 / \
+			(OmegaR_dimer*1e3)**2
+		results['e_SW_alpha_' + spin] = results['e_transfer_' + spin]/results['transfer_' + spin] * results['SW_alpha_' + spin]
+		SW = results['SW_' + spin]
+		SWalpha = results['SW_alpha_' + spin]
+		print(f'SW = {SW}')
+		print(f'SW from alpha = {SWalpha}')
+		print(f'SW / SW from alpha ratio = {SW/SWalpha}')
 		results['FM_'+spin] = results['SW_'+spin] * dimer_freq/results['EF']
 		results['e_FM_'+spin] = np.abs(e_scaledtransfer/scaledtransfer*results['FM_'+spin])
 		
@@ -1068,7 +1077,8 @@ ell_d_SqW = 160
 I_d_SqW = kF * C/pi * ell_d_SqW * a0 / a13kF
 # I_d_SqW = C/a13kF * kF * 1/(pi*kappa) / (1 + re*kappa)
 I_d_ZR = C/pi * open_channel_fraction
-just_I_d = I_d_SqW * a13kF
+
+
 # compute clock shift
 #CS_d = sum_rule*-2*kappa/(pi*kF) * (1/1+re/a13(Bfield)) * C 
 CS_d_SqW = -I_d_SqW * a13kF**2 * 2 * (kappa/kF)**2 # convert I_d to CS_d to avoid rewriting sum_rule and o_c_f
@@ -1080,6 +1090,7 @@ FM_d_SqW =  CS_d_SqW * sum_rule
 spin_me = 32/42 # spin matrix element
 ell_d_CCC = spin_me * 42 * pi
 I_d_CCC =  kF / a13kF / pi * ell_d_CCC * a0 * C
+just_I_d = I_d_CCC * a13kF
 CS_d_CCC = -I_d_CCC *a13kF**2 /kF**2 * kappa**2 * 2
 FM_d_CCC = CS_d_CCC * sum_rule
 
@@ -1140,7 +1151,7 @@ fig, axs = plt.subplots(2,1, figsize=[fig_width, fig_width*5/5], height_ratios=[
 axes = axs.flatten()
 
 contact_label = r"Contact,  $C/N k_F$"
-spectral_weight_label = r"Spectral Weight,  $I_d/k_Fa_{13}$"
+spectral_weight_label = r"$I_d/k_Fa_{13}$"
 clock_shift_label = r"Clock Shift,  $\tilde\Omega k_Fa_{13}$"
 temperature_label = r"Temperature,  $T/T_F$"
 
@@ -1159,11 +1170,15 @@ ax.plot(C, I_d_ZR, 'k:'
 ax.plot(C, I_d_SqW, '--', color=colors[sty_i+2], label='SqW')
 # ax.fill_between(C, I_d_SqW*(1-SWvC_error(C)), I_d_SqW*(1+SWvC_error(C)), 
 # 				color=colors[sty_i], alpha=alpha)
-ax.plot(C, I_d_CCC, '-', color=colors[sty_i+3], label='CCC')
+ax.plot(C, I_d_CCC, '-', color=colors[sty_i+3], label='CC')
 ax2 = ax.twinx()
 ax2.plot(C,just_I_d, marker='')
 ax2.set_ylabel(r'Dimer Weight, $I_d$')
+ax2.set_yticks([0, 0.02, 0.04])
+ax2.set_yticklabels(['0', '0.02', '0.04'])
+ax2.set_ylim([0, 0.05])
 ax.legend(frameon=False, loc='lower right')
+
 
 if Tabulate_Results == True:
 	tab_theory = {
@@ -1183,8 +1198,10 @@ if plot_options['Binned']:
 	
 	x = df_total['C_data']
 	xerr = df_total['e_C_data']
-	y = df_total['SW_c5']/ df_total['a13kF']
+	y = df_total['SW_c5'] / (df_total['a13kF'])
 	yerr = np.abs(df_total['e_SW_c5'])/ df_total['a13kF']
+	y_Id = df_total['SW_c5'] # just for Id, used for right axis 
+	y_Id_err = np.abs(df_total['e_SW_c5'])
 	
 	popt_SW, pcov_SW = curve_fit(slope, x, y, sigma=yerr)
 	perr_SW = np.sqrt(np.diag(pcov_SW))
@@ -1202,6 +1219,12 @@ if plot_options['Binned']:
 	
 	binx, biny, binyerr, binxerr = bin_data(x, y, yerr, nbins, xerr=xerr)
 	ax.errorbar(binx, biny, yerr=binyerr, xerr=binxerr, label='binned', **styles[sty_i])
+
+# 	binx2, biny2, binyerr2, binxerr2 = bin_data(x, y_Id, y_Id_err, nbins, xerr=xerr)
+# 	ax2 = ax.twinx()
+# 	ax2.plot(binx2, biny2, marker='*')
+# 	ax2.set_ylabel(r'Dimer Weight, $I_d$')
+	
 	
 	if Tabulate_Results == True:
 		tab_data = {
@@ -1363,28 +1386,50 @@ if plot_options['not Binned']:
 ax = axes[0]
 ax.set(ylabel=contact_label, xlabel=temperature_label, xlim=[0.2, 0.85])
 
-# sub_df, ToTFs, styles, colors, OmegaRabi2, linestyles = plot_things()
-# inset_ax = fig.add_axes([0.6, 0.6, 0.3, 0.3])  # [left, bottom, width, height] in figure coordinates
-# make_transfer_plot(inset_ax, sub_df, ToTFs, styles, colors, OmegaRabi2, linestyles)
 
+# Create inset
+with open("saturation_plot_data.pkl", "rb") as f:
+	plot_data = pkl.load(f)
 
-# imgpath = os.path.join(proj_path,'Capture.png')
+inset_ax = fig.add_axes([0.595, 0.795, 0.235, 0.15]) # [left, bottom, width, height]
+for item in plot_data:
+	inset_ax.plot(item['xs'], item['Gammas_Sat'], '-', color=item['color'])
+	inset_ax.plot(item['xs'], item['Gammas_Lin'], item['linestyle'], color=item['color'])
+	inset_ax.errorbar(item['x'], item['y'], yerr=item['yerr'], **item['style'],  markersize=3.5
+				   )
 
-# img = mpimg.imread(imgpath)
+inset_ax.set(
+	ylabel = r'$\alpha$',
+	xlabel = r'$\Omega_{23}^2/(2\pi)^2$ [kHz$^2]$',
+	ylim = [0, 0.5],
+	xlim = [0,1000],
 
-# # Create inset
-# with open("saturation_plot_data.pkl", "rb") as f:
-# 	plot_data = pkl.load(f)
+)
+inset_ax.tick_params(labelsize=5)
+inset_ax.xaxis.label.set_size(6)
+inset_ax.yaxis.label.set_size(7)
+inset_ax.set_xticks([0, 400,800])
+inset_ax.set_yticks([0.2,0.4])
+ticksx = inset_ax.get_xticks()
+ticksy = inset_ax.get_yticks()
+ticksx = ticksx[ticksx != 0]
+ticksy = ticksy[ticksy != 0]
+inset_ax.set_xticks(ticksx)
+inset_ax.set_yticks(ticksy)
 
-# # axins = inset_axes(ax, width="30%", height="100%", loc='upper right')
-# inset_ax = fig.add_axes([0.58, 0.67, 0.25, 0.32]) 
-# for item in plot_data:
-# 	inset_ax.plot(item['xs'], item['Gammas_Sat'], '-', color=item['color'])
-# 	inset_ax.plot(item['xs'], item['Gammas_Lin'], item['linestyle'], color=item['color'])
-# 	inset_ax.errorbar(item['x'], item['y'], yerr=item['yerr'], label=item['label'], **item['style'])
+with open("sm_config.pkl", "rb") as f:
+    config = pkl.load(f)
 
-# inset_ax.imshow(img, zorder=0)
-# inset_ax.axis('off')  # Hide axes for image
+cmap = colorsmpl.LinearSegmentedColormap.from_list('my_cmap', config['colors'])
+norm = colorsmpl.Normalize(vmin=config['vmin'], vmax=config['vmax'])
+sm = cm.ScalarMappable(cmap=cmap, norm=norm)
+sm.set_array([])  # Required for colorbar to work
+
+# colour bar
+# cbar = fig.colorbar(sm, ax=inset_ax, location='right', pad=0.02, shrink=0.95)
+# cbar.ax.tick_params(labelsize=4)
+# cbar.ax.yaxis.set_tick_params(length=0, pad=0.6)
+# cbar.ax.set_yticks([0.4,0.6])
 
 sty_i = 1
 
@@ -1449,14 +1494,14 @@ subplot_labels = ['(a)', '(b)'
 				  ]
 for n, ax in enumerate(axs):
 	label = subplot_labels[n]
-	ax.text(-0.18, 1.12, label, transform=ax.transAxes, size=subplotlabel_font)
+	ax.text(-0.18, 1.08, label, transform=ax.transAxes, size=subplotlabel_font)
 	
 plt.subplots_adjust(top=0.95)
 output_dir = os.path.join(proj_path, '\manuscript\manuscript_figures')
 os.makedirs(output_dir, exist_ok=True)
 
 # Now save the figure
-fig.savefig(os.path.join(output_dir, 'spectral_weight_2025-06-03.pdf'))
+fig.savefig(os.path.join(output_dir, 'spectral_weight_2025-06-09.pdf'))
 # fig.savefig('clockshift/manuscript/manuscript_figures/spectral_weight_2025-06-03.pdf')
 plt.show()	
 

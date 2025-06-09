@@ -54,9 +54,11 @@ if lowest_bound:
 	GammaTilde = GammaTilde - e_GammaTilde
 
 # estimated HFT tails based on single measurement
-xi = 1 # 1 EF for min cutoff, complete guess rn
+xi_nr = 0.4
+xf_nr = 4
+xi = 4 # min cutoff of HFT, complete guess rn
 xf = 1000
-xx = np.linspace(xi, xf, xf*2)
+xx = np.linspace(0, xf, xf*5) # units of EF
 yyFSE = HFTtailFSE(xx, prefactor*C, omega_a)
 yy = HFTtail(xx, prefactor*C)
 
@@ -70,28 +72,31 @@ print(f'omegamax = {omegamax}')
 print(f'omegamaxFSE = {omegamaxFSE}')
 
 # calculate FM up to cutoff
-cut = [xx<omegamax]
-cut_FSE = [xx<omegamaxFSE]
+cut = [(xi<xx) & (xx<omegamax)]
+cut_FSE = [(xi < xx) & (xx<omegamaxFSE)]
+cut_nr = [(xi_nr < xx) & (xx<xf_nr)]
+FM_nr = np.trapz(xx[cut_nr] * yyFSE[cut_nr], xx[cut_nr] )
 FM_FSE = np.trapz(xx[cut_FSE]*yyFSE[cut_FSE], xx[cut_FSE])
 FM = np.trapz(xx[cut]*yy[cut], xx[cut])
 print('FM up to a cutoff:')
 print(f'FM = {FM:.2f} EF')
 print(f'FM FSE = {FM_FSE:.2f} EF') 
+print(f'FM near-resonant = {FM_nr:.2f} EF')
 
-# calculate FM up to infinity
-xi = 0.5 # 1 EF for min cutoff, complete guess rn
-xf = 1000000
-xx = np.linspace(xi, xf, xf*2)
-yyFSE = HFTtailFSE(xx, prefactor*C, omega_a)
-yy = HFTtail(xx, prefactor*C)
-# calculate FM up to cutoff
-cut = [xx<xf]
-cut_FSE = [xx<xf]
-FM_FSE = np.trapz(xx[cut_FSE]*yyFSE[cut_FSE], xx[cut_FSE])
-FM = np.trapz(xx[cut]*yy[cut], xx[cut])
-print('FM out to infinity:')
-print(f'FM = {FM:.2f} EF')
-print(f'FM FSE = {FM_FSE:.2f} EF') 
+# # calculate FM up to infinity
+# xi = 0.5 # 1 EF for min cutoff, complete guess rn
+# xf = 1000000
+# xx = np.linspace(xi, xf, xf*2)
+# yyFSE = HFTtailFSE(xx, prefactor*C, omega_a)
+# yy = HFTtail(xx, prefactor*C)
+# # calculate FM up to cutoff
+# cut = [xx<xf]
+# cut_FSE = [xx<xf]
+# FM_FSE = np.trapz(xx[cut_FSE]*yyFSE[cut_FSE], xx[cut_FSE])
+# FM = np.trapz(xx[cut]*yy[cut], xx[cut])
+# print('FM out to infinity:')
+# print(f'FM = {FM:.2f} EF')
+# print(f'FM FSE = {FM_FSE:.2f} EF') 
 
 # also check how much FM responds to change in initial cutoff
 
@@ -99,20 +104,26 @@ fig, ax = plt.subplots()
 FM_list = []
 FM_FSE_list = []
 xi_list = []
+FM_NR_list = []
 for i in range(0, 5):
-    cut_i = xx[i]
-    print(f'Initial cutoff = {cut_i} :')
-    cut = [(cut_i < xx) & (xx < omegamax)]
-    cut_FSE = [(cut_i < xx) & (xx < omegamaxFSE)]
-    FM = np.trapz(xx[cut]*yy[cut], xx[cut])
-    FM_FSE = np.trapz(xx[cut_FSE]*yyFSE[cut_FSE], xx[cut_FSE])
-    print(f'FM = {FM:.2f} EF')
-    print(f'FM FSE = {FM_FSE:.2f} EF') 
-    FM_list.append(FM)
-    FM_FSE_list.append(FM_FSE)
-    xi_list.append(xx[i])
+	cut_i = xx[i]
+	print(f'Initial cutoff = {cut_i} :')
+	cut = [(cut_i < xx) & (xx < omegamax)]
+	cut_FSE = [(cut_i < xx) & (xx < omegamaxFSE)]
+	cut_nr = [(cut_i < xx) & (xx<xf_nr)]
+	FM_nr = np.trapz(xx[cut_nr] * yyFSE[cut_nr], xx[cut_nr] )
+	FM = np.trapz(xx[cut]*yy[cut], xx[cut])
+	FM_FSE = np.trapz(xx[cut_FSE]*yyFSE[cut_FSE], xx[cut_FSE])
+	print(f'FM = {FM:.2f} EF')
+	print(f'FM FSE = {FM_FSE:.2f} EF') 
+	print(f'FM near-resonant = {FM_nr:.2f} EF')
+	FM_list.append(FM)
+	FM_FSE_list.append(FM_FSE)
+	FM_NR_list.append(FM_nr)
+	xi_list.append(xx[i])
 ax.plot(xi_list, FM_list, 'b', ls='--')
 ax.plot(xi_list, FM_FSE_list, 'b', ls='-')
+ax.plot(xi_list, FM_NR_list, 'g', ls= '-')
 ax.set(ylabel='FM', xlabel='initial xi [EF]')
 
 

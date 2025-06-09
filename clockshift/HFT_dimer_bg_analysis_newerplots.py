@@ -1059,7 +1059,7 @@ ell_d_SqW = 160
 I_d_SqW = kF * C/pi * ell_d_SqW * a0 / a13kF
 # I_d_SqW = C/a13kF * kF * 1/(pi*kappa) / (1 + re*kappa)
 I_d_ZR = C/pi * open_channel_fraction
-just_I_d = I_d_SqW * a13kF
+# just_I_d = I_d_SqW * a13kF
 # compute clock shift
 #CS_d = sum_rule*-2*kappa/(pi*kF) * (1/1+re/a13(Bfield)) * C 
 CS_d_SqW = -I_d_SqW * a13kF**2 * 2 * (kappa/kF)**2 # convert I_d to CS_d to avoid rewriting sum_rule and o_c_f
@@ -1071,8 +1071,10 @@ FM_d_SqW =  CS_d_SqW * sum_rule
 spin_me = 32/42 # spin matrix element
 ell_d_CCC = spin_me * 42 * pi
 I_d_CCC =  kF / a13kF / pi * ell_d_CCC * a0 * C
+just_I_d = I_d_CCC * a13kF
 CS_d_CCC = -I_d_CCC *a13kF**2 /kF**2 * kappa**2 * 2
 FM_d_CCC = CS_d_CCC * sum_rule
+
 
 ### Other analytical models for bounding
 I_d_max =  kF * 1/pi * a13(Bfield) * C / a13kF  # shallow bound state 
@@ -1152,33 +1154,33 @@ ax.plot(C, I_d_SqW, '--', color=colors[sty_i+2], label='SqW')
 # 				color=colors[sty_i], alpha=alpha)
 ax.plot(C, I_d_CCC, '-', color=colors[sty_i+3], label='CCC')
 ax2 = ax.twinx()
-ax2.plot(C,just_I_d, marker='')
+ax2.plot(C,just_I_d, marker='.')
 
 ax2.set_yticks([0,0.02,0.04,0.06,0.08])
 ax2.set_ylabel(r'Dimer Weight, $I_d$')
 ax.legend(frameon=False, loc='lower right')
 
-#Set clean y-limits for ax2
-ax2.set_ylim(0, 0.08)
+# #Set clean y-limits for ax2
+# ax2.set_ylim(0, 0.08)
 
-#Use a tick formatter to clean up small negatives like -0.00
-def clean_tick_labels(val, pos):
-    if abs(val) < 1e-6:
-        return '0.00'
-    return f'{val:.2f}'
+# #Use a tick formatter to clean up small negatives like -0.00
+# def clean_tick_labels(val, pos):
+#     if abs(val) < 1e-6:
+#         return '0.00'
+#     return f'{val:.2f}'
 
-ax2.yaxis.set_major_formatter(mticker.FuncFormatter(clean_tick_labels))
+# ax2.yaxis.set_major_formatter(mticker.FuncFormatter(clean_tick_labels))
 
-# Optional: reduce tick line length or styling
-ax2.tick_params(axis='y', length=3)  # shorter tick lines
+# # Optional: reduce tick line length or styling
+# ax2.tick_params(axis='y', length=3)  # shorter tick lines
 
-# Step 5: Custom tick formatter to prevent -0.00
-def format_tick(val, pos):
-    if abs(val) < 1e-6:
-        return '0.00'
-    return f'{val:.2f}'
+# # Step 5: Custom tick formatter to prevent -0.00
+# def format_tick(val, pos):
+#     if abs(val) < 1e-6:
+#         return '0.00'
+#     return f'{val:.2f}'
 
-ax2.yaxis.set_major_formatter(FuncFormatter(format_tick))
+# ax2.yaxis.set_major_formatter(FuncFormatter(format_tick))
 		
 if Tabulate_Results == True:
 	tab_theory = {
