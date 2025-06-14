@@ -56,7 +56,7 @@ Correlations = False
 
 # save results
 Save = False
-save_lineshape = True
+save_lineshape = False
 save_data = False
 # determines whether convolved lineshape fit to data has offset parameter
 fitWithOffset = False
@@ -64,6 +64,8 @@ fitWithOffset = False
 spins = ['c5','c9','sum95']
 spin = spins[0]
 
+### save file name
+savefile = os.path.join(proj_path, '/acdimer_lineshape_results_' + spin + '.xlsx')
 
 ### metadata
 metadata_filename = 'dimer_metadata_file.xlsx'
@@ -75,9 +77,6 @@ metadata = pd.read_excel(metadata_file)
 #filenames = ['2024-10-02_C_e']
 #filenames = ['2024-06-12_S_e']
 #filenames = ['2024-07-17_I_e']
-#filenames = ['2024-07-17_J_e']
-#filenames = ['2024-09-27_B_e', '2024-10-01_F_e','2024-10-04_H_e']
-#filenames = ['2025-03-19_G_e_pulsetime=0.64']
 filenames = ['2024-07-17_J_e']
 # if the filenames list is empty, run over all available files in metadata
 if not filenames:
@@ -200,6 +199,7 @@ for filename in filenames:
 	if filename[:4] == '2025':
 		Vpp = 0.29
 		OmegaR = 2*pi*VpptoOmegaR43*Vpp# 2 pi kHz
+	
 	# remove indices if requested
 	remove_list = remove_indices_formatter(remove_indices)
 	if remove_list:
@@ -231,6 +231,16 @@ for filename in filenames:
 		if VVA_zero_exists:
 			bgdf = run.data[run.data['VVA'] == 0]
 			run.data = run.data[run.data['VVA'] != 0]
+	
+	# determine bg freq to be int, list or range
+	bg_freq, bg_freq_type = bg_freq_formatter(metadf['bg_freq'][0])
+	if bg_freq_type == 'int': # select bg at one freq
+		bgdf = run.data.loc[run.data['detuning'] == bg_freq]
+	elif bg_freq_type == 'list': # select bg at a list of freqs
+		bgdf = run.data.loc[run.data['detuning'].isin(bg_freq)]
+	elif bg_freq_type == 'range': # select freq in ranges
+		bgdf = pd.concat([run.data.loc[run.data['detuning'].between(val[0], 
+											  val[1])] for val in bg_freq])
 	# calculate scaled detuning
 	run.data['Delta'] = run.data.detuning * 1e3/EF
 	# transfer and background
@@ -319,6 +329,12 @@ for filename in filenames:
 			return np.piecewise(x, [(x==x0), (x!=x0)], 
 			[lambda x: 1*T,  
 			lambda x: 1*T*np.sin((x-x0)*T*np.pi)**2/((x-x0)*T*np.pi)**2]) # this should be normalized to 1/T, so multiply by T
+		
+		D = np.linspace(-10*1000/(trf*1e6) / EF, 10*1000/(trf*1e6) /EF, 1000)
+		 
+		if pulsetype == 'square':
+			yD = Sinc2D(D, trf*1e6)
+			norm = np.trapz(yD, D)
 		 
 		arbscale=1
 		qrange=xnum
@@ -340,6 +356,7 @@ for filename in filenames:
 		#transferfunc = norm_sinc2_10us_EF
 		def convfunc(tau, t):
 			return FDinterp(tau)/FDnorm[0] * (transferfunc(t-tau, 0))
+		
 			
 		def convint(t):
 			# the integral converges better when ranges don't go to infinity

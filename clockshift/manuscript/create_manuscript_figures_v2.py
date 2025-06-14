@@ -736,7 +736,7 @@ if Plot == 3:
 				'marker':'s',
 				'markersize':3}
 	#file = '2025-03-19_G_e_pulsetime=0.64.dat.pkl'
-	file = '2024-07-17_J_e.dat.pkl'
+	file = '2024-07-17_J_e.dat_sat_corr.pkl'
 	data = pd.read_pickle(os.path.join(data_path, file))
 	scaling = 1000
 	data = data.sort_values(by='detuning')
@@ -752,7 +752,9 @@ if Plot == 3:
 	ys = ys-offs
 	y_dimer = y_dimer - offs
 	
+
 	json_file = 'lineshape_2024-07-17_J_e_backup.json'
+
 	
 	with open(os.path.join(data_path, json_file)) as f:
 		data_load = json.load(f)
@@ -808,7 +810,7 @@ if Plot == 3:
 
 	#ax = fig.add_subplot(gs[1, 0])
 	#file2 = '2025-03-19_G_e_pulsetime=0.01.dat.pkl'
-	file2='2024-09-27_B_e.dat.pkl'
+	file2='2024-09-27_B_e.dat_sat_corr.pkl'
 	data = pd.read_pickle(os.path.join(data_path, file2))
 	data = data.sort_values(by='detuning')
 	scaling = 1000
@@ -1133,8 +1135,9 @@ if Plot == 8:
 	offs = ys.min()
 	ys = ys-offs
 	y_dimer = y_dimer - offs
-	
+
 	json_file = 'lineshape_2024-07-17_J_e_backup.json'
+
 	with open(os.path.join(data_path, json_file)) as f:
 		data_load = json.load(f)
 		x_load = data_load['x']
