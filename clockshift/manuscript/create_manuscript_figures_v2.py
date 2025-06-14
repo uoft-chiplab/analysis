@@ -752,7 +752,7 @@ if Plot == 3:
 	ys = ys-offs
 	y_dimer = y_dimer - offs
 	
-	json_file = 'lineshape_2024-07-17_J_e.json'
+	json_file = 'lineshape_2024-07-17_J_e_backup.json'
 	
 	with open(os.path.join(data_path, json_file)) as f:
 		data_load = json.load(f)
@@ -1134,7 +1134,7 @@ if Plot == 8:
 	ys = ys-offs
 	y_dimer = y_dimer - offs
 	
-	json_file = 'lineshape_2024-07-17_J_e.json'
+	json_file = 'lineshape_2024-07-17_J_e_backup.json'
 	with open(os.path.join(data_path, json_file)) as f:
 		data_load = json.load(f)
 		x_load = data_load['x']
