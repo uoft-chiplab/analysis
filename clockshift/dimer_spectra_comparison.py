@@ -381,7 +381,7 @@ for i, file in enumerate(files_run):
 					
 		# correct transfer from saturation scaling		
 		run.data[spin+'_alpha']=run.data[spin+'_alpha'] *sat_scale_dimer
-		run.data[spin+'_transfer'] = run.data[spin+'_alpha'] / (trf/1e6) / (OmegaR/(2*np.pi)*1e3)**2 / np.pi # 1/Hz wait why is there a pi
+		run.data[spin+'_transfer'] = run.data[spin+'_alpha'] / (trf/1e6)**2 / (OmegaR/(2*np.pi)*1e3)**2 / np.pi # 1/Hz wait why is there a pi
 		run.data[spin+'_scaledtransfer'] = GammaTilde(run.data[spin+'_alpha'], h*EF*1e6, OmegaR*1e3, trf/1e6) # dimless
 		
 		# average results

@@ -16,7 +16,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
-Save = False
+Save = True
 
 files = ["2025-04-23_C_e.dat",
 	"2025-04-24_B_e.dat",
@@ -92,7 +92,6 @@ for file in files:
     df['file']= file
     df['Vpp'] = df.apply(lambda x: VVA_to_Vpp(x['VVA']), axis=1)
     df['OmegaR'] = 2*np.pi*RabiperVpp_43MHz_2025*df['Vpp']
-    #df['OmegaR2'] = (df['OmegaR']/2/np.pi)**2
 
     if sat_correction:
         df['sat_correction'] = saturation_scale(df['OmegaR']**2/(2*np.pi)**2, df['time'])
@@ -111,21 +110,20 @@ for file in files:
     df.loc[df.time == 0, 'Gamma_b'] = 0
     df.loc[df.time == 0, 'em_Gamma_b'] = 0
 
-    # df['scaled_Gamma_b'] = df['Gamma_b']/df['OmegaR2']/EF*2 # since EF is in kHz, check this
-    # df['em_scaled_Gamma_b'] = df['em_Gamma_b']/df['OmegaR2']/EF*2 # *2?...
+    df['scaled_Gamma_b'] = df['Gamma_b']/(df['OmegaR'])**2/np.pi*(2*np.pi*EF)
+    df['em_scaled_Gamma_b'] = df['em_Gamma_b']/(df['OmegaR'])**2/np.pi*(2*np.pi*EF)
 
-    
-    # note that OmegaR should be in kHz to match df['time']
-    df['scaled_Gamma_b'] = df['Gamma_b']/(df['OmegaR'])**2/np.pi*(2*np.pi*EF) # since EF is in kHz, check this
-    df['em_scaled_Gamma_b'] = df['em_Gamma_b']/(df['OmegaR'])**2/np.pi*(2*np.pi*EF) # *2?...
-
-    # df['scaled_Gamma_b'] = GammaTilde(df['alpha_b'], h*EF*1e3, df['OmegaR']*1e3, df['time']/1e3)
-    # df['em_scaled_Gamma_b'] = 0
-    # compute spectral weight
-    # df['spectral_weight'] = df['scaled_Gamma_b']/df['time']/EF
-    # df['em_spectral_weight'] = df['em_scaled_Gamma_b']/df['time']/EF
-    df['spectral_weight'] = df['scaled_Gamma_b']/df['time']/EF
-    df['em_spectral_weight'] = df['em_scaled_Gamma_b']/df['time']/EF
+	
+	# this is spectral weght 
+    df['spectral_weight'] = df['scaled_Gamma_b']/df['time']/EF 
+    df['em_spectral_weight'] = df['em_scaled_Gamma_b']/df['time']/EF 
+	
+	# this is Id -- fraction of total spectral weight
+    df['Id'] = df['spectral_weight']*2
+    df['em_Id'] = df['em_spectral_weight']*2
+	
+    df['Id2'] = 4*df['alpha_b']/(df['time']**2)/(df['OmegaR']**2)
+    df['em_Id2']=4*df['em_alpha_b']
 
     transfer = 'alpha_b'
     transfer_rate = 'Gamma_b'
@@ -168,12 +166,21 @@ for file in files:
 
     # spectral weight
     ax = axs[4]
-    ax.set(xlabel=time_label, ylabel=r'Spectral Weight $I_d$',
-        ylim=[-0.00, 0.014],
+    ax.set(xlabel=time_label, ylabel=r'Dimer Weight $I_d$',
+        ylim=[-0.00, 0.03],
     )
-    ax.errorbar(df['time'], df['spectral_weight'], 
-                yerr=df['em_spectral_weight'], **styles[4])
-    
+    ax.errorbar(df['time'], df['Id'], 
+                yerr=df['em_Id'], **styles[4])
+
+    # spectral weight check using alternate method
+    ax = axs[5]
+    ax.set(xlabel=time_label, ylabel=r'Dimer Weight $I_d$',
+        ylim=[-0.00, 0.03],
+    )
+    ax.errorbar(df['time'], df['Id2'], 
+                yerr=df['em_Id2'], **styles[5])
+
+
 
 fig.suptitle(file+', pol={:.2f}'.format(pol))
 fig.tight_layout()
@@ -184,13 +191,13 @@ results_df = results_df[results_df['time'] != 0]
 print(results_df.shape)
 fermitime = 1/(2*np.pi*EF)  #ms
 results_df['scaledtime'] = results_df['time']/fermitime 
-meanId = results_df.groupby('scaledtime')['spectral_weight'].mean()
+meanId = results_df.groupby('scaledtime')['Id'].mean()
 
 if Save:
     fig, ax = plt.subplots(figsize=(4,3))
-    ax.errorbar(results_df['scaledtime'], results_df['spectral_weight'], 
-                    yerr = results_df['em_spectral_weight'], **styles[5])
-    ax.set(xlabel=r'$t/\tau_F$', ylabel=r'Spectral Weight $I_d$',
+    ax.errorbar(results_df['scaledtime'], results_df['Id'], 
+                    yerr = results_df['em_Id'], **styles[5])
+    ax.set(xlabel=r'$t/\tau_F$', ylabel=r'Dimer Weight $I_d$',
             ylim=[-0.00, 0.015],
             xlim=[-0.1, 5.1])
     results_df.to_excel(os.path.join(full_path, 'results_df.xlsx'))
