@@ -1073,7 +1073,7 @@ kappa = np.sqrt((Eb*h*10**6) *mK/hbar**2) # convert Eb back to kappa
 # divide I_d by a13 kF,
 not_small_kappa_correction = 1.08
 ell_d_SqW = 1/(kappa * (1 + re/a13(Bfield))) * open_channel_fraction  * not_small_kappa_correction / a0
-ell_d_SqW = 160
+ell_d_SqW = 160 # most up to date calculation
 I_d_SqW = kF * C/pi * ell_d_SqW * a0 / a13kF
 # I_d_SqW = C/a13kF * kF * 1/(pi*kappa) / (1 + re*kappa)
 I_d_ZR = C/pi * open_channel_fraction
@@ -1173,7 +1173,7 @@ ax.plot(C, I_d_SqW, '--', color=colors[sty_i+2], label='SqW')
 ax.plot(C, I_d_CCC, '-', color=colors[sty_i+3], label='CC')
 ax2 = ax.twinx()
 ax2.plot(C,just_I_d, marker='')
-ax2.set_ylabel(r'Dimer Weight, $I_d$')
+ax2.set_ylabel(r'Dimer weight, $I_d$')
 ax2.set_yticks([0, 0.02, 0.04])
 ax2.set_yticklabels(['0', '0.02', '0.04'])
 ax2.set_ylim([0, 0.05])
@@ -1198,10 +1198,9 @@ if plot_options['Binned']:
 	
 	x = df_total['C_data']
 	xerr = df_total['e_C_data']
-	y = df_total['SW_c5'] / (df_total['a13kF'])
+	#y = df_total['SW_c5'] / (df_total['a13kF'])
+	y = df_total['SW_c5'] / df_total['a13kF']
 	yerr = np.abs(df_total['e_SW_c5'])/ df_total['a13kF']
-	y_Id = df_total['SW_c5'] # just for Id, used for right axis 
-	y_Id_err = np.abs(df_total['e_SW_c5'])
 	
 	popt_SW, pcov_SW = curve_fit(slope, x, y, sigma=yerr)
 	perr_SW = np.sqrt(np.diag(pcov_SW))
@@ -1218,13 +1217,15 @@ if plot_options['Binned']:
 	
 	
 	binx, biny, binyerr, binxerr = bin_data(x, y, yerr, nbins, xerr=xerr)
+	# print(biny * a13kF)
 	ax.errorbar(binx, biny, yerr=binyerr, xerr=binxerr, label='binned', **styles[sty_i])
-
-# 	binx2, biny2, binyerr2, binxerr2 = bin_data(x, y_Id, y_Id_err, nbins, xerr=xerr)
-# 	ax2 = ax.twinx()
-# 	ax2.plot(binx2, biny2, marker='*')
-# 	ax2.set_ylabel(r'Dimer Weight, $I_d$')
-	
+	# print(biny)
+	# binx, biny, binyerr, binxerr = bin_data(x, df_total['ToTF'], df_total['e_ToTF'], nbins, xerr=xerr)
+	# print(biny)
+	# binx, biny, binyerr, binxerr = bin_data(x, df_total['EF'], df_total['e_EF'], nbins, xerr=xerr)
+	# print(biny)
+	# binx, biny, binyerr, binxerr = bin_data(x, df_total['kF'], np.ones(len(df_total['kF'])), nbins, xerr=xerr)
+	# print(biny)
 	
 	if Tabulate_Results == True:
 		tab_data = {
@@ -1494,7 +1495,9 @@ subplot_labels = ['(a)', '(b)'
 				  ]
 for n, ax in enumerate(axs):
 	label = subplot_labels[n]
-	ax.text(-0.18, 1.08, label, transform=ax.transAxes, size=subplotlabel_font)
+	ax.text(-0.18, 1.08, label, transform=ax.transAxes, 
+		#  size=subplotlabel_font
+		 )
 	
 plt.subplots_adjust(top=0.95)
 output_dir = os.path.join(proj_path, '\manuscript\manuscript_figures')

@@ -42,10 +42,10 @@ def Saturation(x, A, x0):
 colors = ['#1b1044', '#812581', '#c03a76', '#f3655c', '#fde0a2']
 colors = [
 	colors[0],
-	# colors[1],
-	# colors[2],
+	colors[1],
+	colors[2],
 	colors[3],
-	# colors[4]
+	colors[4]
 ]
 styles = generate_plt_styles(colors, ts=0.6)
 
@@ -64,7 +64,7 @@ subplotlabel_font = 10
 fig, axs = plt.subplots(1, 2, figsize=(fig_width*6/5, fig_width*3/5)
 						)
 
-axs[0].set(xlabel=r'rf power $\Omega_{\mathrm{23}}^2/(2\pi)^2$ [kHz$^2$]', 
+axs[0].set(xlabel=r'$\Omega_{\mathrm{23}}^2/(2\pi)^2$ [kHz$^2$]', 
 		   ylabel=r'Transfer $\alpha_\mathrm{d}$',
 		   ylim=[-0.02, .22],
 		#    xlim = [0,12000]
@@ -142,9 +142,9 @@ ToTFs = sub_df.ToTF.unique()
 ToTFs.sort()
 ToTFs = [
 	ToTFs[0],
-		#   ToTFs[1],
-		#  ToTFs[2], 
-		#  ToTFs[3],
+		  ToTFs[1],
+		 ToTFs[2], 
+		 ToTFs[3],
 		  ToTFs[4]
 		  ]
 
@@ -153,7 +153,7 @@ OmegaRabi2 = np.mean([716.46, 962.81])
 
 ax = axs[1]
 
-ax.set(xlabel=r'rf power $\Omega_{\mathrm{23}}^2/(2\pi)^2$ [kHz$^2$]', 
+ax.set(xlabel=r'$\Omega_{\mathrm{23}}^2/(2\pi)^2$ [kHz$^2$]', 
 		ylabel=r'Transfer $\alpha_{\mathrm{HFT}}$',
 		ylim=[0, .8],
 		xlim = [0,2200]
@@ -230,9 +230,9 @@ subplot_labels = ['(a)', '(b)']
 for n, ax in enumerate(axs):
 	# ax.legend(frameon=False, handletextpad=0)
 	label = subplot_labels[n]
-	ax.text(-0.3, 1.05, label, 
+	ax.text(-0.33, 1.05, label, 
 		 transform=ax.transAxes, 
-		 size=subplotlabel_font
+		#  size=subplotlabel_font
 		 )
 	
 plt.subplots_adjust(top=0.9)

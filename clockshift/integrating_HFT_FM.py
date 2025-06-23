@@ -31,14 +31,18 @@ def a13(B):
 #df = getDataFrame()
 # print(df)
 df = pd.read_excel(os.path.join(data_path, 'HFT_dimer_bg_analysis_results.xlsx'))
-idx = 11 # an index where C ~ 2.5
+#idx = 11 # an index where C ~ 2.5
+idx =10 # an index where C ~ 2.2
 C = df['C'][idx] # Ctilde
-scale = 2.5/C
-#scale = 1
+#scale = 2.5/C
+scale = 1
 C = C *scale # forced to be 2.5
 e_C = df['e_C'][idx] * scale
 EF = df['EF'][idx]
 e_EF=df['e_EF'][idx]
+kF = df['kF'][idx]
+a13kF = df['a13kF'][idx]
+SW = df['SW_c5'][idx]
 detuning = 0.1 # MHz
 prefactor = 1/(2**(3/2)*pi**2)
 GammaTilde = prefactor * C * (detuning/EF)**(-3/2)
@@ -54,7 +58,7 @@ if lowest_bound:
 	GammaTilde = GammaTilde - e_GammaTilde
 
 # estimated HFT tails based on single measurement
-xi_nr = 0.4
+xi_nr =0
 xf_nr = 4
 xi = 4 # min cutoff of HFT, complete guess rn
 xf = 1000
@@ -139,5 +143,11 @@ ax.set(yscale='log',
 	   xscale='log',
 	   ylabel=r'$\widetilde{\Gamma}$',
 	   xlabel=r'$\tilde{\omega} [E_F]$')
+
+
+fig, ax = plt.subplots()
+ax.plot(df['C'], df['kF']/1e7, marker= 'o')
+fig, ax = plt.subplots()
+ax.plot(df['C'], df['EF'], marker='o')
 
 

@@ -7,8 +7,11 @@ import pandas as pd
 from scipy.optimize import root_scalar
 import matplotlib.pyplot as plt
 from scipy.special import gamma
+from matplotlib.patches import FancyArrowPatch
+from matplotlib.lines import Line2D
 import sys
 import os
+from matplotlib.legend_handler import HandlerPatch
 proj_path = os.path.dirname(os.path.realpath(__file__))
 root = os.path.dirname(proj_path)
 data_path = os.path.join(proj_path, 'data')
@@ -18,7 +21,7 @@ from library import pi, h, hbar, mK, a0, paper_settings, generate_plt_styles
 colors = ['#c70808','#66a61e','#000000','#1c89cb','#4b13b4']
 
 styles = generate_plt_styles(colors, ts=0.6)
-
+Save = True
 # ### plot settings
 plt.rcdefaults()
 plt.rcParams.update(paper_settings) # from library.py
@@ -30,7 +33,7 @@ subplotlabel_font = 10
 hbar = 1.0545718e-34  # J*s
 amu = 1.66053873e-27
 massK40 = 39.96399848*amu   # amu
-a0 = 0.52917720859e-10      # meters
+a0 = 0.52917720859e-10      
 aB = a0
 h = 2*np.pi*hbar   
 
@@ -47,7 +50,7 @@ re95atB097 = 103*aB
 r0K40 = 65.02231404 * aB
 abar40K = 4 * np.pi / gamma(0.25)**2 * r0K40
 re0 = gamma(0.25)**4 * abar40K / (6 * np.pi**2)
-# re0 = 9.59808e-9
+
 # Energy and pole formulas
 def poleER(re, aS):
     argument = np.where(aS - 2 * re > 0, aS - 2 * re, np.nan)
@@ -85,6 +88,9 @@ def poleQuartic(re, aS):
 def EdimerQuartic(re, aS):
     kappa = poleQuartic(re / aB, aS / aB)
     return hbar**2 * kappa**2 / aB**2 / massK40
+
+def Ezero(aS):
+    return hbar**2  / aS**2 / massK40
 
 # Phase shift functions
 def eta_unitary(n):
@@ -235,11 +241,6 @@ x_vals = np.linspace(0.01, 10, 300)
 reff_over_aS = [reffSqWxOverr0(j, x)/aSSqWxOverr0(j, x) for x in x_vals]
 aS_kappa_vals = [aSSqWxOverr0(j, x) * dimerkappaSW(j, eta_x(j, x)) for x in x_vals]
 
-fig_width = 3.4 # One-column PRL figure size in inches
-
-fig, ax = plt.subplots(1,3, figsize=[fig_width*2, fig_width])
-ax[0].plot(reff_over_aS, aS_kappa_vals, 'r--', label='SqW')
-
 # Compare with poles
 reOveraS_vals = np.linspace(0.01, 0.6, 200)
 kappa_ER = [myaS * poleER(r * myaS, myaS) for r in reOveraS_vals]
@@ -247,98 +248,134 @@ kappa_Tmatrix = [myaS * poleTmatrix(r * myaS, myaS) for r in reOveraS_vals]
 kappa_Quartic = [myaS * poleQuartic(r * myaS, myaS) for r in reOveraS_vals]
 
 # ax.plot(reOveraS_vals, kappa_ER, label='Effective Range pole')
-ax[0].plot(reOveraS_vals, kappa_Tmatrix, label='T-matrix pole')
+# ax[0].plot(reOveraS_vals, kappa_Tmatrix, label='T-matrix pole')
 # ax.plot(reOveraS_vals, kappa_Quartic, label='Quartic phase shift pole')
 
-# CCC point
+# CCC line
 re_ratio = 105 / 221.5
+
+data_CCC = pd.read_csv('E:\\Analysis Scripts\\analysis\\clockshift\\manuscript\\manuscript_data\\ac_s_Eb_vs_B_220-225G.dat',
+                       delimiter='\s', header=None)
+data_CCC.columns = ['B', 'E_MHz']
+data_CCC['E_J'] = data_CCC['E_MHz']*1e6 *  6.62607015e-34 
+data_CCC['kappa'] = np.sqrt(massK40 * -data_CCC['E_J'] / hbar**2) 
+data_CCC['re/aS'] = re13(data_CCC['B'])/aS13(data_CCC['B'])
+data_CCC['kappa_aS'] = data_CCC['kappa'] * aS13(data_CCC['B'])
+data_CCC = data_CCC.drop(data_CCC.index[-1]) # drop the data point at 13 resonance because it was causing infs in kappa*aS
+# remnant code when we had 1 point
 E_dimer = 4.021e6 * 6.62607015e-34  # MHz to J
 kappa_CCC = np.sqrt(massK40 * E_dimer / hbar**2) * 221.5 * a0
-ax[0].plot([re_ratio], [kappa_CCC], 'ko', label='CCC')
+# ax[0].plot([re_ratio], [kappa_CCC], 'ko', label='CCC')
 
-ax[0].set_xlabel(r'$r_e / a_S$')
-ax[0].set_ylabel(r'$a_S \kappa$')
-# ax.set_aspect('equal', adjustable='box')
-ax[0].legend()
+# ax[0].set_xlabel(r'$r_e / a_S$')
+# ax[0].set_ylabel(r'$a_S \kappa$')
+# # ax.set_aspect('equal', adjustable='box')
+# ax[0].legend()
 
-fig, ax = plt.subplots(3,1)
+# fig, ax = plt.subplots(3,1)
 
-# Blist = np.linspace(202, 222, 100)
-ax[0].plot(B_range, aS13(B_range)/a0)
-ax[0].set_ylim(0,800)
+# # Blist = np.linspace(202, 222, 100)
+# ax[0].plot(B_range, aS13(B_range)/a0)
+# ax[0].set_ylim(0,800)
 
-ax[1].plot(B_range, re13(B_range)/a0)
-ax[1].set(ylabel = 're13/a0')
+# ax[1].plot(B_range, re13(B_range)/a0)
+# ax[1].set(ylabel = 're13/a0')
 
-ax[2].plot(B_range, re13(B_range)/aS13(B_range))
-ax[2].set(ylabel = 're13/a13')
+# ax[2].plot(B_range, re13(B_range)/aS13(B_range))
+# ax[2].set(ylabel = 're13/a13')
 
 # Plotting
-fig, ax = plt.subplots(figsize=(8, 6))
+# fig, ax = plt.subplots(figsize=(8, 6))
 
-ax.plot(B_vals_sqW, E_vals_sqW, 'r--', label='SqW')
-ax.plot(B_range, E_ER, linestyle='-', label='Effective Range pole')
-ax.plot(B_range, E_TM, linestyle='-.', label='T-matrix pole')
-# ax.plot(B_range, E_QP, linestyle='--', label='Quartic phase shift pole')
-ax.plot([B097], [-4.021], 'ko', label='CCC')
-ax.set_xlabel('Magnetic Field B (G)')
-ax.set_ylabel('Dimer Binding Energy (MHz)')
-ax.set(
-    ylim = [-4.2,0],
-    xlim = [200,224]
-)
-# ax.set_xlim(B097 - 1, B095)
-ax.legend()
-plt.tight_layout()
+# ax.plot(B_vals_sqW, E_vals_sqW, 'r--', label='SqW')
+# # ax.plot(B_range, E_ER, linestyle='-', label='Effective Range pole')
+# # ax.plot(B_range, E_TM, linestyle='-.', label='T-matrix pole')
+# ax.plot(B_range, -hbar**2/(massK40*aS13(B_range)**2)/h/1e6, linestyle='-.')
+# # ax.plot(B_range, E_QP, linestyle='--', label='Quartic phase shift pole')
+# ax.plot([B097], [-4.021], 'ko', label='CCC')
+# ax.set_xlabel('Magnetic Field B (G)')
+# ax.set_ylabel('Dimer Binding Energy (MHz)')
+# ax.set(
+#     ylim = [-4.2,0],
+#     xlim = [200,224]
+# )
+# # ax.set_xlim(B097 - 1, B095)
+# ax.legend()
+# plt.tight_layout()
 
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
 # Create figure
-fig = plt.figure(figsize=(fig_width*2, fig_width*3/5))  # Wider figure for 3 columns
+fig = plt.figure(figsize=(fig_width*2.1, fig_width*3/5))  # Wider figure for 3 columns
 
 # Define GridSpec: 3 columns, but manually handle rows
 gs = gridspec.GridSpec(3, 3, width_ratios=[1.3, 1.3, 1])  # 3x3 grid
 
 # Plot 1: Top-left (row 0–2, col 0)
 ax1 = fig.add_subplot(gs[:, 0])
-ax1.plot(reff_over_aS, aS_kappa_vals, linestyle='--', color=colors[0], label='SqW')
-ax1.plot(reOveraS_vals, kappa_Tmatrix, linestyle='-' , color=colors[1], label='T-matrix pole')
-ax1.plot([re_ratio], [kappa_CCC], marker='.', color=colors[2], label='CC')
-ax1.set(
+ax2 = fig.add_subplot(gs[:, 1])
+
+ax2.plot(reff_over_aS, aS_kappa_vals, linestyle='--', color=colors[0], label='SqW')
+ax2.plot(reOveraS_vals, kappa_Tmatrix, linestyle='-' , color=colors[1], label='T-matrix pole')
+ax2.hlines(1, 0, 0.6, linestyle='-.', color=colors[4])
+#ax1.plot([re_ratio], [kappa_CCC], marker='.', color=colors[2], label='CC')
+# ax2.plot(data_CCC['re/aS'], data_CCC['kappa_aS'], ls='dotted', color=colors[2], label='CC')
+ax2.set(
     xlabel = r'$r_e/a_s$',
     ylabel = r'$\kappa a_s$',
     xlim = [0, 0.6],
-    ylim = [0.8, 2]
+    ylim = [0.8, 2],
+    yticks=[1.0,1.4,1.8]
 )
-
-# ax1.set_title("Plot 1")
 
 # Plot 2: Top-middle (row 0–2, col 1)
-ax2 = fig.add_subplot(gs[:, 1])
-sqw, = ax2.plot(B_vals_sqW, E_vals_sqW, linestyle='--', color=colors[0], label='SqW')
-t, = ax2.plot(B_range, E_TM, linestyle='-', color=colors[1], label='T-matrix pole')
-zerorange, = ax2.plot(B_range, E_ER, linestyle='-.', color=colors[4], label='Zero Range pole')
-cc, = ax2.plot([B097], [-4.021], marker='.', color=colors[2], label='CC')
-ax2.set(
-    ylim = [-4.5,0],
+
+sqw, = ax1.plot(B_vals_sqW, E_vals_sqW, linestyle='--', color=colors[0], label='SqW')
+t, = ax1.plot(B_range, E_TM, linestyle='-', color=colors[1], label='T-matrix pole')
+# zerorange, = ax2.plot(B_range, E_ER, linestyle='-.', color=colors[4], label='Zero Range pole')
+zerorange, = ax1.plot(B_range, -hbar**2/(massK40*aS13(B_range)**2)/h/1e6, linestyle='-.', color=colors[4], label = 'z.r. pole')
+#cc, = ax2.plot([B097], [-4.021], marker='.', color=colors[2], label='CC')
+cc, = ax1.plot(data_CCC['B'], data_CCC['E_MHz'], marker='', ls='dotted', color=colors[2], label='CC')
+ax1.set(
+    ylim = [-4.8,0],
     xlim = [201, 224],
-    xlabel = 'Magnetic Field (G)',
-    ylabel = 'Energy (MHz)'
+    xlabel = 'Magnetic field [G]',
+    ylabel = 'Energy [MHz]',
+    yticks = [-4,  -2,  0]
 )
-ax1.legend(frameon=False, handles=[sqw, t, zerorange, cc])
+ax1.annotate('',                # No text
+    xy=(202.2, -4.8),        # Tip
+    xytext=(202.2, -3.8),  # Tail
+    arrowprops=dict(arrowstyle='->', color='grey') 
+    )
+
+arrow_handle = FancyArrowPatch((0,0), (0,1),
+                                arrowstyle='->',
+                                color='grey',
+                                label = '202.1',
+                                mutation_scale=1,
+                                linewidth=0.001
+                                )
+ax1.legend(frameon=False, handles=[zerorange, t, cc, sqw, ], loc='lower right', fontsize=6.5)
 
 sqw_dict = {
     'Energy (MHz)': E_vals_sqW,
     'Magnetic Field (G)': B_vals_sqW, 
 }
 
+T_dict = {
+    'Energy (MHz)': E_TM,
+    'Magnetic Field (G)': B_range,
+}
 
 # Create a DataFrame
 df = pd.DataFrame(sqw_dict)
+df_t = pd.DataFrame(T_dict)
 
 # Save to Excel file
 df.to_excel('sqw_theory_line.xlsx', index=False)
+df_t.to_excel('t_matrix_theory_line.xlsx', index=False)
 
 # Plot 3a, 3b, 3c: stacked in column 3
 ax3a = fig.add_subplot(gs[0, 2])
@@ -355,15 +392,16 @@ ax3b = fig.add_subplot(gs[1, 2],sharex = ax3a)
 ax3b.plot(B_range, re13(B_range)/a0,linestyle='-',color=colors[3])
 ax3b.set(
     ylabel = r'$r_{e,13}/a_0$',
-    ylim = [103, 117]
+    ylim = [103, 117],
+    yticks = [105, 115]
 )
 # ax3b.set_title("Plot 3b")
 
 ax3c = fig.add_subplot(gs[2, 2],sharex = ax3a)
 ax3c.plot(B_range, re13(B_range)/aS13(B_range),linestyle='-',color=colors[3])
-ax3c.set_xlabel("Magnetic Field (G)")
+ax3c.set_xlabel("Magnetic field [G]")
 ax3c.set(
-    ylabel = r'$r_{e.13}/a_{13}$',
+    ylabel = r'$r_{e,13}/a_{13}$',
     ylim = [0,0.5],
     yticks = [0, 0.4]
 )
@@ -378,7 +416,7 @@ for i, ax in enumerate(axes):
     ax.text(
         -0.05, 1.01, labels[i],  # x < 0 moves left outside, y > 1 moves above top
         transform=ax.transAxes,
-        fontsize=10,
+        # fontsize=8,
         # fontweight='bold',
         va='bottom',
         ha='right'
@@ -389,6 +427,7 @@ os.makedirs(output_dir, exist_ok=True)
 fig.tight_layout()
 
 # Now save the figure
-fig.savefig('mathematica_to_python.pdf',bbox_inches='tight', dpi=300)
+if Save:
+    fig.savefig('mathematica_to_python-v2.pdf',bbox_inches='tight', dpi=300)
 # Layout adjustment
 

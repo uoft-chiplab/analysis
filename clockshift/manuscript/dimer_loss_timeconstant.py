@@ -128,7 +128,7 @@ for j, file in enumerate(filenames):
 		ax.errorbar(x, y, yerr=yerr, label=label, **sty)
 		if Save:
 			if yname=='loss_b/loss_a':
-				ax_m.set(xlabel=r'Time $t$ [ms]', ylabel=r'Loss Ratio $\delta N_2/\delta N_1$')
+				ax_m.set(xlabel=r'Wait Time [ms]', ylabel=r'Loss Ratio $\delta N_2/\delta N_1$')
 				y=data[yname]
 				yerr=data['em_' + yname]
 				ax_m.errorbar(x, y, yerr=yerr, label=label, **sty)
@@ -165,8 +165,8 @@ for j, file in enumerate(filenames):
 			color=colors[j], linestyle=linestyles[j])
 	
 # out of loop, final plot options 
-for ax in axs:
-	ax.legend()
+# for ax in ax:
+# 	ax.legend()
 	
 fig.tight_layout()
 # plt.autoscale()
