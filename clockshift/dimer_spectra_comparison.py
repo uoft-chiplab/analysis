@@ -26,12 +26,12 @@ spins = ['c5', 'c9', 'ratio95']
 spins=['c5']
 binning=False
 correct_spinloss = True
-saturation_correction = False
+saturation_correction = True
 gaussian_cloud = False
 fixed_width = True
 fixed_x0 = False
 free_offset = True
-save=False
+save=True
 plot_raw=False
 # Omega^2 [kHz^2] 1/e saturation value
 x0_trf_10 =  3225.60  # sq_weighted avg of all x0 from fit dimer sat curves
@@ -386,9 +386,9 @@ for i, file in enumerate(files_run):
 		
 		# average results
 		# make sure you pair the right dimensions together
-# 		xparam = 'detuning_Hz'
+		xparam = 'detuning_Hz'
 # 		yparam = spin+ '_transfer'
-		xparam='detuning_EF'
+		# xparam='detuning_EF'
 		yparam = spin+ '_scaledtransfer'
 		if yparam == spin + '_transfer':
 			ylabel = r'$\alpha/t/\Omega_R^2$ [1/Hz]'
@@ -558,10 +558,11 @@ for i, file in enumerate(files_run):
 			
 			
 			
-			save_path = '\\\\UNOBTAINIUM\\E_Carmen_Santiago\\Analysis Scripts\\analysis\\clockshift\\manuscript\\manuscript_data\\'
+			#save_path = '\\\\UNOBTAINIUM\\E_Carmen_Santiago\\Analysis Scripts\\analysis\\clockshift\\manuscript\\manuscript_data\\'
+			save_path = 'C:\\Users\\kevin\\Documents\\GitHub\\analysis\\clockshift\\manuscript\\manuscript_data\\'
 			fit = {'xs':xs,'ys':ys}
-			avg_df.to_pickle(save_path + file + '.pkl')
-			with open(save_path+'fit_'+file+'.pkl', 'wb') as handle:
+			avg_df.to_pickle(save_path + file + '_sat_corr.pkl')
+			with open(save_path+'fit_'+file+'_sat_corr.pkl', 'wb') as handle:
 				pkl.dump(fit, handle)
 	
 fig.tight_layout()

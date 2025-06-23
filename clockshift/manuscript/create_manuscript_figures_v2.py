@@ -71,7 +71,7 @@ paper_settings = {
 plt.rcParams.update(paper_settings)
 
 # options
-Save = False
+Save = True
 Show = True
 
 # plot shading
@@ -663,8 +663,9 @@ if Plot == 3:
 	ExpEbs = ExpEbs.sort_values(by='B')
 	SqW = pd.read_excel(os.path.join(data_path, 'sqw_theory_line.xlsx'))
 	Tmat = pd.read_excel(os.path.join(data_path, 't_matrix_theory_line.xlsx'))
+	CCC = pd.read_csv(os.path.join(data_path, 'ac_s_Eb_vs_B_220-225G.dat'), header=None, names=['B','E'], delimiter='\s')
 	
-	Eb_color = '#69cb1f'
+	Eb_color =  '#1b9e77'
 	Eb_style= {'color':Eb_color,
 				   'mec':adjust_lightness(Eb_color, 0.3),
 				   'mfc':Eb_color,
@@ -676,19 +677,21 @@ if Plot == 3:
 	colornaive = '#000000'
 	colorT = '#f20470'
 	colorSqW = '#23d197'
+	colorCC = '#f20470'
 	ax = fig.add_subplot(gs[0, 0])
-	ax.plot(Ebs['B'], Ebs['Ebs_naive'], ls='-.', color=colornaive, marker='',  label=r'$1/a_{13}^2$')
-	ax.plot(Tmat['Magnetic Field (G)'], Tmat['Energy (MHz)'], color=colorT, marker='', ls='-')
+	ax.plot(Ebs['B'], Ebs['Ebs_naive'], ls='dotted', color=colornaive, marker='',  label=r'$1/a_{13}^2$')
+	#ax.plot(Tmat['Magnetic Field (G)'], Tmat['Energy (MHz)'], color=colorT, marker='', ls='-')
 	ax.plot(SqW['Magnetic Field (G)'], SqW['Energy (MHz)'], color=colorSqW, marker='', ls = '--')
+	ax.plot(CCC['B'],CCC['E'], marker='', ls='-' , color = colorCC)
 	binx, biny, binxerr, binyerr = bin_data(ExpEbs['B'], ExpEbs['Eb'], xerr=np.ones(len(ExpEbs['B'])), yerr= np.ones(len(ExpEbs['Eb'])), nbins=25)
 	ax.plot(binx, biny, binyerr, **Eb_style)
 	#2ebdff
 	xlabel=r'$B$ [G]'
-	ylabel = r'$\omega_d$ [MHz]'
+	ylabel = r'$\omega_d/2\pi$ (MHz)'
 	#ax.vlines(202.14, -5, 1)
 	ax.set(xlabel=xlabel, ylabel=ylabel,
-		xlim=[Ebs['B'].min()-1, Ebs['B'].max()+1],
-		ylim = [-4.7, 0.2]
+		xlim=[199, 210],
+		ylim = [-4.5, -1.5]
 		)
 
 	
@@ -736,7 +739,7 @@ if Plot == 3:
 				'marker':'s',
 				'markersize':3}
 	#file = '2025-03-19_G_e_pulsetime=0.64.dat.pkl'
-	file = '2024-07-17_J_e.dat.pkl'
+	file = '2024-07-17_J_e.dat_sat_corr.pkl'
 	data = pd.read_pickle(os.path.join(data_path, file))
 	scaling = 1000
 	data = data.sort_values(by='detuning')
@@ -752,7 +755,9 @@ if Plot == 3:
 	ys = ys-offs
 	y_dimer = y_dimer - offs
 	
-	json_file = 'lineshape_2024-07-17_J_e.json'
+
+	json_file = 'lineshape_2024-07-17_J_e_backup.json'
+
 	
 	with open(os.path.join(data_path, json_file)) as f:
 		data_load = json.load(f)
@@ -808,7 +813,7 @@ if Plot == 3:
 
 	#ax = fig.add_subplot(gs[1, 0])
 	#file2 = '2025-03-19_G_e_pulsetime=0.01.dat.pkl'
-	file2='2024-09-27_B_e.dat.pkl'
+	file2='2024-09-27_B_e.dat_sat_corr.pkl'
 	data = pd.read_pickle(os.path.join(data_path, file2))
 	data = data.sort_values(by='detuning')
 	scaling = 1000
@@ -955,7 +960,7 @@ if Plot == 3:
 	
 	#fig.tight_layout()
 	if Save: 
-		save_path = os.path.join(proj_path, 'manuscript_figures/dimer_Eb_v19.pdf')
+		save_path = os.path.join(proj_path, 'manuscript_figures/fig2_new binding energy without Tmat.pdf')
 		print(f'saving to {save_path}')
 		plt.savefig(save_path, dpi=300, bbox_inches='tight')
 	if Show: plt.show() 
@@ -1133,8 +1138,9 @@ if Plot == 8:
 	offs = ys.min()
 	ys = ys-offs
 	y_dimer = y_dimer - offs
-	
-	json_file = 'lineshape_2024-07-17_J_e.json'
+
+	json_file = 'lineshape_2024-07-17_J_e_backup.json'
+
 	with open(os.path.join(data_path, json_file)) as f:
 		data_load = json.load(f)
 		x_load = data_load['x']
