@@ -801,7 +801,7 @@ if Plot == 3:
 	r1, r2 = spline.roots()
 	FWHM = np.abs(r1-r2) # EF
 	print(f'FWHM={FWHM} MHz, or {FWHM/EF_data} EF')
-	ax.text(0.2, 0.8, r'$t_\mathrm{rf} \ll \tau_F$', color=color640, fontsize=7, transform=ax.transAxes)
+	ax.text(0.2, 0.8, r'$t_\mathrm{rf} \gg\tau_F$', color=color640, fontsize=7, transform=ax.transAxes)
 	# use the maximum to estimate the spectral weight if the transfer pulse were sinc^2
 	#sinc fit on 2024-07-17 gives amp=6.9222e-3 +/- 4.1596e-4 (dimer_spectra_comparison.py)
 	# relative uncertainty is 6%
