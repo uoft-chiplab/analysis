@@ -9,6 +9,14 @@ to study the scaling of resonant transfer from interacting ab to ac dimer
 and ac free, respectively.
 
 """
+import sys
+import os
+# paths
+proj_path = os.path.dirname(os.path.realpath(__file__))
+root = os.path.dirname(proj_path)
+data_path = os.path.join(proj_path, 'data')
+if root not in sys.path:
+	sys.path.append(root)
 from data_class import Data
 from scipy.optimize import curve_fit
 from library import plt_settings, markers, tint_shade_color, tintshade
@@ -24,11 +32,6 @@ def Linear(x,m,b):
 
 def Quadratic(x, a, b, c):
 	return a*x**2 + b*x + c
-
-# paths
-proj_path = os.path.dirname(os.path.realpath(__file__))
-root = os.path.dirname(proj_path)
-data_path = os.path.join(proj_path, 'data')
 
 ### filenames
 dimer_vs_time_file = "2024-06-27_F_e.dat"
@@ -97,8 +100,8 @@ xnames = ['pulse time', 'VVA',
 		  'time', 'gain']
 plot_names = ['Pulse Time (ms)', "Omega Rabi Squared (1/us^2)",
 			  'Pulse Time (ms)', "Omega Rabi Squared (1/ms^2)"]
-cutoffs = [0.07, np.infty, 
-		   0.27, np.infty]
+cutoffs = [0.07,np.inf, 
+		   0.27, np.inf]
 cals = [calibration43MHz, calibration43MHz, 
 		lambda x: OmegaR_from_VVAfreq(x, 47.2227), 
 		lambda x: OmegaR_from_VVAfreq(x, 47.2227)]
@@ -131,6 +134,9 @@ for file, xname, cal, cut, ax, plot_name, label in zip(files, xnames, cals,
 						gain_calibration(10)*OmegaR(VVA, cal)
 		data.data['OmegaR2'] = (2*np.pi*data.data['OmegaR'])**2
 		xname = 'OmegaR2'
+		
+	elif xname == 'time':
+		
 	
 	data.group_by_mean(xname)
 	

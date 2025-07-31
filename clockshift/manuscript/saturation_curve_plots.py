@@ -57,9 +57,9 @@ linestyles = ['--',
 ### plot settings
 plt.rcParams.update(paper_settings) # from library.py
 font_size = paper_settings['legend.fontsize']
-plt.rcParams['legend.fontsize'] = 6
+plt.rcParams['legend.fontsize'] = 8.5
 fig_width = 3.4 # One-column PRL figure size in inches
-subplotlabel_font = 10
+subplotlabel_font = 8.5
 		
 fig, axs = plt.subplots(1, 2, figsize=(fig_width*6/5, fig_width*3/5)
 						)
@@ -232,13 +232,13 @@ for n, ax in enumerate(axs):
 	label = subplot_labels[n]
 	ax.text(-0.33, 1.05, label, 
 		 transform=ax.transAxes, 
-		#  size=subplotlabel_font
+		 size=subplotlabel_font
 		 )
 	
 plt.subplots_adjust(top=0.9)
 # fig.tight_layout()
 proj_path = os.path.dirname(os.path.realpath(__file__))
 output_dir = os.path.join(proj_path, r'\manuscript\manuscript_figures')
-fig.savefig(os.path.join(output_dir, 'dimer_and_HFT_saturation_curves-2025-06-09-only2.pdf'))
+#fig.savefig(os.path.join(output_dir, 'dimer_and_HFT_saturation_curves-2025-06-13.pdf'))
 # plt.savefig("clockshift/manuscript/manuscript_figures/dimer_and_HFT_saturation_curves.pdf")
 plt.show()

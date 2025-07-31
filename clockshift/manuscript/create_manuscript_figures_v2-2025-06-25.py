@@ -9,6 +9,7 @@ Typically it pulls data from manuscript_data/ and saves in manuscript_figures/
 """
 import os
 import sys
+from scipy.special import gamma
 # this is a hack to access modules in the parent directory
 # Get the current script's directory
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -78,7 +79,7 @@ Show = True
 tintshade = 0.6
 
 # choose plot
-Plot =1 
+Plot =3
 
 # data binning
 def bin_data(x, y, yerr, nbins, xerr=None):
@@ -663,9 +664,8 @@ if Plot == 3:
 	ExpEbs = ExpEbs.sort_values(by='B')
 	SqW = pd.read_excel(os.path.join(data_path, 'sqw_theory_line.xlsx'))
 	Tmat = pd.read_excel(os.path.join(data_path, 't_matrix_theory_line.xlsx'))
-	CCC = pd.read_csv(os.path.join(data_path, 'ac_s_Eb_vs_B_220-225G.dat'), header=None, names=['B','E'], delimiter='\s')
 	
-	Eb_color =  '#1b9e77'
+	Eb_color = '#69cb1f'
 	Eb_style= {'color':Eb_color,
 				   'mec':adjust_lightness(Eb_color, 0.3),
 				   'mfc':Eb_color,
@@ -673,27 +673,83 @@ if Plot == 3:
 				   'marker':'o',
 				   'markersize':3}
 	
+	colors = ['#1b9e77','#d95f02','#7570b3','#e7298a','#66a61e']
 
+	styles = generate_plt_styles(colors, ts=0.6)
 	colornaive = '#000000'
 	colorT = '#f20470'
-	colorSqW = '#23d197'
-	colorCC = '#f20470'
+	colorSqW = '#7570b3' # '#23d197'
+	a0 = 0.52917720859e-10      
+	aB = a0
+
+	# Feshbach resonance parameters
+	B095 = 224.2            
+	B097 = 202.15           
+	aBG95 = 167.3 * a0      
+	amu = 1.66053873e-27
+	r0K40 = 65.02231404 * aB	
+	Delta95 = 7.2
+	massK40 = 39.96399848*amu   # amu
+	abar40K = 4 * np.pi / gamma(0.25)**2 * r0K40
+	re0 = gamma(0.25)**4 * abar40K / (6 * np.pi**2)
+	sresAC = 1.9        
+
+	def x_B(dB, abg, Delta):
+		denom = (1 - Delta / dB)
+		with np.errstate(divide='ignore', invalid='ignore'):
+			result = 1 / abg / denom
+		# Optionally mask or warn where denom is near zero
+		if np.any(np.isclose(denom, 0.0, atol=1e-8)):
+			print("Warning: denom near zero in x_B()")
+		return result
+
+	def revdW(xval):
+		return re0* (1 - 2 * abar40K * xval + 2 * abar40K**2 * xval**2)
+
+	def reRes(xval, sres, abg):
+		return -2 * abar40K / sres * (1 - abg * xval)**2
+	def re_full(dB, abg, Delta, sres):
+		xval = x_B(dB, abg, Delta)
+		return revdW(xval) + reRes(xval, sres, abg)
+	def re13(B):
+		return re_full(B - B095, aBG95, Delta95, sresAC)	
+	def aS13(B):
+		return 1 / x_B(B - B095, aBG95, Delta95)
+	
+	data_CCC = pd.read_csv('E:\\Analysis Scripts\\analysis\\clockshift\\manuscript\\manuscript_data\\ac_s_Eb_vs_B_220-225G.dat',
+						delimiter='\s', header=None)
+	data_CCC.columns = ['B', 'E_MHz']
+	data_CCC['E_J'] = data_CCC['E_MHz']*1e6 *  6.62607015e-34 
+	data_CCC['kappa'] = np.sqrt(massK40 * -data_CCC['E_J'] / hbar**2) 
+	data_CCC['re/aS'] = re13(data_CCC['B'])/aS13(data_CCC['B'])
+	data_CCC['kappa_aS'] = data_CCC['kappa'] * aS13(data_CCC['B'])
+	data_CCC = data_CCC.drop(data_CCC.index[-1]) # drop the data point at 13 resonance because it was causing infs in kappa*aS
+	# remnant code when we had 1 point
+
 	ax = fig.add_subplot(gs[0, 0])
-	ax.plot(Ebs['B'], Ebs['Ebs_naive'], ls='dotted', color=colornaive, marker='',  label=r'$1/a_{13}^2$')
-	#ax.plot(Tmat['Magnetic Field (G)'], Tmat['Energy (MHz)'], color=colorT, marker='', ls='-')
-	ax.plot(SqW['Magnetic Field (G)'], SqW['Energy (MHz)'], color=colorSqW, marker='', ls = '--')
-	ax.plot(CCC['B'],CCC['E'], marker='', ls='-' , color = colorCC)
+	cc, = ax.plot(data_CCC['B'], data_CCC['E_MHz'], marker='', ls='dotted', color='black', label='CC')
+	ax.plot(Ebs['B'], Ebs['Ebs_naive'], ls='-.', color=colornaive, marker='',  
+		#  label=r'$1/a_{13}^2$'
+		 )
+	t, = ax.plot(Tmat['Magnetic Field (G)'], Tmat['Energy (MHz)'], color=colorT, marker='', ls='-', label='T')
+	sqw, = ax.plot(SqW['Magnetic Field (G)'], SqW['Energy (MHz)'], 
+		 color=colorSqW, 
+		 marker='', ls = '--',
+		  label='SqW' )
 	binx, biny, binxerr, binyerr = bin_data(ExpEbs['B'], ExpEbs['Eb'], xerr=np.ones(len(ExpEbs['B'])), yerr= np.ones(len(ExpEbs['Eb'])), nbins=25)
 	ax.plot(binx, biny, binyerr, **Eb_style)
 	#2ebdff
 	xlabel=r'$B$ [G]'
-	ylabel = r'$\omega_d/2\pi$ (MHz)'
+	ylabel = r'$\omega_d$ [MHz]'
 	#ax.vlines(202.14, -5, 1)
 	ax.set(xlabel=xlabel, ylabel=ylabel,
-		xlim=[199, 210],
-		ylim = [-4.5, -1.5]
+		xlim=[Ebs['B'].min()-1, 
+		# Ebs['B'].max()+1
+		210
+		],
+		ylim = [-4.7, -1.5],
 		)
-
+	# ax.legend(frameon=False)
 	
 	ms = 3
 	color1 = "#7eb0d5"
@@ -739,7 +795,7 @@ if Plot == 3:
 				'marker':'s',
 				'markersize':3}
 	#file = '2025-03-19_G_e_pulsetime=0.64.dat.pkl'
-	file = '2024-07-17_J_e.dat_sat_corr.pkl'
+	file = '2024-07-17_J_e.dat.pkl'
 	data = pd.read_pickle(os.path.join(data_path, file))
 	scaling = 1000
 	data = data.sort_values(by='detuning')
@@ -755,9 +811,7 @@ if Plot == 3:
 	ys = ys-offs
 	y_dimer = y_dimer - offs
 	
-
-	json_file = 'lineshape_2024-07-17_J_e_backup.json'
-
+	json_file = 'lineshape_2025-03-19_G_e_pulsetime=0.64.json' #'lineshape_2024-07-17_J_e.json'
 	
 	with open(os.path.join(data_path, json_file)) as f:
 		data_load = json.load(f)
@@ -813,7 +867,7 @@ if Plot == 3:
 
 	#ax = fig.add_subplot(gs[1, 0])
 	#file2 = '2025-03-19_G_e_pulsetime=0.01.dat.pkl'
-	file2='2024-09-27_B_e.dat_sat_corr.pkl'
+	file2='2024-09-27_B_e.dat.pkl'
 	data = pd.read_pickle(os.path.join(data_path, file2))
 	data = data.sort_values(by='detuning')
 	scaling = 1000
@@ -958,9 +1012,19 @@ if Plot == 3:
 	ax.set_xticklabels(xticklabels)
 
 	
-	#fig.tight_layout()
+	# fig.tight_layout()
+	# subplot_labels = ['(a)', '(b)'
+	# 			#   , '(c)'
+	# 			  ]
+	# for n, ax in enumerate(ax):
+	# 	label = subplot_labels[n]
+	# 	ax.text(-0.18, 1.08, label, transform=ax.transAxes, 
+	# 		#  size=subplotlabel_font
+	# 		)
+		
+	plt.subplots_adjust(top=0.95)
 	if Save: 
-		save_path = os.path.join(proj_path, 'manuscript_figures/fig2_new binding energy without Tmat.pdf')
+		save_path = os.path.join(proj_path, 'manuscript_figures/dimer_Eb_v19.pdf')
 		print(f'saving to {save_path}')
 		plt.savefig(save_path, dpi=300, bbox_inches='tight')
 	if Show: plt.show() 
@@ -1138,9 +1202,8 @@ if Plot == 8:
 	offs = ys.min()
 	ys = ys-offs
 	y_dimer = y_dimer - offs
-
-	json_file = 'lineshape_2024-07-17_J_e_backup.json'
-
+	
+	json_file = 'lineshape_2024-07-17_J_e.json'
 	with open(os.path.join(data_path, json_file)) as f:
 		data_load = json.load(f)
 		x_load = data_load['x']

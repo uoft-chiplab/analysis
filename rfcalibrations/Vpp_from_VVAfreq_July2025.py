@@ -17,7 +17,7 @@ else:
 	plotting = False
 
 # VVA to Vpp
-VVAtoVpp = 'VVAtoVpp_47MHz_squarePhaseO_4GSps_scope.txt'
+VVAtoVpp = 'VVAtoVpp_July292025_2ms_square.txt' 
 file_path = os.path.join(file_dir, VVAtoVpp)
 xname = 'VVA'
 yname = 'Vpp'
@@ -49,16 +49,5 @@ if plotting == True:
 
 def Vpp_from_VVAfreq(VVA, freq):
 	''' Returns ... '''
-	Vpp = calInterpVVA(VVA)*calInterpFreq(freq)
-	return Vpp
-
-def Vpp_from_VVAfreq_July2025(VVA, freq):
-	''' Returns ... '''
-	VVAtoVpp = 'VVAtoVpp_July292025_2ms_square.txt' 
-	file_path = os.path.join(file_dir, VVAtoVpp)
-	cal_VVA = pd.read_csv(file_path, sep='\t', skiprows=1, names=[xname,yname])
-	cal_x = cal_VVA['VVA']
-	cal_y = cal_VVA['Vpp']
-	calInterpVVA = lambda x: np.interp(x, cal_x, cal_y)
 	Vpp = calInterpVVA(VVA)*calInterpFreq(freq)
 	return Vpp

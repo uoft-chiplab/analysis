@@ -12,9 +12,14 @@ import sys
 current_dir = os.path.dirname(os.path.abspath(__file__))
 # Get the parent directory by going one level up
 parent_dir = os.path.dirname(current_dir)
+# get root dir (analysis)
+root_dir = os.path.dirname(parent_dir)
 # Add the parent directory to sys.path
 if parent_dir not in sys.path:
 	sys.path.append(parent_dir)
+# Add the root directory to sys.path
+if root_dir not in sys.path:
+	sys.path.append(root_dir)
 from data_class import Data
 from scipy.optimize import curve_fit
 from library import paper_settings, styles, colors, MW_styles
@@ -33,9 +38,22 @@ root = os.path.dirname(proj_path)
 
 # plot error bands for saturation curves
 fill_between = True
-save = True
+save = False
 
-pkl_file = os.path.join(data_path, "res_saturation_curves.pkl")
+# ac loss correction switch
+AC_LOSS = False
+### ac loss corrections
+# these are from varying jump page results
+# see diagnostics/
+ToTFs = [0.26, 0.36, 0.6, 1.1]
+corr_cs = [1.00, 1.15, 1.31, 1.31]
+e_corr_cs = [0.05, 0.06, 0.08, 0.08]
+
+corr_c_interp = lambda x: np.interp(x, np.array(ToTFs), np.array(corr_cs))
+e_corr_c_interp = lambda x: np.interp(x, np.array(ToTFs), np.array(e_corr_cs))
+	
+
+pkl_file = os.path.join(data_path, "res_saturation_curves_2024-11_200usblackman_wrongpulseareacorr.pkl")
 
 ### Fit functions
 def Linear(x,m,b):
@@ -63,12 +81,12 @@ if __name__ == '__main__':
 	
 	detunings = [
 # 				-20,
-# 				-10,
+ 				-10,
 				-5,
 # 				0,
-# 				5,
-# 				10,
-# 				20,
+ 				5,
+ 				10,
+ 				20,
 # 				0,
 				0,
 				]
@@ -83,20 +101,30 @@ if __name__ == '__main__':
 # 		  "2025-02-13_K_e.dat",
 		  "2025-02-13_P_e.dat",
 		  ]
+	pulse_time = 2
 	
 #  	files = [
 #  			# "2024-11-29_B_e_detuning=-5.dat",
 # 			 "2024-12-05_K_e.dat",
 #  			#"2024-11-28_P_e_detuning=0.dat",
 #  			  ]
+	detunings = [-5,
+			  0,
+	#		  0,
+#			  -5
+				]
 	files = [
  			"2024-11-29_B_e_detuning=-5.dat",
 			 "2024-11-29_B_e_detuning=0.dat",
-  			 # "2024-11-28_P_e_detuning=0.dat",
- 			  # "2024-11-28_P_e_detuning=-5.dat"
+  			#  "2024-11-28_P_e_detuning=0.dat",
+ 			#   "2024-11-28_P_e_detuning=-5.dat"
  			  ]
-	
 	pulse_time = 0.2  # ms
+	if pulse_time > 1:
+		pulse_area_correction = np.sqrt(0.31)
+	else: 
+		pulse_area_correction = 0.42
+	
 	cutoffs = np.ones(len(files)) * 100
 	
 	popts = []
@@ -182,13 +210,17 @@ if __name__ == '__main__':
 		bg_c9 = bg_df.c9.mean()
 		e_bg_c9 = bg_df.c9.sem()
 		
+		if AC_LOSS:
+			print(corr_c_interp(ToTF))
+			run.data['c5'] = run.data['c5'] * corr_c_interp(ToTF) # check ToTF input
 		run.data['N'] = run.data.c5 - bg_c5 + run.data.c9
 		run.data['transfer'] = (run.data.c5 - bg_c5)/(run.data.N)
 		run.data['loss'] = (bg_c9 - run.data.c9)/bg_c9
 		run.data['anomalous_loss'] = (bg_c9 + bg_c5 - run.data.c9 - run.data.c5)/bg_c9
 		
-		
-		run.data['OmegaR'] = phaseO_OmegaR(run.data.VVA, run.data.freq) * np.sqrt(0.31)
+		# sqrt(0.31) is if Blackman Fourier width is narrow compared to spectrum width
+		# 0.42 if wide
+		run.data['OmegaR'] = phaseO_OmegaR(run.data.VVA, run.data.freq) * pulse_area_correction
 		run.data['OmegaR2'] = (run.data['OmegaR'])**2
 		xname = 'OmegaR2'
 		

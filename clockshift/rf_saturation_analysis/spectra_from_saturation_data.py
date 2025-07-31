@@ -5,7 +5,7 @@
 # paths
 import os
 proj_path = os.path.dirname(os.path.realpath(__file__))
-root = os.path.dirname(proj_path)
+root = os.path.dirname(os.path.dirname(proj_path))
 data_path = os.path.join(proj_path, 'saturation_data')
 figfolder_path = os.path.join(proj_path, 'figures')
 import sys
@@ -51,11 +51,14 @@ pd.set_option('display.max_columns', None)
 pd.set_option('display.width', 9999)
 
 debug = True
-Save=True
+Save=False
 # save files 
 files = [
 		 'HFT_saturation_curves.pkl', 
-		 'res_saturation_curves.pkl',
+		 #'res_saturation_curves.pkl', #this was the original but I think it got overwritten with other datasets at some point
+		 'res_saturation_curves_2024-12-05_mostly.pkl' # this should be the original one used for the paper that were 2 ms blackman
+		#'res_saturation_curves_2024-11_200usblackman.pkl' #testing out the 200 us blackman
+		#'res_saturation_curves_2024-11_200usblackman_wrongpulseareacorr.pkl' #testing out the 200 us blackman w/ perhaps the wrong pulse area correction
 		 ]
 
 loaded_data = []
@@ -316,8 +319,153 @@ plt.show()
 ###
 ### integrate data
 ###
+print('For the spectrum below the trap depth...')
 # select integral df below trap depth
 df_int = df.loc[df[x_name] < trap_depth/EF_avg]
+
+# reselect data
+x = np.array(df_int[x_name])
+y = np.array(df_int['ScaledTransfer'])
+yerr = np.array(df_int['e_ScaledTransfer'])
+
+y_loss = np.array(df_int['loss_ScaledTransfer'])
+yerr_loss = np.array(df_int['loss_e_ScaledTransfer'])
+
+SW = integrate.trapezoid(y, x=x)
+SW_loss = integrate.trapezoid(y_loss, x=x)
+
+limit = 200
+SW = integrate.quad(lambda d: np.interp(d, x, y), min(x), max(x), limit=limit)
+SW_loss = integrate.quad(lambda d: np.interp(d, x, y_loss), min(x), max(x), limit=limit)
+
+# MC error of integral
+num = 1000
+dist = []
+i = 0
+while i < num:
+	dist.append(integrate.trapezoid([np.random.normal(val, err) for val, err \
+				 in zip(y, yerr)], x=x))
+	i += 1
+SW_mean = np.array(dist).mean()
+SW_std = np.array(dist).std()
+
+print("Spectral weight for transfer is {:.2f}({:.0f})".format(SW_mean, SW_std*1e2))
+
+# MC error of integral
+num = 1000
+dist = []
+i = 0
+while i < num:
+	dist.append(integrate.trapezoid([np.random.normal(val, err) for val, err \
+				 in zip(y_loss, yerr_loss)], x=x))
+	i += 1
+SW_loss_mean = np.array(dist).mean()
+SW_loss_std = np.array(dist).std()
+
+print("Spectral weight for loss is {:.2f}({:.0f})".format(SW_loss_mean, SW_loss_std*1e2))
+
+
+print('For the resonant part...')
+# do the same for the resonant portion only
+res_cutoff = EF_avg
+df_int = df.loc[df[x_name] < res_cutoff/EF_avg]
+
+# reselect data
+x = np.array(df_int[x_name])
+y = np.array(df_int['ScaledTransfer'])
+yerr = np.array(df_int['e_ScaledTransfer'])
+
+y_loss = np.array(df_int['loss_ScaledTransfer'])
+yerr_loss = np.array(df_int['loss_e_ScaledTransfer'])
+
+SW = integrate.trapezoid(y, x=x)
+SW_loss = integrate.trapezoid(y_loss, x=x)
+
+limit = 200
+SW = integrate.quad(lambda d: np.interp(d, x, y), min(x), max(x), limit=limit)
+SW_loss = integrate.quad(lambda d: np.interp(d, x, y_loss), min(x), max(x), limit=limit)
+
+# MC error of integral
+num = 1000
+dist = []
+i = 0
+while i < num:
+	dist.append(integrate.trapezoid([np.random.normal(val, err) for val, err \
+				 in zip(y, yerr)], x=x))
+	i += 1
+SW_mean = np.array(dist).mean()
+SW_std = np.array(dist).std()
+
+print("Spectral weight for transfer is {:.2f}({:.0f})".format(SW_mean, SW_std*1e2))
+
+# MC error of integral
+num = 1000
+dist = []
+i = 0
+while i < num:
+	dist.append(integrate.trapezoid([np.random.normal(val, err) for val, err \
+				 in zip(y_loss, yerr_loss)], x=x))
+	i += 1
+SW_loss_mean = np.array(dist).mean()
+SW_loss_std = np.array(dist).std()
+
+print("Spectral weight for loss is {:.2f}({:.0f})".format(SW_loss_mean, SW_loss_std*1e2))
+
+
+
+print('Emulating a 10us Fourier capture: up to 100 kHz...')
+# do the same for the resonant portion only
+cutoff = 100 # kHz
+df_int = df.loc[df[x_name] < cutoff/EF_avg]
+
+# reselect data
+x = np.array(df_int[x_name])
+y = np.array(df_int['ScaledTransfer'])
+yerr = np.array(df_int['e_ScaledTransfer'])
+
+y_loss = np.array(df_int['loss_ScaledTransfer'])
+yerr_loss = np.array(df_int['loss_e_ScaledTransfer'])
+
+SW = integrate.trapezoid(y, x=x)
+SW_loss = integrate.trapezoid(y_loss, x=x)
+
+limit = 200
+SW = integrate.quad(lambda d: np.interp(d, x, y), min(x), max(x), limit=limit)
+SW_loss = integrate.quad(lambda d: np.interp(d, x, y_loss), min(x), max(x), limit=limit)
+
+# MC error of integral
+num = 1000
+dist = []
+i = 0
+while i < num:
+	dist.append(integrate.trapezoid([np.random.normal(val, err) for val, err \
+				 in zip(y, yerr)], x=x))
+	i += 1
+SW_mean = np.array(dist).mean()
+SW_std = np.array(dist).std()
+
+print("Spectral weight for transfer is {:.2f}({:.0f})".format(SW_mean, SW_std*1e2))
+
+# MC error of integral
+num = 1000
+dist = []
+i = 0
+while i < num:
+	dist.append(integrate.trapezoid([np.random.normal(val, err) for val, err \
+				 in zip(y_loss, yerr_loss)], x=x))
+	i += 1
+SW_loss_mean = np.array(dist).mean()
+SW_loss_std = np.array(dist).std()
+
+print("Spectral weight for loss is {:.2f}({:.0f})".format(SW_loss_mean, SW_loss_std*1e2))
+
+
+
+
+print('For the entire spectrum....')
+# do the same for the resonant portion only
+cutoff = 2000 # kHz
+df_int = df.loc[df[x_name] < cutoff/EF_avg]
 
 # reselect data
 x = np.array(df_int[x_name])

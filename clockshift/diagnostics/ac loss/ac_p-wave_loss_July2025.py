@@ -41,7 +41,7 @@ import matplotlib.pyplot as plt
 #     2e-7] # K, estimates
 
 files = ['2025-07-22_D']
-Ts = [ 2e-7]
+Ts = [ 5e-7]
 spins = ['c5', 'c9']
 
 t_until_midsweep = +0.020 + 2.5 + 10 + 2 + 2.5 # ms
@@ -69,6 +69,8 @@ for i, file in enumerate(files):
     # if i <= 2: continue
     filename = file+'_e.dat'
     df = Data(filename).data
+    bg = df[df['VVA'] == 0]
+    df = df[df['VVA'] != 0]
     temp = Ts[i]
 	
     for j, spin in enumerate(spins):
@@ -78,7 +80,11 @@ for i, file in enumerate(files):
         xx = np.array(df[xcol])
         yy = np.array(df[spin])
 		
-        p0 = [df[spin].max()-df[spin].min(), 50, df[spin].min()]
+        yybg_5ms = bg[bg['hold time'] == 5]['c9'].mean()
+        yybg_300ms = bg[bg['hold time'] == 300]['c9'].mean()
+        yybg_tot = (yybg_5ms + yybg_300ms)/2
+
+        p0 = [(df[spin].max()) - (df[spin].min()), 50, df[spin].min()]
 		
         popt, pcov = curve_fit(expdecay, df[xcol], df[spin], p0=p0)
         perr = np.sqrt(np.diag(pcov))
@@ -105,10 +111,10 @@ for i, file in enumerate(files):
             waittime = t_after_midsweep_before_SSI
         losscorr = expdecay(waittime, *popt)/zerotime
 		
-        print(f'For {file}, spin={spin}, T={temp*1e9} nK, fit params are {popt}.')
+        print(f'For {file}, spin={spin}, fit params are {popt}.') # T={temp*1e9} nK,
         print(f'{spin_map(spin)} spin loss after {waittime:.2f} ms is {losscorr:.2f} of initial.')
 		
-        label = f'T={temp*1e9} nK, amp={popt[0]:.1f}({perr[0]:.1f}), tau={popt[1]:.1f}({perr[1]:.1f})'
+        label = f'amp={popt[0]:.1f}({perr[0]:.1f}), tau={popt[1]:.1f}({perr[1]:.1f})' #T={temp*1e9} nK, 
         axs[j].plot(df[xcol], df[spin], label=label, **styles[i])
         axs[j].plot(xs, ys, color=colors[i], linestyle='--', marker='')
 		

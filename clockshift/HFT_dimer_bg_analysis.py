@@ -253,7 +253,6 @@ def dimer_transfer_sum_half(Rab, bg_fa, bg_fb):
 
 # sinc^2 dimer lineshape functions
 def sinc2(x, trf):
-	"""sinc^2 normalized to sinc^2(0) = 1"""
 	t = x*trf
 	return np.piecewise(t, [t==0, t!=0], [lambda t: 1, 
 					   lambda t: (np.sin(np.pi*t)/(np.pi*t))**2])
