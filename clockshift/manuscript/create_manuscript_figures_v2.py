@@ -171,20 +171,18 @@ if Plot == 1:
 
 	yparam = 'ScaledTransfer' #'ScaledTransfer' or 'transfer'
 	# dimer spectrum, long pulse
-	
-	#file = '2024-07-17_J_e_ratio95.pkl'
+
 	file = '2025-03-19_G_e_pulsetime=0.64.dat.pkl'
 	data = pd.read_pickle(os.path.join(data_path, file))
+	data.to_csv(os.path.join(data_path, '2025-03-19_G_e_pulsetime=0.64.dat.csv'), index=False)
 	x_dimer = data['detuning']
 	y_dimer = data['c5_scaledtransfer']
 	yerr_dimer = data['em_c5_scaledtransfer']
 	fit = pd.read_pickle(os.path.join(data_path, 'fit_'+file))
+	pd.DataFrame(fit).to_csv(os.path.join(data_path, 'fit_2025-03-19_G_e_pulsetime=0.64.dat.csv'), index=False)
 	xs = fit['xs']/1e6
 	ys=fit['ys']
-	print(xs)
-	#fit_Eb = fit['Eb'][0]/1000
-	#fit_e_Eb = fit['e_Eb'][0]/1000
-
+	
 	
 	# dimer plot (left)
 	peakindex = np.where(ys==ys.max())
@@ -266,9 +264,6 @@ if Plot == 1:
 
 	binx, biny, binyerr, binxerr = bin_data(x_res, y_res, yerr=np.ones(len(y_res)), nbins=4, xerr=np.ones(len(x_res)))
 	ax1_2.plot(binx, biny, **res_style)
-	# x_HFT.index = x_HFT.index - x_HFT.index[0]
-	# y_HFT.index = y_HFT.index - y_HFT.index[0
-	# binx, biny, binyerr, binxerr = bin_data(x_HFT, y_HFT, yerr=np.ones(len(y_HFT)), nbins=10, xerr=np.ones(len(x_HFT)))
 	ax1_2.plot(x_HFT, y_HFT, **loss_style)
 
 	# inset axis
@@ -499,6 +494,7 @@ if Plot == 1:
 #endregion
 
 #region ######## FIGURE 2: PLOT DIMER SPECTRAL WEIGHT AND INSET CLOCK SHIFT WITH THEORY
+# THIS IS QUITE DEPRECATED AND NO LONGER USED, SEE MAIN ANALYSIS SCRIPT "HFT_dimer_bg_analysis.py"
 if Plot == 2:
 	plot_options = {"SR Fudge Theory":False,
 				"SR Fudge Exp":False,
@@ -659,6 +655,7 @@ if Plot == 3:
 	yparam='ScaledTransfer'
 	# Eb vs field
 	Ebs = pd.read_pickle(os.path.join(data_path, 'Ebs.pkl'))
+	Ebs.to_csv(os.path.join(data_path, 'Ebs.csv'), index=False)
 	ExpEbs = pd.read_excel(os.path.join(data_path, 'Eb_results.xlsx'))
 	ExpEbs = ExpEbs.sort_values(by='B')
 	SqW = pd.read_excel(os.path.join(data_path, 'sqw_theory_line.xlsx'))
@@ -741,6 +738,7 @@ if Plot == 3:
 	#file = '2025-03-19_G_e_pulsetime=0.64.dat.pkl'
 	file = '2024-07-17_J_e.dat_sat_corr.pkl'
 	data = pd.read_pickle(os.path.join(data_path, file))
+	data.to_csv(os.path.join(data_path,  '2024-07-17_J_e.dat_sat_corr.csv'))
 	scaling = 1000
 	data = data.sort_values(by='detuning')
 	
@@ -801,7 +799,7 @@ if Plot == 3:
 	r1, r2 = spline.roots()
 	FWHM = np.abs(r1-r2) # EF
 	print(f'FWHM={FWHM} MHz, or {FWHM/EF_data} EF')
-	ax.text(0.2, 0.8, r'$t_\mathrm{rf} \ll \tau_F$', color=color640, fontsize=7, transform=ax.transAxes)
+	ax.text(0.2, 0.8, r'$t_\mathrm{rf} \gg\tau_F$', color=color640, fontsize=7, transform=ax.transAxes)
 	# use the maximum to estimate the spectral weight if the transfer pulse were sinc^2
 	#sinc fit on 2024-07-17 gives amp=6.9222e-3 +/- 4.1596e-4 (dimer_spectra_comparison.py)
 	# relative uncertainty is 6%
@@ -815,6 +813,7 @@ if Plot == 3:
 	#file2 = '2025-03-19_G_e_pulsetime=0.01.dat.pkl'
 	file2='2024-09-27_B_e.dat_sat_corr.pkl'
 	data = pd.read_pickle(os.path.join(data_path, file2))
+	data.to_csv(os.path.join(data_path, '2024-09-27_B_e.dat_sat_corr.csv'), index=False)
 	data = data.sort_values(by='detuning')
 	scaling = 1000
 
@@ -1120,7 +1119,7 @@ if Plot == 7:
 	)
 
 if Plot == 8:
-	file = '2024-07-17_J_e.dat.pkl'
+	file = '2024-07-17_J_e.dat_sat_corr.pkl'
 	data = pd.read_pickle(os.path.join(data_path, file))
 	scaling = 1
 	data = data.sort_values(by='detuning')
