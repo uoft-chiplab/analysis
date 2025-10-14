@@ -41,7 +41,7 @@ fill_between = True
 save = False
 
 # ac loss correction switch
-AC_LOSS = False
+AC_LOSS = True
 ### ac loss corrections
 # these are from varying jump page results
 # see diagnostics/
@@ -53,7 +53,7 @@ corr_c_interp = lambda x: np.interp(x, np.array(ToTFs), np.array(corr_cs))
 e_corr_c_interp = lambda x: np.interp(x, np.array(ToTFs), np.array(e_corr_cs))
 	
 
-pkl_file = os.path.join(data_path, "res_saturation_curves_2024-11_200usblackman_wrongpulseareacorr.pkl")
+pkl_file = os.path.join(data_path, "res_saturation_curves_test.pkl")
 
 ### Fit functions
 def Linear(x,m,b):
@@ -108,17 +108,17 @@ if __name__ == '__main__':
 # 			 "2024-12-05_K_e.dat",
 #  			#"2024-11-28_P_e_detuning=0.dat",
 #  			  ]
-	detunings = [-5,
-			  0,
-	#		  0,
-#			  -5
-				]
-	files = [
- 			"2024-11-29_B_e_detuning=-5.dat",
-			 "2024-11-29_B_e_detuning=0.dat",
-  			#  "2024-11-28_P_e_detuning=0.dat",
- 			#   "2024-11-28_P_e_detuning=-5.dat"
- 			  ]
+# 	detunings = [-5,
+# 			  0,
+# 	#		  0,
+# #			  -5
+# 				]
+	# files = [
+ 	# 		"2024-11-29_B_e_detuning=-5.dat",
+	# 		 "2024-11-29_B_e_detuning=0.dat",
+  	# 		#  "2024-11-28_P_e_detuning=0.dat",
+ 	# 		#   "2024-11-28_P_e_detuning=-5.dat"
+ 	# 		  ]
 	pulse_time = 0.2  # ms
 	if pulse_time > 1:
 		pulse_area_correction = np.sqrt(0.31)

@@ -19,10 +19,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from tabulate import tabulate
+from matplotlib.ticker import MaxNLocator
 
 #to use fit example:
 	#Data("filename").fit(fit_func=One you want, names=['x','y'])
-	
 	
 #to use multiplot ex:
 	#Data(“filename”).multiplot(fit_func, names=[‘x’,’y’],avg=’x’)
@@ -33,14 +33,10 @@ from tabulate import tabulate
 	
 #Holy moly thanks for writing this ^
 
-file = "2024-09-05_X_e.dat"
-guess = [8, 7, 2*3.14*0.4, 0, 95]
+# file = "2024-09-05_X_e.dat"
+# guess = [8, 7, 2*3.14*0.4, 0, 95]
 drive = '\\\\UNOBTAINIUM\\E_Carmen_Santiago' 
 plt.rcParams.update(plt_settings)
-
-# plt.style.use('plottingstyle')
-# plt.style.use('C:/Users/coldatoms/anaconda3/pkgs/matplotlib-base-3.2.2-py38h64f37c6_0/Lib/site-packages/matplotlib/mpl-data/stylelib/plottingstype.mplstyle')
-# plt.style.use('./plottingstype.mplstyle')
 
 class Data:
 	def __init__(self, filename, path=None, column_names=None, 
@@ -55,7 +51,6 @@ class Data:
 		else:
 			print(drive + '\\Data\\' + filename[:4] + '\\*\\*\\*\\' + filename)
 			self.file = glob(drive + '\\Data\\' + filename[:4] + '\\*\\*\\*\\' + filename)[0] # EXTREMELY greedy ; for Fermium
- 			# file = filename # kiera playing around on their computer 
 			
 		self.data = pd.read_table(self.file, delimiter=',') # making dataframe of chosen data
 		
@@ -101,10 +96,11 @@ class Data:
 
 		if hasattr(self, 'avg_data'): # check for averaging
 			self.ax.errorbar(self.avg_data[f"{names[0]}"], self.avg_data[f"{names[1]}"], 
-				yerr=self.avg_data[f"em_{names[1]}"], capsize=2, marker='o', ls='',
+				yerr=self.avg_data[f"em_{names[1]}"], **styles[0],
+				# capsize=2, marker='o', ls='',
 				label=label)
 		else:
-			self.ax.plot(self.data[f"{names[0]}"], self.data[f"{names[1]}"], 'o',
+			self.ax.plot(self.data[f"{names[0]}"], self.data[f"{names[1]}"], **styles[0],
 				label = label)
 			
 		if axes_labels == None:
@@ -133,13 +129,19 @@ class Data:
 
 		if label==None:
 			label = self.filename
-		self.ax.plot(self.data[f"{names[0]}"], self.data[f"{names[0]}"]*0, linestyle='-')
+		self.ax.plot(self.data[f"{names[0]}"], self.data[f"{names[0]}"]*0, 
+			   **styles[0],
+			#    linestyle='-'
+			   )
 		if hasattr(self, 'avg_data'): # check for averaging
 			self.ax.errorbar(self.avg_data[f"{names[0]}"], self.avg_data[f"{names[1]}"]- func( self.avg_data[f"{names[0]}"],*popt), 
-				yerr=self.avg_data[f"em_{names[1]}"], capsize=2, marker='o', ls='',
+				yerr=self.avg_data[f"em_{names[1]}"], 
+				**styles[0],
+				# capsize=2, marker='o', ls='',
 				label=label)
 		else:
 			self.ax.plot(self.data[f"{names[0]}"], residuals,
+				**styles[0],
 				label = label)
 			
 		if axes_labels == None:
@@ -259,7 +261,10 @@ class Data:
 			num = 500
 			xlist = np.linspace(self.data[f"{names[0]}"].min(), 
 					   self.data[f"{names[0]}"].max(), num)
-			self.ax.plot(xlist, func(xlist, *self.popt),linestyle='-',marker='')
+			self.ax.plot(xlist, func(xlist, *self.popt),
+			linestyle='-',marker='', color='orange',
+			)
+			self.ax.xaxis.set_major_locator(MaxNLocator(nbins=5))
 
 		
 # fit data to fit_func and plot if Data has a figure

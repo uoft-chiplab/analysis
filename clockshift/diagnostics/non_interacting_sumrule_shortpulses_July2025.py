@@ -13,14 +13,20 @@ data_path = os.path.join(proj_path, 'data/sum_rule')
 if root not in sys.path:
 	sys.path.append(root)
 from data_class import Data
-from library import styles, pi, colors
+from library import styles, pi,h, hbar, generate_plt_styles, paper_settings
 from data_class import Data
 from scipy.optimize import curve_fit
 from fit_functions import RabiFreq
 from rfcalibrations.Vpp_from_VVAfreq import Vpp_from_VVAfreq
 
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import numpy as np
+
+mycolors = ['#2827D8', '#D82827', '#3C9A34']
+mystyles = generate_plt_styles(mycolors)
+mpl.rcParams.update(paper_settings)
+
 
 def Saturation(x, A, x0):
 	return A*(1-np.exp(-x/x0))
@@ -28,8 +34,9 @@ def Saturation(x, A, x0):
 def Linear(x,m,b):
 	return m*x + b
 
-def Sin2(x, A, b, x0):
-	return A*np.sin(b/2 - x0)**2
+# x should be Rabi*t
+def mySin2(x, Z):
+	return Z*np.sin(x/2)**2
 
 #"universal quadratic" form for transfer alpha = Z/4 Omega^2t^2
 # x is Omega^2t^2
@@ -51,19 +58,23 @@ pulse_freqs = [48.369,
 			   48.369]
 
 AC_LOSS_CORR = False
+PLOT_RABI_CAL = False
 transfer_loss_strs = ['transfer','loss']
 fit_func, _, _ = RabiFreq([])
 ff = 0.82
-RabiperVpp_47MHz_2025 = 12.13/0.452 # 2025-02-12 and slightly modified for July 2025 data
+RabiperVpp_47MHz_July2025 = 12.13/0.452 # 2025-02-12 and slightly modified for July 2025 data
 bg_cutoff = 1 # VVA
 pulse_time_ms = 0.01
 df_list = []
+EF = 0.019 # GUESS, MHZ
 for i, file in enumerate(files):
+	if not PLOT_RABI_CAL and i==3:
+		continue
 	run = Data(file)
 	
 	run.data['c9'] = run.data['c9'] * ff
 	if AC_LOSS_CORR and i > 0 and i < 3: # only apply ac loss to datasets that had a's present
-		ac_loss = 1.16 # guess, for ab spin mix
+		ac_loss = 1.2 # based on most recent July 2025 ac loss correction for typical ToTF gas
 	else:
 		ac_loss = 1 # spin pol should have no loss
 
@@ -81,10 +92,10 @@ for i, file in enumerate(files):
 	run.data['alpha_transfer'] = (run.data['c5'] - bg_c5) / \
 		((run.data['c5']-bg_c5) + run.data['c9'])
 	run.data['alpha_loss'] = (bg_c9 - run.data['c9'])/bg_c9
-	
+
 	if i < 3: # Rabi freq dataset was scaned over time not VVA, deal with separately
 		run.data['OmegaR'] = Vpp_from_VVAfreq(run.data['VVA'], pulse_freqs[i]) * \
-								RabiperVpp_47MHz_2025 * 2 * pi
+								RabiperVpp_47MHz_July2025 * 2 * pi
 		run.data['OmegaR2'] = run.data['OmegaR']**2
 		run.data['time'] = pulse_time_ms
 		run.data['OmegaRt'] = pulse_time_ms * run.data['OmegaR']
@@ -94,26 +105,24 @@ for i, file in enumerate(files):
 		for string in transfer_loss_strs:
 			yname = 'alpha_' + string
 			guess = [1,0.15,0,0]
-			run.fitnoplots(RabiFreq, [xname, yname], guess=guess)
-			#xs = np.linspace(min(run.data[xname]), max(run.data[xname]), 100)
-			run.data['A_' + string] = run.popt[0]
+			popt, pcov = curve_fit(fit_func, run.data[xname], run.data[yname], p0=guess)
+			run.data['A_' + string] = popt[0]
 	else: 
 		xname = 'pulse time (ms)'
 		for string in transfer_loss_strs:
 			yname = 'alpha_' + string
 			guess = [1, 12, 0 , 0]
-			run.fitnoplots(RabiFreq, [xname, yname], guess=guess)
-			#xs = np.linspace(min(run.data[xname]), max(run.data[xname]), 100)
-			
-			OmegaR = run.popt[1] * 2 * pi
+			popt, pcov = curve_fit(fit_func, run.data[xname], run.data[yname], p0=guess)
+			OmegaR = popt[1] * 2 * pi
 
 			run.data['OmegaR'] = OmegaR
 			run.data['time'] = run.data[xname]
 			run.data['OmegaR2t2'] = run.data[xname]**2 * OmegaR**2
 
-			t_max = 1/run.popt[1]
-
-	df_list.append(run.data.copy())
+			t_max = 1/popt[1]
+	run.data['scaled_time'] = run.data['time']/1e3 * h*EF*1e6/hbar
+	run.data['scaled_alpha_transfer'] = run.data['alpha_transfer']*(h*EF*1e6/hbar/(run.data['OmegaR']*1e3))**2
+	df_list.append(run.data)
 	# checking for SW on resonance -- July 2025 addition
 	fig, axs = plt.subplots(2)
 	for i, string in enumerate(transfer_loss_strs):
@@ -133,145 +142,366 @@ for i, file in enumerate(files):
 			title = title + ', ' + string
 			)
 	fig.tight_layout()
-	#fig, ax = plt.subplots()
-	# ax.errorbar(run.avg_data['OmegaR2t2'], run.avg_data['SW'], yerr = run.avg_data['em_SW'], markeredgewidth=1)
-	# ax.plot(run.data['OmegaR2t2'], run.data['SW'], mfc='white', mec='black', markeredgewidth=1)
-	# # ax.plot(subtracted_data_OmegaR2t2, subtracted_data_SW, color = 'green')
-	# ax.set(xlim=[-0.1,1],
-	# 	ylim = [0.1, 3],
-	# 	yscale='log',
-	# 		ylabel = ylabel,
-	# 	xlabel = xlabel,
-	# 	title = title
-	# 	#ylim=[0, 1]
-	# 	)
-	# #ax.hlines(y=0.5, xmin=0, xmax=10, ls='--', color='red')
 
-# plot summary
+# plot summary of raw (non averaged) data
 labels = ['209 G pol b to c',
 		  '209 G mix b to c',
 		  '202p14 G mix b to c',
 		  'Rabi freq cal']
-
-# fig, axes = plt.subplots(2,2, figsize=(10,8))
-# axs = axes.flatten()
-# for i, df in enumerate(df_list):
-# 	ax = axs[0]
-# 	ax.set(xlabel=r'$\Omega_R^2 t^2$', ylabel=r'$\alpha$', ylim=[-0.05, 1.20],
-# 		xlim=[0, 15])
-# 	ax.plot(df['OmegaR2t2'], df['alpha_transfer'], label=labels[i]+', transfer', **styles[i])
-# 	ax.plot(df['OmegaR2t2'], df['alpha_loss'], label=labels[i]+', loss', mfc='white')
-# 	ax.legend()
-
-
-# 	ax = axs[1]
-# 	ax.set(xlabel=r'$\alpha$', ylabel='N', xlim=[0,1])
-# 	ax.plot(df['alpha_transfer'], df['N'], label=labels[i], **styles[i])
-
-# 	ax = axs[2]
-# 	ax.set(xlabel=r'$\Omega_R t$', ylabel=r'$\alpha$', 
-# 		xlim=[-0.2, 2],
-# 		ylim=[-0.05, 1])
-# 	ax.plot(df['OmegaR'] * df['time'], df['alpha_transfer'], label=labels[i] + ', transfer', **styles[i])
-# 	ax.plot(df['OmegaR2t2'], df['alpha_loss'], label=labels[i]+', loss', mfc='white')
-
-# 	ax = axs[3]
-# 	ax.set(xlabel=r'$\Omega_R^2 t^2$', ylabel=r'Transfer $\alpha$', 
-# 		ylim=[-0.05, 0.4],
-# 		xlim=[0, 2.5])
-# 	ax.plot(df['OmegaR2t2'], df['alpha_transfer'], label=labels[i] + ', transfer', **styles[i])
-# 	ax.plot(df['OmegaR2t2'], df['alpha_loss'], label=labels[i]+', loss', mfc='white')
-
-# fig.suptitle("Resonant transfer with 10 us pulses")
-# fig.tight_layout()
-# plt.show()
-
-# plot the same data but averaged
-# THIS HAS WEIRD ERRORS RIGHT NOW
-fig, axes = plt.subplots(1,2, figsize=(10,8))
+fig, axes = plt.subplots(3,2, figsize=(10,8))
 axs = axes.flatten()
-err_type = 'sem'
-Z_list = []
 for i, df in enumerate(df_list):
-	print(i)
 	ax = axs[0]
-	ax.set(xlabel=r'$\Omega_R^2 t^2$', ylabel=r'Transfer $\alpha$', ylim=[-0.05, 0.1],
-		xlim=[0, 1.0])
-	xname = 'OmegaR2t2'
-	yname = 'alpha_transfer'
-	dfgrp = df.copy().groupby(xname).agg(['mean', 'std','sem']).reset_index()
-	ax.errorbar(dfgrp[xname], dfgrp['alpha_transfer']['mean'], yerr=dfgrp['alpha_transfer'][err_type], label=labels[i]+', transfer', **styles[i])
-	ax.errorbar(dfgrp[xname], dfgrp['alpha_loss']['mean'], yerr=dfgrp['alpha_loss'][err_type], label=labels[i]+', loss', mfc='white')
-
-
-	if i == 3:
-		ts = np.linspace(0, t_max, 100)
-		ax.plot(ts**2*OmegaR**2, np.sin(OmegaR/2*ts)**2, '-', color=colors[i])
-		ax.plot(ts**2*OmegaR**2, ts**2*OmegaR**2/4, '--', label='lin. resp.', color=colors[i])
-
-	else:
-	
-		idx_cutoff = 9
-		xname = 'OmegaR2t2'
-		yname = 'alpha_transfer'
-		guess = [1, 10]
-		popt, pcov = curve_fit(UniversalQuad, dfgrp[xname][:idx_cutoff], dfgrp[yname]['mean'][:idx_cutoff],
-							sigma=dfgrp[yname][err_type][:idx_cutoff])
-		xs = np.linspace(0, 6, 30)
-		ax.plot(xs, UniversalQuad(xs, *popt), '--', color=colors[i])
-		Z_list.append(popt[0])
-		
+	ax.set(xlabel=r'$\Omega_R^2 t^2$', ylabel=r'$\alpha$', ylim=[-0.05, 1.20],
+		xlim=[0, 15])
+	ax.plot(df['OmegaR2t2'], df['alpha_transfer'], label=labels[i]+', transfer', **mystyles[i])
+	ax.plot(df['OmegaR2t2'], df['alpha_loss'], label=labels[i]+', loss', mfc='white')
 	ax.legend()
 
-# for i, df in enumerate(df_list):
-# 	ax = axs[1]
-# 	ax.set(xlabel=r'$\alpha$', ylabel=r'$N_b + N_c$', xlim=[0,1])
-# 	xname = 'alpha_transfer'
-# 	yname = 'N'
-# 	dfgrp1 = df.groupby(xname).agg(['mean', 'std','sem']).reset_index()
-# 	ax.errorbar(dfgrp1[xname], dfgrp1[yname]['mean'], yerr=dfgrp1[yname][err_type], label=labels[i], **styles[i])
+	ax = axs[1]
+	ax.set(xlabel=r'$\Omega_R^2 t^2$', ylabel=r'$\alpha$', 
+		ylim=[-0.05, 0.5],
+		xlim=[0, 3])
+	ax.plot(df['OmegaR2t2'], df['alpha_transfer'], label=labels[i] + ', transfer', **mystyles[i])
+	ax.plot(df['OmegaR2t2'], df['alpha_loss'], label=labels[i]+', loss', mfc='white')
 
-# for i, df in enumerate(df_list):
-# 	if i < 3:
-# 		ax = axs[2]
-# 		ax.set(xlabel=r'$\Omega_R t$', ylabel=r'$\alpha$', 
-# 			xlim=[-0.1, 1],
-# 			ylim=[-0.01, 0.1])
-# 		xname = 'OmegaR'
-# 		yname = 'alpha_transfer'
-# 		dfgrp2 = df.copy().groupby(xname).agg(['mean', 'std','sem']).reset_index()
-# 		ax.errorbar(dfgrp2[xname] * pulse_time_ms, dfgrp2[yname]['mean'], yerr=dfgrp2[yname][err_type], label=labels[i], **styles[i])
+	ax = axs[2]
+	ax.set(xlabel=r'$\Omega_R t$', ylabel=r'$\alpha$', 
+		xlim = [0,8],
+		ylim=[-0.05, 1])
+	ax.plot(df['OmegaR'] * df['time'], df['alpha_transfer'], label=labels[i] + ', transfer', **mystyles[i])
+	ax.plot(df['OmegaR'] * df['time'], df['alpha_loss'], label=labels[i]+', loss', mfc='white')
 
-# 	ax = axs[3]
-# 	ax.set(xlabel=r'$\Omega_R^2 t^2$', ylabel=r'Transfer $\alpha$', 
-# 		ylim=[-0.01, 0.2],
-# 		xlim=[0, 1])
-# 	xname = 'OmegaR2t2'
-# 	yname = 'alpha_transfer'
-# 	dfgrp3 = df.copy().groupby(xname).agg(['mean', 'std','sem']).reset_index()
-# 	ax.errorbar(dfgrp3[xname], dfgrp3[yname]['mean'], yerr=dfgrp3[yname][err_type], label=labels[i], **styles[i])
-# 	ax.legend()
+	ax = axs[3]
+	ax.set(xlabel=r'$\Omega_R t$', ylabel=r'$\alpha$', 
+		xlim=[-0.2, 2],
+		ylim=[-0.05, 0.5])
+	ax.plot(df['OmegaR'] * df['time'], df['alpha_transfer'], label=labels[i] + ', transfer', **mystyles[i])
+	ax.plot(df['OmegaR'] * df['time'], df['alpha_loss'], label=labels[i]+', loss', mfc='white')
 
-# 	ax=axs[4]
-# 	ax.set(ylabel='A from sin^2(Omega*t/2) fit')
-# 	if i < 3:
-# 		ax.hlines(df['A'], 0, 1, label=labels[i], color=colors[i])
-# 	ax.legend()
+	ax = axs[4]
+	ax.set(xlabel=r'$\alpha_\mathrm{transfer}$', ylabel='N', xlim=[0,1])
+	ax.plot(df['alpha_transfer'], df['N'], label=labels[i], **mystyles[i])
+	ax = axs[5]
+	ax.set(xlabel=r'$\alpha_\mathrm{loss}$', ylabel='N', xlim=[0,1])
+	ax.plot(df['alpha_loss'], df['N'], label=labels[i], **mystyles[i])
 
-# fig.suptitle("Resonant transfer with 10 us pulses")
-# fig.tight_layout()
-# plt.show()
+fig.suptitle("Resonant transfer with 10 us pulses, raw")
+fig.tight_layout()
+plt.show()
 
-# for i, df in enumerate(df_list):
-# 	if i<3:
-# 		A = df['A'].values[0]
-# 		print(f'df {i}: A = {A}')
+# average data, plot and fit to linear response under a cutoff ~0.1
+fig, axes = plt.subplots(2,2, figsize=(10,8))
+axs = axes.flatten()
+err_type = 'sem'
+fit_list_tr = []
+fit_list_ls = []
+#### SUBPLOT SETTINGS
+# plot alpha_transfer vs Rabi^2time^2
+axs[0].set(xlabel=r'$\Omega_R^2 t^2$', ylabel=r'Transfer $\alpha$', ylim=[-0.03, 1],
+		xlim=[-0.02, 20]
+		)
+# repeat but zoomed in
+axs[2].set(xlabel=r'$\Omega_R^2 t^2$', ylabel=r'Transfer $\alpha$', ylim=[-0.03, 0.12],
+	xlim=[-0.02, 0.6])
+# plot alpha_loss vs Rabi^2time^2
+axs[1].set(xlabel=r'$\Omega_R^2 t^2$', ylabel=r'Loss $\alpha$', ylim=[-0.03, 1],
+		xlim=[-0.02, 20]
+		)
+# repeat but zoomed in
+axs[3].set(xlabel=r'$\Omega_R^2 t^2$', ylabel=r'Loss $\alpha$', ylim=[-0.03, 0.12],
+	xlim=[-0.02, 0.6])
 
-# ac_loss_factor = df_list[0]['A'].values[0]/df_list[1]['A'].values[0]
-# print(f'Assumed ac loss factor is {ac_loss_factor}')
-# SR_factor = df_list[2]['A'].values[0]/df_list[1]['A'].values[0]
-# print(f'Assumed SR factor is {SR_factor}')
+# actual plotting and fitting loop
+# this loop ignores the Rabi freq cal dataset because it was causing complications
+#fit_func = UniversalQuad
+fit_func = mySin2
+for i, df in enumerate(df_list):
+	if i == 3:
+		continue
+
+	# TRANSFER
+	xname = 'OmegaR2t2'
+	yname = 'alpha_transfer'
+	dfgrp = df.groupby(xname).agg(['mean', 'std','sem']).reset_index()
+	ax=axs[0]
+	ax.errorbar(dfgrp[xname], dfgrp[yname]['mean'], yerr=dfgrp[yname][err_type], label=labels[i]+', transfer', **mystyles[i])
+	#alpha_cutoff_mask = (dfgrp[yname]['mean'] < 0.1) & (dfgrp[xname] < 3) # because alpha sometimes goes back down due to flopping, have to have second cutoff condition
+
+	#sub_df = dfgrp[alpha_cutoff_mask]
+	x_cutoff_mask = dfgrp[xname] < 18
+	sub_df = dfgrp[x_cutoff_mask]
+	guess = [1]
+	popt, pcov = curve_fit(fit_func, np.sqrt(sub_df[xname]), sub_df[yname]['mean'],
+						sigma=sub_df[yname][err_type])
+	xs = np.linspace(0, sub_df[xname].max(), 100)
+	ax.plot(xs, fit_func(np.sqrt(xs), *popt), '-', color=mycolors[i])
+	ax.plot(xs, UniversalQuad(xs, *popt), '--', color=mycolors[i])
+	ax.vlines(sub_df[xname].values[-1], ymin=0, ymax=1, color=mycolors[i], ls='dotted')
+	perr = np.sqrt(np.diag(pcov))
+	fit_list_tr.append((popt, perr))
+	
+	# repeat but zoomed in
+	ax=axs[2]
+	ax.errorbar(dfgrp[xname], dfgrp[yname]['mean'], yerr=dfgrp[yname][err_type], label=labels[i]+', transfer', **mystyles[i])
+	ax.plot(xs, fit_func(np.sqrt(xs), *popt), '-', color=mycolors[i])
+	ax.plot(xs, UniversalQuad(xs, *popt), '--', color=mycolors[i])
+	ax.vlines(sub_df[xname].values[-1], ymin=0, ymax=1, color=mycolors[i], ls='dotted')
+
+	# LOSS
+	xname = 'OmegaR2t2'
+	yname = 'alpha_loss'
+	dfgrp = df.groupby(xname).agg(['mean', 'std','sem']).reset_index()
+	ax=axs[1]
+	ax.errorbar(dfgrp[xname], dfgrp[yname]['mean'], yerr=dfgrp[yname][err_type], label=labels[i]+', loss', **mystyles[i])
+	# because alpha sometimes goes back down due to flopping, have to have second cutoff condition
+	# also, alpha_loss has poor signal and data near 0 is indistinguishable, so added a lower cutoff
+	# alpha_cutoff_mask = (dfgrp[yname]['mean'] < 0.1) & \
+	# 	(dfgrp[yname]['mean'] > 0.02) & \
+   	# 	(dfgrp[xname] < 3) 
+	alpha_cutoff_mask = (dfgrp[yname]['mean'] > 0.02) 
+	sub_df = dfgrp[alpha_cutoff_mask]
+	guess = [1]
+	popt, pcov = curve_fit(fit_func, np.sqrt(sub_df[xname]), sub_df[yname]['mean'],
+						sigma=sub_df[yname][err_type])
+	xs = np.linspace(0, sub_df[xname].max(), 100)
+	ax.plot(xs, fit_func(np.sqrt(xs), *popt), '-', color=mycolors[i])
+	ax.plot(xs, UniversalQuad(xs, *popt), '--', color=mycolors[i])
+	ax.vlines(sub_df[xname].values[-1], ymin=0, ymax=1, color=mycolors[i], ls='dotted')
+	ax.vlines(sub_df[xname].values[0], ymin=0, ymax=1, color=mycolors[i], ls='dotted')
+	perr = np.sqrt(np.diag(pcov))
+	fit_list_ls.append((popt, perr))
+	
+	# repeat but zoomed in
+	ax=axs[3]
+	ax.errorbar(dfgrp[xname], dfgrp[yname]['mean'], yerr=dfgrp[yname][err_type], label=labels[i]+', loss', **mystyles[i])
+	ax.plot(xs, fit_func(np.sqrt(xs), *popt), '-', color=mycolors[i])
+	ax.plot(xs, UniversalQuad(xs, *popt), '--', color=mycolors[i])
+	ax.vlines(sub_df[xname].values[-1], ymin=0, ymax=1, color=mycolors[i], ls='dotted')
+	ax.vlines(sub_df[xname].values[0], ymin=0, ymax=1, color=mycolors[i], ls='dotted')
+
+fig.suptitle('Resonant transfer with 10 us pulses, averaged')
+fig.tight_layout()
+plt.show()
+
+spin_pol_209_fits_tr = fit_list_tr[0] # tuples of (popt, perr)
+spin_pol_209_fits_ls = fit_list_ls[0]
+spin_mix_209_fits_tr = fit_list_tr[1]
+spin_mix_209_fits_ls = fit_list_ls[1]
+spin_mix_202_fits_tr = fit_list_tr[2]
+spin_mix_202_fits_ls = fit_list_ls[2]
+
+print('-------------------------------------------------\nAnalyzing the transfer signal...')
+# estimate ac loss factor by comparing pol and mix at 209 G
+# probably not right due to different densities when noninteracting due to chem pot
+ac_loss_guess = spin_pol_209_fits_tr[0][0] / spin_mix_209_fits_tr[0][0] # comparing fit amplitudes
+e_ac_loss_guess = ac_loss_guess * np.sqrt((spin_pol_209_fits_tr[1][0]/spin_pol_209_fits_tr[0][0])**2 + \
+										  (spin_mix_209_fits_tr[1][0]/spin_mix_209_fits_tr[0][0])**2) 
+print(f'Comparing linear response between polarized 209 G and spin mix 209 G,\nthe difference in fit amplitudes possibly from ac loss is: {ac_loss_guess:.2f}+/-{e_ac_loss_guess:.2f}')
+
+# First guess for Z; compare unitary spin mix transfer to noninteracting spin pol 
+Z_guess = spin_pol_209_fits_tr[0][0] / spin_mix_202_fits_tr[0][0] # comparing fit amplitudes
+e_Z_guess = Z_guess * np.sqrt((spin_pol_209_fits_tr[1][0]/spin_pol_209_fits_tr[0][0])**2 + \
+										  (spin_mix_202_fits_tr[1][0]/spin_mix_202_fits_tr[0][0])**2) 
+print(f'Comparing linear response between polarized 209 G and spin mix 202 G,\nthe difference in fit amplitudes is the Z factor: {Z_guess:.2f}+/-{e_Z_guess:.2f}')
+
+# Second guess for Z; compare unitary spin mix transfer to noninteracting spin mix
+Z_guess = spin_mix_209_fits_tr[0][0] / spin_mix_202_fits_tr[0][0] # comparing fit amplitudes
+e_Z_guess = Z_guess * np.sqrt((spin_mix_209_fits_tr[1][0]/spin_mix_209_fits_tr[0][0])**2 + \
+										  (spin_mix_202_fits_tr[1][0]/spin_mix_202_fits_tr[0][0])**2) 
+print(f'Comparing linear response between spin mix 209 G and spin mix 202 G,\nthe difference in fit amplitudes is the Z factor: {Z_guess:.2f}+/-{e_Z_guess:.2f}')
 
 
-# print('Fitted Z factors are:')
-# print(Z_list)
+print('-------------------------------------------------\nAnalyzing the loss signal...')
+# estimate ac loss factor by comparing pol and mix at 209 G
+# probably not right due to different densities when noninteracting due to chem pot
+ac_loss_guess = spin_pol_209_fits_ls[0][0] / spin_mix_209_fits_ls[0][0] # comparing fit amplitudes
+e_ac_loss_guess = ac_loss_guess * np.sqrt((spin_pol_209_fits_ls[1][0]/spin_pol_209_fits_ls[0][0])**2 + \
+										  (spin_mix_209_fits_ls[1][0]/spin_mix_209_fits_ls[0][0])**2) 
+print(f'Comparing linear response between polarized 209 G and spin mix 209 G,\nthe difference in fit amplitudes possibly from ac loss is: {ac_loss_guess:.2f}+/-{e_ac_loss_guess:.2f}')
+
+# First guess for Z; compare unitary spin mix transfer to noninteracting spin pol 
+Z_guess = spin_pol_209_fits_ls[0][0] / spin_mix_202_fits_ls[0][0] # comparing fit amplitudes
+e_Z_guess = Z_guess * np.sqrt((spin_pol_209_fits_ls[1][0]/spin_pol_209_fits_ls[0][0])**2 + \
+										  (spin_mix_202_fits_ls[1][0]/spin_mix_202_fits_ls[0][0])**2) 
+print(f'Comparing linear response between polarized 209 G and spin mix 202 G,\nthe difference in fit amplitudes is the Z factor: {Z_guess:.2f}+/-{e_Z_guess:.2f}')
+
+# Second guess for Z; compare unitary spin mix transfer to noninteracting spin mix
+Z_guess = spin_mix_209_fits_ls[0][0] / spin_mix_202_fits_ls[0][0] # comparing fit amplitudes
+e_Z_guess = Z_guess * np.sqrt((spin_mix_209_fits_ls[1][0]/spin_mix_209_fits_ls[0][0])**2 + \
+										  (spin_mix_202_fits_ls[1][0]/spin_mix_202_fits_ls[0][0])**2) 
+print(f'Comparing linear response between spin mix 209 G and spin mix 202 G,\nthe difference in fit amplitudes is the Z factor: {Z_guess:.2f}+/-{e_Z_guess:.2f}')
+
+#################################################
+##################### let's make finalized plots
+##################################################
+
+# average data, plot and fit to linear response under a cutoff ~0.1
+fig, ax = plt.subplots(figsize=(3,2))
+err_type = 'std'
+x_max = 30
+
+#### SUBPLOT SETTINGS
+# plot alpha_transfer vs Rabi^2time^2
+ax.set(xlabel=r'$\Omega_{23}^2 t^2$', ylabel=r'Transfer $\alpha_\mathrm{res}$', ylim=[-0.02, 1],
+		xlim=[-0.02, x_max]
+		)
+
+# inset axis
+inset_ax = fig.add_axes([0.42, 0.4, 0.2, 0.2])
+inset_ax.set(xlim = [4, 17.5],
+			 ylim=[0.6, 1.0],
+			 xlabel = r'$\Omega_{23}^2t^2$',
+			 ylabel=r'Loss $\alpha_\mathrm{res}$')
+
+# actual plotting and fitting loop
+fit_func = mySin2
+for i, df in enumerate(df_list):
+	if i == 3:
+		continue
+
+	# TRANSFER
+	xname = 'OmegaR2t2'
+	yname = 'alpha_transfer'
+	dfgrp = df.groupby(xname).agg(['mean', 'std','sem']).reset_index()
+	ax.errorbar(dfgrp[xname], dfgrp[yname]['mean'], yerr=dfgrp[yname][err_type], **mystyles[i])
+	cutoff_mask = (dfgrp[xname] < x_max) & (dfgrp[yname]['mean']>0.01)
+	sub_df = dfgrp[cutoff_mask]
+	guess = [1]
+	popt, pcov = curve_fit(fit_func, np.sqrt(sub_df[xname]), sub_df[yname]['mean'],
+						sigma=sub_df[yname][err_type])
+	perr = np.sqrt(np.diag(pcov))
+	print(f'i={i}, Z={popt[0]:.2f}+/-{perr[0]:.2f}')
+	xs = np.linspace(0, x_max, 100)
+	ax.plot(xs, fit_func(np.sqrt(xs), *popt), '-', color=mycolors[i], label=rf'$Z=${popt[0]:.2f}({round(perr[0]*100)})')
+	ax.plot(xs, UniversalQuad(xs, *popt), '--', color=mycolors[i])
+
+	# LOSS
+	xname = 'OmegaR2t2'
+	yname = 'alpha_loss'
+	dfgrp = df.groupby(xname).agg(['mean', 'std','sem']).reset_index()
+	#ax.errorbar(dfgrp[xname], dfgrp[yname]['mean'], yerr=dfgrp[yname][err_type], label=labels[i]+', loss', **mystyles[i])
+	cutoff_mask = (dfgrp[yname]['mean'] > 0.02) & (dfgrp[xname]<x_max)
+	sub_df = dfgrp[cutoff_mask]
+	guess = [1]
+	popt, pcov = curve_fit(fit_func, np.sqrt(sub_df[xname]), sub_df[yname]['mean'],
+						sigma=sub_df[yname][err_type])
+	xs = np.linspace(0, sub_df[xname].max(), 100)
+	perr = np.sqrt(np.diag(pcov))
+
+	# repeat but zoomed in
+	inset_ax.errorbar(dfgrp[xname], dfgrp[yname]['mean'], yerr=dfgrp[yname][err_type], label=labels[i]+', loss', **mystyles[i])
+	inset_ax.plot(xs, fit_func(np.sqrt(xs), *popt), '-', color=mycolors[i])
+	#inset_ax.plot(xs, UniversalQuad(xs, *popt), '--', color=mycolors[i])
+
+ax.legend(frameon=False, loc='upper right')
+fig.tight_layout()
+plt.savefig(r'\\UNOBTAINIUM\E_Carmen_Santiago\Analysis Scripts\analysis\clockshift\manuscript\manuscript_figures\SM_Zfactors.pdf', dpi=300)
+plt.show()
+
+
+# average data, plot and fit to linear response under a cutoff ~0.1
+fig, ax = plt.subplots(figsize=(6,4))
+err_type = 'sem'
+x_max = 30
+
+ax.set(xlabel=r'$\Omega_{23}^2 t^2$', ylabel=r'Loss $\alpha$', ylim=[-0.02, 1],
+		xlim=[-0.02, x_max]
+		)
+
+# inset axis
+inset_ax = fig.add_axes([0.33, 0.3, 0.3, 0.3])
+inset_ax.set(xlim = [-0.01, 0.4],
+			 ylim=[-0.01, 0.07],
+			 xlabel = r'$\Omega_{23}^2t^2$',
+			 ylabel=r'$\alpha$')
+
+
+# actual plotting and fitting loop
+fit_func = mySin2
+for i, df in enumerate(df_list):
+	if i == 3:
+		continue
+
+	# LOSS
+	xname = 'OmegaR2t2'
+	yname = 'alpha_loss'
+	dfgrp = df.groupby(xname).agg(['mean', 'std','sem']).reset_index()
+	ax.errorbar(dfgrp[xname], dfgrp[yname]['mean'], yerr=dfgrp[yname][err_type], label=labels[i]+', loss', **mystyles[i])
+	cutoff_mask = (dfgrp[yname]['mean'] > 0.02) & (dfgrp[xname]<x_max)
+	sub_df = dfgrp[cutoff_mask]
+	guess = [1]
+	popt, pcov = curve_fit(fit_func, np.sqrt(sub_df[xname]), sub_df[yname]['mean'],
+						sigma=sub_df[yname][err_type])
+	xs = np.linspace(0, sub_df[xname].max(), 100)
+	ax.plot(xs, fit_func(np.sqrt(xs), *popt), '-', color=mycolors[i])
+	ax.plot(xs, UniversalQuad(xs, *popt), '--', color=mycolors[i])
+	perr = np.sqrt(np.diag(pcov))
+	fit_list_ls.append((popt, perr))
+	
+	# repeat but zoomed in
+	inset_ax.errorbar(dfgrp[xname], dfgrp[yname]['mean'], yerr=dfgrp[yname][err_type], label=labels[i]+', loss', **mystyles[i])
+	inset_ax.plot(xs, fit_func(np.sqrt(xs), *popt), '-', color=mycolors[i])
+	inset_ax.plot(xs, UniversalQuad(xs, *popt), '--', color=mycolors[i])
+	
+#ax.legend()
+fig.tight_layout()
+plt.show()
+
+
+
+# average data, plot and fit to linear response under a cutoff ~0.1
+fig, axs = plt.subplots(1,2,figsize=(10,8))
+err_type = 'sem'
+x_max = 30
+
+#### SUBPLOT SETTINGS
+# plot alpha_transfer vs Rabi^2time^2
+axs[0].set(xlabel=r'$\Omega_{23}^2 t^2$', ylabel=r'Transfer $\alpha$', ylim=[-0.02, 1],
+		xlim=[-0.02, x_max]
+		)
+axs[1].set(xlabel=r'$\Omega_{23}^2 t^2$', ylabel=r'Loss $\alpha$', ylim=[-0.02, 1],
+		xlim=[-0.02, x_max]
+		)
+
+# actual plotting and fitting loop
+fit_func = mySin2
+for i, df in enumerate(df_list):
+	if i == 3:
+		continue
+
+	# TRANSFER
+	xname = 'OmegaR2t2'
+	yname = 'alpha_transfer'
+	dfgrp = df.groupby(xname).agg(['mean', 'std','sem']).reset_index()
+	ax=axs[0]
+	ax.errorbar(dfgrp[xname], dfgrp[yname]['mean'], yerr=dfgrp[yname][err_type], label=labels[i]+', transfer', **mystyles[i])
+	cutoff_mask = (dfgrp[yname]['mean'] > 0.02) & (dfgrp[xname]<x_max)
+	sub_df = dfgrp[cutoff_mask]
+	guess = [1]
+	popt, pcov = curve_fit(fit_func, np.sqrt(sub_df[xname]), sub_df[yname]['mean'],
+						sigma=sub_df[yname][err_type])
+	perr = np.sqrt(np.diag(pcov))
+	xs = np.linspace(0, x_max, 100)
+	ax.plot(xs, fit_func(np.sqrt(xs), *popt), '-', color=mycolors[i], label=f'Z={popt[0]:.1f}')
+	ax.plot(xs, UniversalQuad(xs, *popt), '--', color=mycolors[i])
+
+	# LOSS
+	xname = 'OmegaR2t2'
+	yname = 'alpha_loss'
+	dfgrp = df.groupby(xname).agg(['mean', 'std','sem']).reset_index()
+	ax=axs[1]
+	ax.errorbar(dfgrp[xname], dfgrp[yname]['mean'], yerr=dfgrp[yname][err_type], label=labels[i]+', loss', **mystyles[i])
+	cutoff_mask = (dfgrp[yname]['mean'] > 0.02) & (dfgrp[xname]<x_max)
+	sub_df = dfgrp[cutoff_mask]
+	guess = [1]
+	popt, pcov = curve_fit(fit_func, np.sqrt(sub_df[xname]), sub_df[yname]['mean'],
+						sigma=sub_df[yname][err_type])
+	xs = np.linspace(0, sub_df[xname].max(), 100)
+	ax.plot(xs, fit_func(np.sqrt(xs), *popt), '-', color=mycolors[i])
+	ax.plot(xs, UniversalQuad(xs, *popt), '--', color=mycolors[i])
+	perr = np.sqrt(np.diag(pcov))
+	
+
+fig.tight_layout()
+plt.show()

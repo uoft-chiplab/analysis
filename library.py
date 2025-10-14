@@ -315,3 +315,35 @@ def BlackmanFourier2(omega):
 	E = -197.39208802178717
 	return np.abs((2 *np.sin(omega/2) * (A+B*omega**2 + C*omega**4))/ \
 		(D*omega + E*omega**3 + omega**5))**2
+
+def fit_label(popts, perrs, paramnames, digits=1, sep = "\n", units=[]):
+	"""
+	code to make str which rounds fit params to proper uncert
+	params are separated by sep
+	"""
+	if len(units) == 0:
+		units = [""]*len(popts)
+
+	perrstr = []
+	poptstr = []
+
+	for i, perr in enumerate(perrs):
+		if perr < 1:
+			# number of digits after decimal to round to 
+			n = int(np.floor(abs(np.log10(perr))))+digits
+			# round errs to 1 decimal point
+			# # remove zeros and ignore decimal point to get first digit
+			perrstr.append(round(perr, n)*(10**n))
+			poptstr.append(round(popts[i], n))
+		else:
+			# number of digits after decimal to round to 
+			n = digits - 1  - int(np.floor(abs(np.log10(perr))))
+
+			# round param to correct place
+			poptstr.append(int(round(popts[i], n)))
+			perrstr.append(int(round(perr, n)))
+
+	plabel = [f"{paramnames[i]}={poptstr[i]}({perrstr[i]:.0f}){units[i]}" for i in range(len(paramnames))]
+	plabel = sep.join(plabel)
+
+	return plabel

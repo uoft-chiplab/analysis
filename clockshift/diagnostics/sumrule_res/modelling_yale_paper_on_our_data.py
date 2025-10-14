@@ -40,10 +40,12 @@ Save = False
 # definitions of alpha
 alphas = ['transfer', 'loss']
 
-files = ["2025-07-28_H_e",
+files = ["2025-07-28_H_e", # whole spectrum
+		 "2025-07-28_J_e" # very fine about res
  		 ]
 
 tpulses = [2000,
+		   2000
 		   ] #us
 
 measures = ['transfer', 'loss']
@@ -66,6 +68,7 @@ RabiperVpp_47MHz_July2025 = 12.13/0.452 # slightly modified from 2025 for July 2
 e_RabiperVpp_47MHz_2025 = 0.28 # ESTIMATE
 
 ### ac loss corrections
+# these are from pre July 2025 so may be incorrect post-ODT2 realignment
 # these are from varying jump page results
 # see diagnostics/
 ToTFs = [ToTF,
@@ -104,6 +107,7 @@ for file, tpulse in zip(files, tpulses):
 	run.data['c9'] = run.data['c9'] * ff
 	bg_c9 = run.data[run.data['VVA'] == 0]['c9'].mean()
 	bg_c5 = run.data[run.data['VVA'] == 0]['c5'].mean()
+	run.data = run.data[run.data['VVA']!=0] # remove the bg points from df
 	run.data['N'] = (run.data['c5']-bg_c5) + run.data['c9'] 
 	run.data['alpha_transfer'] = (run.data['c5']-bg_c5) / (run.data['c5']-bg_c5 + run.data['c9'])
 	run.data['alpha_loss'] = (bg_c9 - run.data['c9'])/bg_c9
@@ -113,7 +117,7 @@ for file, tpulse in zip(files, tpulses):
 	fig, ax = plt.subplots()
 	# fig2, ax2 = plt.subplots()
 	for measure, sty in zip(measures, styles):
-		run.data['IFGR'+measure] = run.data['alpha_' + measure]*h*EF*1e6/(hbar*run.data['OmegaR2']*1e3**2*tpulse/1e6)
+		run.data['IFGR'+measure] = run.data['alpha_' + measure]*h*EF*1e6/(hbar*(run.data['OmegaR2']*1e3)**2*tpulse/1e6)
 		run.data['scaled_alpha'+measure] = run.data['alpha_' + measure]*(h*EF*1e6/hbar*run.data['OmegaR']*1e3)**2
 		run.data['MaxI'+measure] = max(run.data['IFGR'+measure])
 		def alpha(tpulse):

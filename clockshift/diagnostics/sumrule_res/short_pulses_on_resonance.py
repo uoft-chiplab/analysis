@@ -158,7 +158,7 @@ for file, VVA, tpulse in zip(files, VVAs, tpulses):
 	fig2, ax2 = plt.subplots()
 	for measure, sty in zip(measures, styles):
 		run.data['IFGR'+measure] = run.data['alpha_' + measure]*h*EF*1e6/(hbar*run.data['OmegaR2']*1e3**2*tpulse/1e6)
-		run.data['scaled_alpha'+measure] = run.data['alpha_' + measure]*(h*EF*1e6/hbar*run.data['OmegaR']*1e3)**2
+		run.data['scaled_alpha'+measure] = run.data['alpha_' + measure]*(h*EF*1e6/hbar/run.data['OmegaR']*1e3)**2
 		run.data['MaxI'+measure] = max(run.data['IFGR'+measure])
 		def alpha(tpulse):
 			return tpulse**2*np.trapz((sinc2(run.data['detuning_EF']/2,tpulse)*run.data['alpha_' + measure])/(2*pi))
@@ -197,4 +197,28 @@ for file, VVA, tpulse in zip(files, VVAs, tpulses):
 	# labels[0] = labels[0] + f', SW = {SW_trans:.3f}'
 	# labels[1] = labels[1] + f', SW = {SW_loss:.3f}'
 	# ax.legend(handles, labels)
+
+	
+	### Integrate to get SW
+	run.data = run.data.sort_values(by=['detuning_EF'])
+	run.group_by_mean('detuning_EF')
+	x = run.avg_data['detuning_EF']
+	y_trans = run.avg_data['scaled_alpha_transfer']
+	y_loss = run.avg_data['scaled_alpha_loss']
+	SW_tran = integrate.trapezoid(y=y_trans, x=x)
+	SW_loss = integrate.trapezoid(y=y_loss, x=x)
+
+	limit = 200
+	SW_trans = integrate.quad(lambda d: np.interp(d, x, y_trans), min(x), max(x), limit=limit)[0]
+	SW_loss = integrate.quad(lambda d: np.interp(d, x, y_loss), min(x), max(x), limit=limit)[0]
+
+	fig, ax = plt.subplots()
+	ax.errorbar(x, y_trans, yerr=run.avg_data['em_scaled_alpha_transfer'], label = f'SW = {SW_trans:.3f}', **styles[0])
+	ax.errorbar(x, y_loss, yerr=run.avg_data['em_scaled_alpha_loss'], label = f'SW = {SW_loss:.3f}', **styles[1])
+	ax.legend()
+	# handles, labels = ax.get_legend_handles_labels()
+	# labels[0] = labels[0] + f', SW = {SW_trans:.3f}'
+	# labels[1] = labels[1] + f', SW = {SW_loss:.3f}'
+	# ax.legend(handles, labels)
+
 
