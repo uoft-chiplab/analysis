@@ -491,3 +491,14 @@ def ScatteringRate(data, s0=0.1):
 	
 	return scatteringrate, guess, param_names
 
+def ImageLightSaturation(data):
+	"""
+	Returns a functions to fit the image light saturation curve.
+	"""
+	param_names =  ['OD_0', 'ref_count_scale']
+	guess = [data[:,1].max(), data[:,0].mean()]
+	def image_light_saturation(ref_count, OD_0, ref_count_scale):
+		return OD_0 * (1/ (1 +(ref_count/ref_count_scale)))
+	
+	return image_light_saturation, guess, param_names
+
