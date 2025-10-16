@@ -248,6 +248,26 @@ def FixedSinc2(data):
 		return A*(np.sinc((x-x0) / sigma)**2) + C
 	return fixedsinc2, guess, param_names
 
+def FixedSinc2_bg(data):
+	"""
+	Returns:   A*np.sinc((x-x0) / sigma) + C
+	"""
+	x_ofmin = data[np.abs(data[:,1]).argmin(),0]
+	x_ofmax = data[np.abs(data[:,1]).argmax(),0]
+	max_x = data[:,0].max()
+	min_x = data[:,0].min()
+	mean_y = data[:,1].mean()
+	max_y = data[:,1].max()
+	
+	param_names = ["A", "x0", "sigma"]
+	guess = [max_y-mean_y, x_ofmax, mean_y]
+	
+	def fixedsinc2(x, A, x0, sigma):
+		C= 0	
+		return A*(np.sinc((x-x0) / sigma)**2) + C
+	return fixedsinc2, guess, param_names
+
+
 
 def MinSinc2(data):
 	"""

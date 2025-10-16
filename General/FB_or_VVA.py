@@ -20,9 +20,9 @@ from scipy.stats import sem
 
 plt.rcParams.update({"figure.figsize": [5,3.5]})
 
-scan ='5050'
-FB_val = 7.032
-file = "2025-10-01_H_e.dat"
+scan ='VVA'
+FB_val = 7.0
+file = "2025-10-15_F_e.dat"
 
 fit_func = Sinc2
 

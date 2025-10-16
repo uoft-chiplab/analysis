@@ -12,11 +12,11 @@ from fit_functions import ImageLightSaturation
 import numpy as np
 from data_class import Data
 import matplotlib.pyplot as plt
-file = "C_KAM_imaging_122p85FM_e_data.csv"
-data = Data(file, path="E:\\Data\\2025\\10 October2025\\10October2025\\C_KAM_imaging_122p85FM")
+file = "F_KAM_scan_imaging_sat_factor_e_data.csv"
+data = Data(file, path="E:\\Data\\2025\\10 October2025\\14October2025\\F_KAM_scan_imaging_sat_factor")
 
 # had inf OD
-data.data = data.data.drop(34)
+# data.data = data.data.drop(34)
 
 # too low light, OD not reliable
 data.data = data.data[data.data['K AM'] > 0.72]
