@@ -80,9 +80,9 @@ print(f'omegamax = {omegamax}')
 print(f'omegamaxFSE = {omegamaxFSE}')
 
 # calculate CS up to cutoff
-cut = [(xi<xx) & (xx<omegamax)]
-cut_FSE = [(xi < xx) & (xx<omegamaxFSE)]
-cut_nr = [(xi_nr < xx) & (xx<xf_nr)]
+cut = [(xi<xx) & (xx<omegamax)][0]
+cut_FSE = [(xi < xx) & (xx<omegamaxFSE)][0]
+cut_nr = [(xi_nr < xx) & (xx<xf_nr)][0]
 CS_nr = np.trapz(xx[cut_nr] * yyFSE[cut_nr], xx[cut_nr] ) / sumrule
 CS_FSE = np.trapz(xx[cut_FSE]*yyFSE[cut_FSE], xx[cut_FSE]) / sumrule
 CS = np.trapz(xx[cut]*yy[cut], xx[cut]) / sumrule
@@ -101,9 +101,9 @@ SW_NR_list = []
 SW_FSE_list = []
 for i in np.arange(5, 120, 1):
 	cutoff = i/1000/EF
-	cut = [(cutoff < xx) & (xx < omegamax)]
-	cut_FSE = [(cutoff < xx) & (xx < omegamaxFSE)]
-	cut_nr = [(0 < xx)&(xx<cutoff)]
+	cut = [(cutoff < xx) & (xx < omegamax)][0]
+	cut_FSE = [(cutoff < xx) & (xx < omegamaxFSE)][0]
+	cut_nr = [(0 < xx)&(xx<cutoff)][0]
 	CS_nr = np.trapz(xx[cut_nr] * yyFSE[cut_nr], xx[cut_nr] ) / sumrule
 	CS = np.trapz(xx[cut]*yy[cut], xx[cut]) / sumrule
 	CS_FSE = np.trapz(xx[cut_FSE]*yyFSE[cut_FSE], xx[cut_FSE]) / sumrule
