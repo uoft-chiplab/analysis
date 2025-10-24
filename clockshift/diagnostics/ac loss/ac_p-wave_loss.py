@@ -13,9 +13,10 @@ import sys
 current_dir = os.path.dirname(os.path.abspath(__file__))
 # Get the parent directory by going two levels up
 parent_dir = os.path.dirname(os.path.dirname(current_dir))
+root_dir = os.path.dirname(parent_dir)
 # Add the parent directory to sys.path
-if parent_dir not in sys.path:
-	sys.path.append(parent_dir)
+if root_dir not in sys.path:
+	sys.path.append(root_dir)
 
 data_path = os.path.join(parent_dir, 'clockshift\\data\\ac_loss')
 
@@ -27,18 +28,20 @@ from bootstrap_fit import bootstrap_fit, dist_stats
 import numpy as np
 import matplotlib.pyplot as plt
 
-files = ['2025-03-25_E',
-		 '2025-03-25_G',
-         '2025-03-26_B',
-         '2025-03-26_E',
-         '2025-03-26_F']
+# files = ['2025-03-25_E',
+# 		 '2025-03-25_G',
+#          '2025-03-26_B',
+#          '2025-03-26_E',
+#          '2025-03-26_F']
 
-Ts = [4e-7,
-	2e-7,
-    4e-7,
-    4e-7,
-    2e-7] # K, estimates
+# Ts = [4e-7,
+# 	2e-7,
+#     4e-7,
+#     4e-7,
+#     2e-7] # K, estimates
 
+files = ['2025-07-22_D']
+Ts = [ 2e-7]
 spins = ['c5', 'c9']
 
 t_until_midsweep = +0.020 + 2.5 + 10 + 2 + 2.5 # ms
@@ -57,15 +60,15 @@ def expdecay(x, A, tau, C):
     return A*np.exp(-x/tau) + C
 
 fig, axs = plt.subplots(len(spins), figsize = (6,6))
-xcol = 'time'
+xcol = 'hold time'
 popt_list = []
 perr_list = []
 
 for i, file in enumerate(files):
 	
-    if i <= 2: continue
+    # if i <= 2: continue
     filename = file+'_e.dat'
-    df = Data(filename, path=data_path).data
+    df = Data(filename).data
     temp = Ts[i]
 	
     for j, spin in enumerate(spins):

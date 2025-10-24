@@ -16,7 +16,7 @@ import numpy as np
 from data_class import Data
 from fit_functions import TrapFreq2, RabiFreq
 
-file_name ='2025-05-01_F_e'
+file_name ='2025-07-11_E_e'
 piezos = [30, 50, 120, 140]
 files = [file_name + '.dat']#+ "_piezo_f=" + str(piezo) + '.dat' for piezo in piezos]
 # path = "E:\Data\2024\09 September2024\06September2024\F_z1_trapfreq"
@@ -26,12 +26,13 @@ trap_freq = True
 
 if trap_freq:
 	fit_func = TrapFreq2
-	names = [xname, 'G_ctr_y']
-	guess = [4, 7, 1, 0, 83]
+	names = [xname, 'fCtr1']
+	guess = [10, 2, 2, 10, 100]
 	
 else: # Rabi freq?
 	fit_func = RabiFreq
 	names = [xname, 'fraction95']
+
 	guess = [1.1,11,0,0]
 
 for file in files:

@@ -52,7 +52,7 @@ styles = generate_plt_styles(colors, ts=0.6)
 
 ### Script options
 Talk = False
-Reevaluate = False
+Reevaluate = True
 Reevaluate_last_only = False
 Calc_CTheory_std = False
 Plot_HFT_Data = True
@@ -253,7 +253,6 @@ def dimer_transfer_sum_half(Rab, bg_fa, bg_fb):
 
 # sinc^2 dimer lineshape functions
 def sinc2(x, trf):
-	"""sinc^2 normalized to sinc^2(0) = 1"""
 	t = x*trf
 	return np.piecewise(t, [t==0, t!=0], [lambda t: 1, 
 					   lambda t: (np.sin(np.pi*t)/(np.pi*t))**2])
@@ -298,14 +297,15 @@ def bin_data(x, y, yerr, nbins, xerr=None):
 ### Summary plot lists
 results_list = []
 
-try:
-	with open(pkl_file, 'rb') as f:
-	    old_results_list = pkl.load(f)
-except (OSError, IOError):
-    old_results_list = []
+if Reevaluate == False:
+	try:
+		with open(pkl_file, 'rb') as f:
+			old_results_list = pkl.load(f, encoding='latin1')
+	except (OSError, IOError):
+		old_results_list = []
 
 if Reevaluate == True:
-	if Reevaluate_last_only == True:
+	if Reevaluate_last_only == True: # this is a stupid flag
 		old_results_list = old_results_list[:-1]
 	else:
 		old_results_list = []
@@ -1128,8 +1128,9 @@ print(f"The constant HFT systematic error band is {HFT_error_const:.2f}")
 
 # add ToTF/C dependent factors
 HFT_error_fn_C = lambda x: np.sqrt(HFT_error_const**2+e_corr_c_interp_fn_C(x)**2)
-
 HFT_error = lambda x: np.sqrt(HFT_error_const**2+e_corr_c_interp(x)**2)
+Trange = np.linspace(df_total['ToTF'].min(), df_total['ToTF'].max(), len(df_total))
+HFT_error_const_meanT = np.mean(HFT_error(Trange))
 
 # same for dimer, but no T depedent factors
 dimer_error = np.sqrt(np.sum(np.array(dimer_systematic_factors)**2))
@@ -1206,8 +1207,9 @@ if plot_options['Binned']:
 	perr_SW = np.sqrt(np.diag(pcov_SW))
 	ell_d_SW_fit = popt_SW[0] * a13kF/kF/a0 *pi
 	e_ell_d_SW_fit = perr_SW[0] * a13kF/kF/a0 *pi
-	es_ell_d_SW_fit =  np.sqrt(HFT_error_const**2 + dimer_error**2) * ell_d_SW_fit
-	
+	#es_ell_d_SW_fit =  np.sqrt(HFT_error_const**2 + dimer_error**2) * ell_d_SW_fit #T-independent 
+	es_ell_d_SW_fit = np.sqrt(HFT_error_const_meanT**2 + dimer_error**2) * ell_d_SW_fit #T-dependent with mean T
+
 	print("Slope of Spectral Weight:")
 	print("fit \ell_d = {:.0f}({:.0f})({:.0f}) a_0".format(ell_d_SW_fit, 
 												e_ell_d_SW_fit, es_ell_d_SW_fit))

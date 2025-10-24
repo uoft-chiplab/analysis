@@ -5,7 +5,7 @@
 # paths
 import os
 proj_path = os.path.dirname(os.path.realpath(__file__))
-root = os.path.dirname(proj_path)
+root = os.path.dirname(os.path.dirname(proj_path))
 data_path = os.path.join(proj_path, 'saturation_data')
 figfolder_path = os.path.join(proj_path, 'figures')
 import sys
@@ -19,6 +19,7 @@ import pickle as pkl
 
 from scipy import integrate
 from scipy.optimize import curve_fit
+from scipy.interpolate import CubicSpline
 
 from library import styles, paper_settings, colors, GammaTilde, h, BlackmanFourier2, pi
 
@@ -32,7 +33,7 @@ def Linear(x, m):
 Eb = 3980 # kHz # I guesstimated this from recent ac dimer spectra
 
 trap_depth = 200 * 1.0 # should actually be 1.5 I think.
-EF_avg = 19.2
+EF_avg = 14.2 # 19.2
 
 def xstar(B, EF):
 	return Eb/EF # hbar**2/mK/a13(B)**2 * (1-re/a13(Bfield))**(-1)
@@ -51,11 +52,14 @@ pd.set_option('display.max_columns', None)
 pd.set_option('display.width', 9999)
 
 debug = True
-Save=True
+Save=False
 # save files 
 files = [
 		 'HFT_saturation_curves.pkl', 
-		 'res_saturation_curves.pkl',
+		 #'res_saturation_curves.pkl', #this was the original but I think it got overwritten with other datasets at some point
+		 'res_saturation_curves_2024-12-05_mostly.pkl' # this should be the original one used for the paper that were 2 ms blackman
+		#'res_saturation_curves_2024-11_200usblackman.pkl' #testing out the 200 us blackman
+		#'res_saturation_curves_2024-11_200usblackman_wrongpulseareacorr.pkl' #testing out the 200 us blackman w/ perhaps the wrong pulse area correction
 		 ]
 
 loaded_data = []
@@ -117,7 +121,7 @@ fig, axes = plt.subplots(2,2, figsize=[6.8, 6])
 axs = axes.flatten()
 
 axs[0].set(xlabel=r"Detuning [$E_F$]", ylabel=r"Scaled Transfer, $\tilde\Gamma$", 
-		   xlim=[-1, 1])
+		   xlim=[-1, 2])
 axs[1].set(xlabel=r"Detuning [$E_F$]", ylabel=r"$\alpha_c/\alpha_b$", 
 		   xlim=[-2, 50], ylim=[0.0, 1.05])
 axs[2].set(xlabel=r"Detuning [$E_F$]", ylabel=r"Scaled Transfer, $\tilde\Gamma$",
@@ -179,7 +183,7 @@ yerr_ratio = np.abs(y_ratio*np.sqrt((yerr/y)**2 + (yerr_loss/y_loss)**2))
 
 sty = styles[2]
 color = colors[2]
-ax.errorbar(x, y_ratio, yerr=yerr_ratio, **sty)
+ax.errorbar(x, y_ratio, yerr=yerr_ratio, **sy)
 ax.vlines(trap_depth/EF_avg, 0, 1.05, color='k', linestyle='--') 
 handle = Line2D([0], [0], color='k', linestyle='--', marker='', label='trap depth')
 
@@ -316,8 +320,217 @@ plt.show()
 ###
 ### integrate data
 ###
+print('For the spectrum below the trap depth...')
 # select integral df below trap depth
 df_int = df.loc[df[x_name] < trap_depth/EF_avg]
+
+# reselect data
+x = np.array(df_int[x_name])
+y = np.array(df_int['ScaledTransfer'])
+yerr = np.array(df_int['e_ScaledTransfer'])
+
+y_loss = np.array(df_int['loss_ScaledTransfer'])
+yerr_loss = np.array(df_int['loss_e_ScaledTransfer'])
+
+SW = integrate.trapezoid(y, x=x)
+SW_loss = integrate.trapezoid(y_loss, x=x)
+
+limit = 200
+SW = integrate.quad(lambda d: np.interp(d, x, y), min(x), max(x), limit=limit)
+SW_loss = integrate.quad(lambda d: np.interp(d, x, y_loss), min(x), max(x), limit=limit)
+
+# MC error of integral
+num = 1000
+dist = []
+i = 0
+while i < num:
+	dist.append(integrate.trapezoid([np.random.normal(val, err) for val, err \
+				 in zip(y, yerr)], x=x))
+	i += 1
+SW_mean = np.array(dist).mean()
+SW_std = np.array(dist).std()
+
+print("Spectral weight for transfer is {:.2f}({:.0f})".format(SW_mean, SW_std*1e2))
+
+# MC error of integral
+num = 1000
+dist = []
+i = 0
+while i < num:
+	dist.append(integrate.trapezoid([np.random.normal(val, err) for val, err \
+				 in zip(y_loss, yerr_loss)], x=x))
+	i += 1
+SW_loss_mean = np.array(dist).mean()
+SW_loss_std = np.array(dist).std()
+
+print("Spectral weight for loss is {:.2f}({:.0f})".format(SW_loss_mean, SW_loss_std*1e2))
+
+
+print('For the resonant part...')
+# do the same for the resonant portion only
+#res_cutoff = EF_avg
+res_cutoffs = np.arange(10, 150, 10)
+CS_loss_list = []
+x = np.array(df[x_name])
+y = np.array(df['ScaledTransfer'])
+yerr = np.array(df['e_ScaledTransfer'])
+spline_transfer = CubicSpline(x, y)
+spline_transfer_FM = CubicSpline(x, y*x) # this is a FM integral
+
+y_loss = np.array(df['loss_ScaledTransfer'])
+yerr_loss = np.array(df['loss_e_ScaledTransfer'])
+spline_loss = CubicSpline(x, y_loss)
+spline_loss_FM = CubicSpline(x, y_loss*x) # this is a FM integral
+
+for res_cutoff in res_cutoffs:
+	
+	limit = 200
+	SW = integrate.quad(spline_transfer, min(x), res_cutoff/EF_avg, limit=limit)
+	SW_loss = integrate.quad(spline_loss, min(x), res_cutoff/EF_avg, limit=limit)
+
+	sumrule_idl = 0.5
+	sumrule_emp =  SW_loss[0]
+	sumrule_rescale = 0.4/sumrule_emp
+
+	CS = integrate.quad(spline_transfer_FM, min(x), res_cutoff/EF_avg, limit=limit)[0] / sumrule_idl * sumrule_rescale
+	CS_loss = integrate.quad(spline_loss_FM, min(x), res_cutoff/EF_avg, limit=limit)[0] / sumrule_idl * sumrule_rescale
+	CS_loss_list.append(CS_loss)
+fig, ax = plt.subplots()
+ax.plot(res_cutoffs/EF_avg, np.array(CS_loss_list), ls='-', color=colors[4])
+ax.set(xlabel = 'Detuning cutoff [EF]',
+	   ylabel = 'Clock shift' )
+fig.suptitle(f'Near res CS from Fig. 1, sumrule = {sumrule_idl:.2f} rescaled by factor of {sumrule_rescale:.1f}')
+
+
+
+# MC error of integral
+num = 1000
+dist = []
+i = 0
+while i < num:
+	dist.append(integrate.trapezoid([np.random.normal(val, err) for val, err \
+				in zip(y, yerr)], x=x))
+	i += 1
+SW_mean = np.array(dist).mean()
+SW_std = np.array(dist).std()
+
+print("Spectral weight for transfer is {:.2f}({:.0f})".format(SW_mean, SW_std*1e2))
+print("Clock shift for transfer is {:.2f}".format(CS))
+
+# MC error of integral
+num = 1000
+dist = []
+i = 0
+while i < num:
+	dist.append(integrate.trapezoid([np.random.normal(val, err) for val, err \
+				 in zip(y_loss, yerr_loss)], x=x))
+	i += 1
+SW_loss_mean = np.array(dist).mean()
+SW_loss_std = np.array(dist).std()
+
+print("Spectral weight for loss is {:.2f}({:.0f})".format(SW_loss_mean, SW_loss_std*1e2))
+print("Clock shift for loss is {:.2f})".format(CS_loss))
+
+
+print('Emulating a 10us Fourier capture: up to 100 kHz...')
+cutoff = 100 # kHz
+df_int = df.loc[df[x_name] < cutoff/EF_avg]
+
+# reselect data
+x = np.array(df_int[x_name])
+y = np.array(df_int['ScaledTransfer'])
+yerr = np.array(df_int['e_ScaledTransfer'])
+
+y_loss = np.array(df_int['loss_ScaledTransfer'])
+yerr_loss = np.array(df_int['loss_e_ScaledTransfer'])
+
+SW = integrate.trapezoid(y, x=x)
+SW_loss = integrate.trapezoid(y_loss, x=x)
+
+limit = 200
+SW = integrate.quad(lambda d: np.interp(d, x, y), min(x), max(x), limit=limit)
+SW_loss = integrate.quad(lambda d: np.interp(d, x, y_loss), min(x), max(x), limit=limit)
+
+# MC error of integral
+num = 1000
+dist = []
+i = 0
+while i < num:
+	dist.append(integrate.trapezoid([np.random.normal(val, err) for val, err \
+				 in zip(y, yerr)], x=x))
+	i += 1
+SW_mean = np.array(dist).mean()
+SW_std = np.array(dist).std()
+
+print("Spectral weight for transfer is {:.2f}({:.0f})".format(SW_mean, SW_std*1e2))
+
+# MC error of integral
+num = 1000
+dist = []
+i = 0
+while i < num:
+	dist.append(integrate.trapezoid([np.random.normal(val, err) for val, err \
+				 in zip(y_loss, yerr_loss)], x=x))
+	i += 1
+SW_loss_mean = np.array(dist).mean()
+SW_loss_std = np.array(dist).std()
+
+print("Spectral weight for loss is {:.2f}({:.0f})".format(SW_loss_mean, SW_loss_std*1e2))
+
+
+
+
+print('For the entire spectrum....')
+cutoff = 2000 # kHz
+df_int = df.loc[df[x_name] < cutoff/EF_avg]
+
+# reselect data
+x = np.array(df_int[x_name])
+y = np.array(df_int['ScaledTransfer'])
+yerr = np.array(df_int['e_ScaledTransfer'])
+
+y_loss = np.array(df_int['loss_ScaledTransfer'])
+yerr_loss = np.array(df_int['loss_e_ScaledTransfer'])
+
+SW = integrate.trapezoid(y, x=x)
+SW_loss = integrate.trapezoid(y_loss, x=x)
+
+limit = 200
+SW = integrate.quad(lambda d: np.interp(d, x, y), min(x), max(x), limit=limit)
+SW_loss = integrate.quad(lambda d: np.interp(d, x, y_loss), min(x), max(x), limit=limit)
+
+# MC error of integral
+num = 1000
+dist = []
+i = 0
+while i < num:
+	dist.append(integrate.trapezoid([np.random.normal(val, err) for val, err \
+				 in zip(y, yerr)], x=x))
+	i += 1
+SW_mean = np.array(dist).mean()
+SW_std = np.array(dist).std()
+
+print("Spectral weight for transfer is {:.2f}({:.0f})".format(SW_mean, SW_std*1e2))
+
+# MC error of integral
+num = 1000
+dist = []
+i = 0
+while i < num:
+	dist.append(integrate.trapezoid([np.random.normal(val, err) for val, err \
+				 in zip(y_loss, yerr_loss)], x=x))
+	i += 1
+SW_loss_mean = np.array(dist).mean()
+SW_loss_std = np.array(dist).std()
+
+print("Spectral weight for loss is {:.2f}({:.0f})".format(SW_loss_mean, SW_loss_std*1e2))
+
+
+
+
+print('For the HFT portion....')
+cutoff = 25 # kHz
+df_int = df.loc[df[x_name] > cutoff/EF_avg]
 
 # reselect data
 x = np.array(df_int[x_name])

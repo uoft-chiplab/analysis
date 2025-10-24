@@ -78,7 +78,7 @@ Show = True
 tintshade = 0.6
 
 # choose plot
-Plot =1
+Plot =1 
 
 # data binning
 def bin_data(x, y, yerr, nbins, xerr=None):

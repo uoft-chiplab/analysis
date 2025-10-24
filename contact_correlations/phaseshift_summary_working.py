@@ -19,9 +19,10 @@ import pickle
 import pandas as pd
 
 # summary of phase shift measurements
-summary = pd.read_excel(analysis_folder + '\\contact_correlations\\phaseshift\\phaseshift_summary.xlsx')
+#data_folder = r'\\UNOBTAINIUM\E_Carmen_Santiago\Analysis Scripts\Fast-Modulation-Contact-Correlation-Project\contact_correlations\phaseshift'
+summary = pd.read_excel('./phaseshift/phaseshift_summary.xlsx')
 summary = summary[summary['exclude']!=1]
-metadata = pd.read_excel(analysis_folder + '\\contact_correlations\\phaseshift\\phaseshift_metadata.xlsx')
+metadata = pd.read_excel('./phaseshift/phaseshift_metadata.xlsx')
 df = pd.merge(summary, metadata, how='inner', on='filename')
 df['EF_kHz'] = (df['EF_i_kHz']+df['EF_f_kHz'])/2
 df['e_EF_kHz'] = np.sqrt(df['EF_i_sem_kHz']**2 + df['EF_f_sem_kHz']**2)
@@ -91,11 +92,11 @@ ax.set(xlabel=r"Frequency, $h\nu/k_BT$",
 # time delay
 ax = axs[1]
 ax.set(xlabel=r"Frequency, $h\nu/k_BT$", 
-	   ylabel=r"Response Delay, $t_{delay}$ [us]", xscale='log')
+	   ylabel=r"Response Delay, $t_{delay}$ [us]", xscale='linear')
 # rescaled time delay
 ax=axs[2]
 ax.set(xlabel=r"Frequency, $h\nu/k_BT$",
-	   ylabel=r"Rescaled Response Delay, $t_{delay}/\tau$", xscale='log')
+	   ylabel=r"Rescaled Response Delay, $t_{delay}/\tau$", xscale='linear')
 
 for b, BVT in enumerate(BVTs):
 		BVT.time_delay_LR = contact_time_delay(BVT.phiLR, 1/BVT.nus)	

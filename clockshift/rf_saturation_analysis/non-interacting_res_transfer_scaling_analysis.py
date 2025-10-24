@@ -23,7 +23,7 @@ root = os.path.dirname(proj_path)
 
 # plot error bands for saturation curves
 fill_between = True
-save = True
+save = False
 integral_error = True
 
 pkl_file = os.path.join(data_path, "non-int_saturation_curves.pkl")

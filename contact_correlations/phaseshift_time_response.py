@@ -6,11 +6,12 @@ Created on Wed Nov  6 10:24:20 2024
 """
 
 import os
-analysis_folder = 'E:\\\\Analysis Scripts\\analysis\\'
+analysis_folder =os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 import sys
 if analysis_folder not in sys.path:
 	sys.path.append(analysis_folder)
-from library import styles, colors
+from library import styles, colors  # Ensure 'library.py' exists in 'analysis_folder'
+# If 'library.py' is in a subfolder, use: from subfolder.library import styles, colors
 from contact_correlations.UFG_analysis import BulkViscTrap
 import numpy as np
 import matplotlib.pyplot as plt
@@ -53,8 +54,7 @@ def contact_time_delay(phi, period):
 # load pickle
 if load == True:
 	with open(pickle_file, 'rb') as f:
-	    BVTs = pickle.load(f)
-	
+		BVTs = pickle.load(f)
 	analysis = False
 		
 else: 
@@ -81,7 +81,7 @@ for i in range(len(ToTFs)):
 	BVTs.append(BVT)
 	
 with open(pickle_file, 'wb') as f:
-    pickle.dump(BVTs, f)
+	pickle.dump(BVTs, f)
 
 
 # plot phase shift and time delay of contact response
@@ -133,10 +133,10 @@ for b, BVT in enumerate(BVTs):
 
 			
 			with open(pickle_file, 'wb') as f:
-			    pickle.dump(BVTs, f)
+				pickle.dump(BVTs, f)
 		else:
 			with open(pickle_file, 'rb') as f:
-			    BVTs = pickle.load(f)
+				BVTs = pickle.load(f)
 			
 		label = r"T={:.0f} kHz".format(BVT.T)
 		label2 = f'ToTF={BVT.ToTF}, EF={(BVT.T/BVT.ToTF)/10e2:.0f} kHz'

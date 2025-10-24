@@ -51,4 +51,3 @@ def Vpp_from_VVAfreq(VVA, freq):
 	''' Returns ... '''
 	Vpp = calInterpVVA(VVA)*calInterpFreq(freq)
 	return Vpp
-

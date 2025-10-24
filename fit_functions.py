@@ -248,6 +248,26 @@ def FixedSinc2(data):
 		return A*(np.sinc((x-x0) / sigma)**2) + C
 	return fixedsinc2, guess, param_names
 
+def FixedSinc2_bg(data):
+	"""
+	Returns:   A*np.sinc((x-x0) / sigma) + C
+	"""
+	x_ofmin = data[np.abs(data[:,1]).argmin(),0]
+	x_ofmax = data[np.abs(data[:,1]).argmax(),0]
+	max_x = data[:,0].max()
+	min_x = data[:,0].min()
+	mean_y = data[:,1].mean()
+	max_y = data[:,1].max()
+	
+	param_names = ["A", "x0", "sigma"]
+	guess = [max_y-mean_y, x_ofmax, mean_y]
+	
+	def fixedsinc2(x, A, x0, sigma):
+		C= 0	
+		return A*(np.sinc((x-x0) / sigma)**2) + C
+	return fixedsinc2, guess, param_names
+
+
 
 def MinSinc2(data):
 	"""
@@ -477,4 +497,28 @@ def FixedSin2kHz(data):
 		return A*np.sin(omega*t - p) + C
 	
 	return FixedSin2kHz, guess, param_names
-# %%
+
+def ScatteringRate(data, s0=0.1):
+	"""
+	Returns the scattering rate in MHz for a given detuning in MHz
+	"""
+	param_names =  ['Atom Number','FMpeak']
+	guess = [data[:,1].max(), data[:,0].mean()]
+	Gamma = 6.035  # MHz, natural linewidth
+	# FM is in MHz/2 since it's double pass AOM
+	def scatteringrate(FM, N_0, FMpeak):
+		return N_0 * (1/ (1 + s0 + (2*(2*(FMpeak-FM))/Gamma)**2))
+	
+	return scatteringrate, guess, param_names
+
+def ImageLightSaturation(data):
+	"""
+	Returns a functions to fit the image light saturation curve.
+	"""
+	param_names =  ['OD_0', 'ref_count_scale']
+	guess = [data[:,1].max(), data[:,0].mean()]
+	def image_light_saturation(ref_count, OD_0, ref_count_scale):
+		return OD_0 * (1/ (1 +(ref_count/ref_count_scale)))
+	
+	return image_light_saturation, guess, param_names
+
