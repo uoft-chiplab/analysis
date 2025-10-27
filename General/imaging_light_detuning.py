@@ -21,15 +21,15 @@ import numpy as np
 plt.rcParams.update({"figure.figsize": [5,3.5]})
 
 FM_val = 123
-file = "2025-10-10_D_e.dat"
+file = "2025-10-20_F_e.dat"
 
-avg_counts = 6000
+avg_counts = 400
 s0 = 0.123 * avg_counts/1000
 
 fit_func = partial(ScatteringRate, s0=s0)
 
 names = ['K FM', 'LiNfit']
-guess = [80000, 123]
+guess = [40000, 123]
 scan = names[0]
 
 print("--------------------------")

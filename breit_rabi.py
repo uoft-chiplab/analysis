@@ -1,4 +1,5 @@
-from .constants import ahf, gI, gJ, mu_B, h, I
+
+from constants import ahf, gI, gJ, mu_B, h, I
 import numpy as np
 
 

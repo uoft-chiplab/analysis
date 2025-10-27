@@ -219,6 +219,8 @@ if Plot == 1:
 	# HFT spectrum for ax1
 	file = 'HFT_2MHz_spectra.csv'
 	data = pd.read_csv(os.path.join(data_path, file))
+	data = data.iloc[2:] # filtering out some of the newer datasets that got put in somehow
+	data=data.reset_index()
 	x_name = 'detuning'
 	y_name = 'loss_ScaledTransfer'
 	yerr_name = 'loss_e_ScaledTransfer'
@@ -275,6 +277,7 @@ if Plot == 1:
 	axi.set(
 		xlim=[-0.011, 0.011],
 		ylim=[0, 0.35],
+		#ylim = [0, 0.6]
 	)
 	axi.tick_params(labelsize=6)
 	axi.set_xticks([-0.01,0,0.01])
