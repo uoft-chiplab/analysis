@@ -19,4 +19,4 @@ def Ehf(B, F, mF):
 def FreqMHz(B, F1, mF1, F2, mF2):
     """Computes the transition frequency in MHz between two hyperfine states
     (F1, mF1) and (F2, mF2) at a given magnetic field B (in Gauss)."""
-    return 1e-6/h * (Ehf(B, F1, mF1) - Ehf(B, F2, mF2))
+    return 1e-6/h * (Ehf(B, F2, mF2) - Ehf(B, F1, mF1))
