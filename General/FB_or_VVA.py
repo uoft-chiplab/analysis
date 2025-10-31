@@ -20,9 +20,9 @@ from scipy.stats import sem
 
 plt.rcParams.update({"figure.figsize": [5,3.5]})
 
-scan ='VVA'
-FB_val = 7
-file = "2025-10-20_I_e.dat"
+scan ='FB'
+FB_val = 3.25
+file = "2025-10-23_P_e.dat"
 
 
 if (scan == 'FB') :
