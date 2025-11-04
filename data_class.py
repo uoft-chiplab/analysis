@@ -63,6 +63,67 @@ class Data:
 		if average_by:
 			self.group_by_mean(average_by)
 
+	### Helper functions for calculating transfer
+	def GammaTilde(transfer, EF, OmegaR, trf):
+		'''
+		Calculate GammaTilde using various properties and raw transfer fraction
+		transfer: raw transfer fraction ("alpha")
+		EF: Fermi energy in Hz
+		OmegaR: Rabi frequency in Hz
+		trf: time duration of pulse in seconds
+		Return type is not asserted; will usually be numpy array assuming inputs were arrays or pandas series.
+		'''
+		return EF/(hbar * pi * OmegaR**2 * trf) * transfer
+	
+	def line(x, m, b):
+		return m*x+b
+
+	def find_transfer(df, columns=["cyc", "detuning", "VVA", "c5", "c9"], dimer_or_HFT="HFT",popts_c5bg=np.array([])):
+		"""
+		given df output from matlab containing atom counts, returns new df containing detuning, 
+		5 and 9 counts, and transfer/loss. Accounts for bg (VVA=0) in calculation.
+		df: pandas dataframe
+		columns: desired columns from input to keep in output. Uses certain columns in calculation, assumes their names by default.
+		dimer_or_HFT: choose "dimer" or "HFT" for transfer calculation
+		popts_c5bg: used if bgc5 is being tracked across data. np.array
+		returns: pandas dataframe
+
+		TODO: deal with bg in c9
+		NOTE: extra systematic corrections like saturation (lin. resp) I think are best dealt with outside this function for simplicity.
+		"""
+		assert (dimer_or_HFT == "dimer" or dimer_or_HFT == "HFT") 
+		run_data = df[columns]
+		# calculates bg and then transfer
+		if popts_c5bg.any():
+			run_data['c5bg'] = self.line(run_data['cyc'], *popts_c5bg)
+			run_data['ec5bg'] = 0 # TODO
+			if dimer_or_HFT == "dimer":
+				run_data["c5transfer"] = (1-run_data["c5"]/run_data["c5bg"])/2
+			elif dimer_or_HFT == "HFT":
+				run_data["c5transfer"] = (run_data["c5"]-run_data["c5bg"])/ \
+					( (run_data["c5"]-run_data["c5bg"]) + run_data["c9"])
+			data = run_data[run_data["VVA"]!=0].copy()
+
+		else:
+			bg = df[df["VVA"] == 0]
+			if (len(bg.c5) > 1):
+				c5bg, c9bg = np.mean(bg[["c5", "c9"]], axis=0)
+				c5bg_err = np.std(bg.c5)/len(bg.c5)
+			else:
+				c5bg, c9bg = bg[['c5', 'c9']].values[0]
+				c5bg_err = 0
+			data = run_data[df["VVA"] != 0].copy()
+			if dimer_or_HFT == "dimer":
+				data.loc[data.index, "c5transfer"] = (1-data["c5"]/c5bg)/2 # factor of 2 assumes atom-molecule loss
+			elif dimer_or_HFT == "HFT":
+				data.loc[data.index, "c5transfer"] = (run_data["c5"]-c5bg)/ \
+					( (run_data["c5"]-c5bg) + run_data["c9"])
+			data.loc[data.index, "c5bg"] = c5bg
+			data.loc[data.index, "ec5bg"] = c5bg_err
+
+		return data
+
+
 	# exclude list of points
 	def exclude(self, exclude_list):
 		self.data = self.data.drop(index=exclude_list)
