@@ -78,7 +78,7 @@ class Data:
 	def line(x, m, b):
 		return m*x+b
 
-	def find_transfer(df, columns=["cyc", "detuning", "VVA", "c5", "c9"], dimer_or_HFT="HFT",popts_c5bg=np.array([])):
+	def find_transfer(self, columns=["cyc", "detuning", "VVA", "c5", "c9"], dimer_or_HFT="HFT",popts_c5bg=np.array([])):
 		"""
 		given df output from matlab containing atom counts, returns new df containing detuning, 
 		5 and 9 counts, and transfer/loss. Accounts for bg (VVA=0) in calculation.
@@ -92,7 +92,7 @@ class Data:
 		NOTE: extra systematic corrections like saturation (lin. resp) I think are best dealt with outside this function for simplicity.
 		"""
 		assert (dimer_or_HFT == "dimer" or dimer_or_HFT == "HFT") 
-		run_data = df[columns]
+		run_data = self.data[columns]
 		# calculates bg and then transfer
 		if popts_c5bg.any():
 			run_data['c5bg'] = self.line(run_data['cyc'], *popts_c5bg)
@@ -105,14 +105,14 @@ class Data:
 			data = run_data[run_data["VVA"]!=0].copy()
 
 		else:
-			bg = df[df["VVA"] == 0]
+			bg = self.data[self.data["VVA"] == 0]
 			if (len(bg.c5) > 1):
 				c5bg, c9bg = np.mean(bg[["c5", "c9"]], axis=0)
 				c5bg_err = np.std(bg.c5)/len(bg.c5)
 			else:
 				c5bg, c9bg = bg[['c5', 'c9']].values[0]
 				c5bg_err = 0
-			data = run_data[df["VVA"] != 0].copy()
+			data = run_data[self.data["VVA"] != 0].copy()
 			if dimer_or_HFT == "dimer":
 				data.loc[data.index, "c5transfer"] = (1-data["c5"]/c5bg)/2 # factor of 2 assumes atom-molecule loss
 			elif dimer_or_HFT == "HFT":
