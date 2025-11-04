@@ -64,48 +64,73 @@ class Data:
 		if average_by:
 			self.group_by_mean(average_by)
 
-	def analysis(self, EF=12, VVA=0, trf=10, nobg=False, track_bg=False):
+	def analysis(self, EF=12000, trf=1e-5, res=47.2227,bgVVA=0,  nobg=False, track_bg=False, rabical="2025-10-21", pulse_type="blackman"):
 		'''
 		Use Data('filename').analysis().data to run this. This fcn is designed to output a dataframe
 		that has columns that are needed for any analysis (e.g. transfer, c5bg, etc)
+		Requirements: expects self.data to have columns ['cyc', 'freq', 'VVA', 'c5','c9']. freq usually in MHz
+		Inputs:
+		EF: Hz or kHz we're still debating
+		bgVVA: <=VVA cutoff for the bg point(s)
+		nobg: Boolean (sets bg to zero)
+		track_bg: Boolean (fits a line to bg over cyc)
+		rabical: date string for desired Rabi cal; pulls from analysis/rfcalibrations/RabiCalibrations.csv
+					By default we should pull the most recent one (2025-10-21 atm)
+
+		TODO: ACCOUNT FOR SATURATION (LIN RESP), FINAL STATE CORRECTIONS
 		'''
 		###putting EF, trf into the data frame
-		if EF == 12:
-			print(f'❗❗Default value of EF = 12, trf = 10 used in analysis❗❗')
+		if EF == 12000 and trf == 1e-6:
+			print(f'❗❗Default value of EF = {EF}, trf = {trf} used in analysis❗❗')
 		self.data['EF'] = EF
 		self.data['trf'] = trf
+		self.data['detuning'] = self.data['freq'] - res # MHz
+		self.data['scaleddetuning'] = self.data['detuning'] / (self.data['EF']/1e6) # dimless
+		if 'ff' not in self.data.columns:
+			print(f'❗❗Missing fudgefactor (ff) column in dataframe. Using default of ff=1.❗❗')
+			self.data['ff']=1
+		self.data['c9'] = self.data['c9'] * self.data['ff']
 
-		###grabbing OmegaR 
-		RabiperVpp47 = 13.05 / 0.500 # kHz/Vpp on scope 2025-10-21
-		e_RabiperVpp47 = 0.22
-		phaseO_OmegaR = lambda VVA, freq: 2*np.pi*RabiperVpp47 * Vpp_from_VVAfreq(VVA, freq)
-		self.data['OmegaR'] = phaseO_OmegaR(VVA, self.data['freq'])
-
-		###find the background by either tracking the bg pts across the scan and fitting it or 
-		###using a VVA value default to 0
-		if track_bg:
-			# fit to line, calc it, append to df
-			a=1
-		else:
-			self.data["c5bg"] = self.data[self.data['VVA'] == VVA]['c5'].mean()
-			self.data['c9bg'] =  self.data[self.data['VVA'] == VVA]['c9'].mean()
-			self.data["c5bg_sem"] = 1
-			self.data["c5bg_std"] = 1
-			self.data["c9bg_sem"] = 1
-			self.data["c9bg_std"] = 1
-		###if using a VVA value to find the bg then removing those points from the rest of the dataset
-			self.data = self.data[self.data['VVA'] != VVA]
+		###grabbing OmegaR based on desired Rabical
+		rabipath = os.path.join(os.getcwd(), 'rfcalibrations/RabiCalibrations.csv')
+		rabi_df = pd.read_csv(rabipath)
+		rabi_df = rabi_df[rabi_df['date'] == rabical]
+		RabiPerVpp = rabi_df['kHz_per_Vpp'].values[0]
+		e_RabiPerVpp = rabi_df['e_kHz_per_Vpp'].values[0]
+		phaseO_OmegaR = lambda VVA, freq: 2*np.pi*RabiPerVpp * Vpp_from_VVAfreq(VVA, freq)
+		# note that pulse area correction also depends on pulse length; sqrt(0.31) if long and (0.42) if short. See:.....
+		pulse_area_corr = np.sqrt(0.31) if pulse_type == "blackman" else 1 
+		self.data['OmegaR'] = phaseO_OmegaR(self.data['VVA'], self.data['freq']) *pulse_area_corr * 1000 # Hz
+		self.data['OmegaR2'] = self.data['OmegaR']**2
 		###option to have no background at all 
 		if nobg:
 			self.data['c5bg'] = 0
 			self.data['c9bg'] = 0
+		else:
+			###find the background by either tracking the bg pts across the scan and fitting it or 
+			###using a VVA value default to 0
+			if track_bg:
+				# fit to line, calc it, append to df
+				a=1
+			else:
+				self.data["c5bg"] = self.data[self.data['VVA'] <= bgVVA]['c5'].mean()
+				self.data['c9bg'] =  self.data[self.data['VVA'] <= bgVVA]['c9'].mean()
+				self.data["c5bg_sem"] = 1
+				self.data["c5bg_std"] = 1
+				self.data["c9bg_sem"] = 1
+				self.data["c9bg_std"] = 1
+			###if using a VVA value to find the bg then removing those points from the rest of the dataset
+				self.data = self.data[self.data['VVA'] > bgVVA]
+
 		###finding the transfer 
-		self.data['dimertransfer'] = (1 - self.data['c5']/self.data['c5bg'])/2
-		self.data['HFTtransfer'] = (self.data['c5'] - self.data['c5bg'])/(self.data['c5'] - self.data['c5bg'] + self.data['c9'])
-		self.data['losstranfser'] = np.ones(len(self.data['c9']))-self.data['c9']/self.data['c9bg']
+		self.data['alpha_dimer'] = (1 - self.data['c5']/self.data['c5bg'])/2
+		self.data['alpha_HFT'] = (self.data['c5'] - self.data['c5bg'])/(self.data['c5'] - self.data['c5bg'] + self.data['c9'])
+		self.data['loss'] = np.ones(len(self.data['c9']))-self.data['c9']/self.data['c9bg']
 		###finding the scaled tranfser 
-		self.data['scaledtransfer'] = self.data['EF']/(hbar * np.pi * self.data['OmegaR']**2 * self.data['trf']) * self.data['HFTtransfer']
-		self.data['scaledtransfer_dimer'] = self.data['EF']/(hbar * np.pi * self.data['OmegaR']**2 * self.data['trf']) * self.data['dimertransfer']
+		self.data['scaledtransfer_HFT'] = h*self.data['EF']/(hbar * np.pi * self.data['OmegaR2'] * self.data['trf']) * self.data['alpha_HFT']
+		self.data['scaledtransfer_dimer'] = h*self.data['EF']/(hbar * np.pi * self.data['OmegaR2'] * self.data['trf']) * self.data['alpha_dimer']
+		### contact from scaled transfer
+		self.data['contact_HFT'] = 2*np.sqrt(2)*np.pi**2*self.data['scaledtransfer_HFT'] * self.data['scaleddetuning']**(3/2) # Ctilde; dimless
 
 		return self
 		
