@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tabulate import tabulate
 from matplotlib.ticker import MaxNLocator
+from rfcalibrations.Vpp_from_VVAfreq import Vpp_from_VVAfreq
 
 #to use fit example:
 	#Data("filename").fit(fit_func=One you want, names=['x','y'])
@@ -39,7 +40,7 @@ drive = '\\\\UNOBTAINIUM\\E_Carmen_Santiago'
 plt.rcParams.update(plt_settings)
 
 class Data:
-	def __init__(self, filename, path=None, column_names=None, 
+	def __init__(self, filename, path=None, analysis=None, column_names=None, 
 			  exclude_list=None, average_by=None, metadata=None,
 			  exclude_range=None, exclude_range_x=None):
 		self.filename = filename
@@ -63,67 +64,51 @@ class Data:
 		if average_by:
 			self.group_by_mean(average_by)
 
-	### Helper functions for calculating transfer
-	def GammaTilde(transfer, EF, OmegaR, trf):
+	def analysis(self, EF=12, VVA=0, trf=10, nobg=False, track_bg=False):
 		'''
-		Calculate GammaTilde using various properties and raw transfer fraction
-		transfer: raw transfer fraction ("alpha")
-		EF: Fermi energy in Hz
-		OmegaR: Rabi frequency in Hz
-		trf: time duration of pulse in seconds
-		Return type is not asserted; will usually be numpy array assuming inputs were arrays or pandas series.
+		Use Data('filename').analysis().data to run this. This fcn is designed to output a dataframe
+		that has columns that are needed for any analysis (e.g. transfer, c5bg, etc)
 		'''
-		return EF/(hbar * pi * OmegaR**2 * trf) * transfer
-	
-	def line(x, m, b):
-		return m*x+b
+		###putting EF, trf into the data frame
+		if EF == 12:
+			print(f'❗❗Default value of EF = 12, trf = 10 used in analysis❗❗')
+		self.data['EF'] = EF
+		self.data['trf'] = trf
 
-	def find_transfer(self, columns=["cyc", "detuning", "VVA", "c5", "c9"], dimer_or_HFT="HFT",popts_c5bg=np.array([])):
-		"""
-		given df output from matlab containing atom counts, returns new df containing detuning, 
-		5 and 9 counts, and transfer/loss. Accounts for bg (VVA=0) in calculation.
-		df: pandas dataframe
-		columns: desired columns from input to keep in output. Uses certain columns in calculation, assumes their names by default.
-		dimer_or_HFT: choose "dimer" or "HFT" for transfer calculation
-		popts_c5bg: used if bgc5 is being tracked across data. np.array
-		returns: pandas dataframe
+		###grabbing OmegaR 
+		RabiperVpp47 = 13.05 / 0.500 # kHz/Vpp on scope 2025-10-21
+		e_RabiperVpp47 = 0.22
+		phaseO_OmegaR = lambda VVA, freq: 2*np.pi*RabiperVpp47 * Vpp_from_VVAfreq(VVA, freq)
+		self.data['OmegaR'] = phaseO_OmegaR(VVA, self.data['freq'])
 
-		TODO: deal with bg in c9
-		NOTE: extra systematic corrections like saturation (lin. resp) I think are best dealt with outside this function for simplicity.
-		"""
-		assert (dimer_or_HFT == "dimer" or dimer_or_HFT == "HFT") 
-		run_data = self.data[columns]
-		# calculates bg and then transfer
-		if popts_c5bg.any():
-			run_data['c5bg'] = self.line(run_data['cyc'], *popts_c5bg)
-			run_data['ec5bg'] = 0 # TODO
-			if dimer_or_HFT == "dimer":
-				run_data["c5transfer"] = (1-run_data["c5"]/run_data["c5bg"])/2
-			elif dimer_or_HFT == "HFT":
-				run_data["c5transfer"] = (run_data["c5"]-run_data["c5bg"])/ \
-					( (run_data["c5"]-run_data["c5bg"]) + run_data["c9"])
-			data = run_data[run_data["VVA"]!=0].copy()
-
+		###find the background by either tracking the bg pts across the scan and fitting it or 
+		###using a VVA value default to 0
+		if track_bg:
+			# fit to line, calc it, append to df
+			a=1
 		else:
-			bg = self.data[self.data["VVA"] == 0]
-			if (len(bg.c5) > 1):
-				c5bg, c9bg = np.mean(bg[["c5", "c9"]], axis=0)
-				c5bg_err = np.std(bg.c5)/len(bg.c5)
-			else:
-				c5bg, c9bg = bg[['c5', 'c9']].values[0]
-				c5bg_err = 0
-			data = run_data[self.data["VVA"] != 0].copy()
-			if dimer_or_HFT == "dimer":
-				data.loc[data.index, "c5transfer"] = (1-data["c5"]/c5bg)/2 # factor of 2 assumes atom-molecule loss
-			elif dimer_or_HFT == "HFT":
-				data.loc[data.index, "c5transfer"] = (run_data["c5"]-c5bg)/ \
-					( (run_data["c5"]-c5bg) + run_data["c9"])
-			data.loc[data.index, "c5bg"] = c5bg
-			data.loc[data.index, "ec5bg"] = c5bg_err
+			self.data["c5bg"] = self.data[self.data['VVA'] == VVA]['c5'].mean()
+			self.data['c9bg'] =  self.data[self.data['VVA'] == VVA]['c9'].mean()
+			self.data["c5bg_sem"] = 1
+			self.data["c5bg_std"] = 1
+			self.data["c9bg_sem"] = 1
+			self.data["c9bg_std"] = 1
+		###if using a VVA value to find the bg then removing those points from the rest of the dataset
+			self.data = self.data[self.data['VVA'] != VVA]
+		###option to have no background at all 
+		if nobg:
+			self.data['c5bg'] = 0
+			self.data['c9bg'] = 0
+		###finding the transfer 
+		self.data['dimertransfer'] = (1 - self.data['c5']/self.data['c5bg'])/2
+		self.data['HFTtransfer'] = (self.data['c5'] - self.data['c5bg'])/(self.data['c5'] - self.data['c5bg'] + self.data['c9'])
+		self.data['losstranfser'] = np.ones(len(self.data['c9']))-self.data['c9']/self.data['c9bg']
+		###finding the scaled tranfser 
+		self.data['scaledtransfer'] = self.data['EF']/(hbar * np.pi * self.data['OmegaR']**2 * self.data['trf']) * self.data['HFTtransfer']
+		self.data['scaledtransfer_dimer'] = self.data['EF']/(hbar * np.pi * self.data['OmegaR']**2 * self.data['trf']) * self.data['dimertransfer']
 
-		return data
-
-
+		return self
+		
 	# exclude list of points
 	def exclude(self, exclude_list):
 		self.data = self.data.drop(index=exclude_list)

@@ -22,7 +22,7 @@ plt.rcParams.update({"figure.figsize": [5,3.5]})
 
 scan ='FB'
 FB_val = 3.25
-file = "2025-10-23_P_e.dat"
+file = "2025-11-04_B_e.dat"
 
 
 if (scan == 'FB') :
