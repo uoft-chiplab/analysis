@@ -43,6 +43,7 @@ root_project = os.path.dirname(this_file)
 root_analysis = os.path.dirname(root_project)
 root = os.path.dirname(root_analysis)
 data_folder = os.path.join(root, 'Data')
+rf_cal_folder = os.path.join(root_project, 'rfcalibrations')
 
 plt.rcParams.update(plt_settings)
 
@@ -85,7 +86,12 @@ class Data:
 					By default we should pull the most recent one (2025-10-21 atm)
 		pulse_type : string "square" or "blackman" for pulse area correction
 
-		TODO: ACCOUNT FOR SATURATION (LIN RESP), FINAL STATE CORRECTIONS
+		returns: self.data dataframe with appended columns \
+			['ff', 'EF' , 'trf', 'detuning', 'scaleddetuning', 'OmegaR', 'OmegaR2', \
+				'c5bg','c9bg', ()'alpha', 'scaledtransfer', 'contact') for both HFT and dimer, \
+					uncertainties wherever applicable]
+		TODO: ACCOUNT FOR SATURATION (LIN RESP), FINAL STATE CORRECTIONS, UNCERTAINTIES, BG TRACKING
+
 		'''
 		### assert dataframe to have the necessary columns
 		required_cols = {'cyc', 'freq', 'VVA', 'c5','c9'}
@@ -108,7 +114,7 @@ class Data:
 		self.data['c9'] = self.data['c9'] * self.data['ff']
 
 		###grabbing OmegaR based on desired Rabical
-		rabipath = os.path.join(os.getcwd(), 'rfcalibrations/RabiCalibrations.csv')
+		rabipath = os.path.join(rf_cal_folder, 'RabiCalibrations.csv')
 		rabi_df = pd.read_csv(rabipath)
 		rabi_df = rabi_df[rabi_df['date'] == rabical]
 		RabiPerVpp = rabi_df['kHz_per_Vpp'].values[0]
