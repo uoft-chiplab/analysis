@@ -36,7 +36,14 @@ from rfcalibrations.Vpp_from_VVAfreq import Vpp_from_VVAfreq
 
 # file = "2024-09-05_X_e.dat"
 # guess = [8, 7, 2*3.14*0.4, 0, 95]
-drive = '\\\\UNOBTAINIUM\\E_Carmen_Santiago' 
+# drive = '\\\\UNOBTAINIUM\\E_Carmen_Santiago' 
+# root of path based on this file's parent directory
+this_file = os.path.abspath(__file__)
+root_project = os.path.dirname(this_file)  
+root_analysis = os.path.dirname(root_project)
+root = os.path.dirname(root_analysis)
+data_folder = os.path.join(root, 'Data')
+
 plt.rcParams.update(plt_settings)
 
 class Data:
@@ -50,8 +57,8 @@ class Data:
 		if path:
 			self.file = os.path.join(path, filename) # making manual path for the filename
 		else:
-			print(drive + '\\Data\\' + filename[:4] + '\\*\\*\\*\\' + filename)
-			self.file = glob(drive + '\\Data\\' + filename[:4] + '\\*\\*\\*\\' + filename)[0] # EXTREMELY greedy ; for Fermium
+			print(data_folder + '\\' + filename[:4] + '\\*\\*\\*\\' + filename)
+			self.file = glob(data_folder + '\\' + filename[:4] + '\\*\\*\\*\\' + filename)[0] # EXTREMELY greedy ; for Fermium
 			
 		self.data = pd.read_table(self.file, delimiter=',') # making dataframe of chosen data
 		
@@ -64,31 +71,40 @@ class Data:
 		if average_by:
 			self.group_by_mean(average_by)
 
-	def analysis(self, EF=12000, trf=1e-5, res=47.2227,bgVVA=0,  nobg=False, track_bg=False, rabical="2025-10-21", pulse_type="blackman"):
+	def analysis(self, res=47.2227,bgVVA=0,  nobg=False, track_bg=False, rabical="2025-10-21", pulse_type="blackman"):
 		'''
 		Use Data('filename').analysis().data to run this. This fcn is designed to output a dataframe
 		that has columns that are needed for any analysis (e.g. transfer, c5bg, etc)
-		Requirements: expects self.data to have columns ['cyc', 'freq', 'VVA', 'c5','c9']. freq usually in MHz
+		Requirements: expects self.data to have columns ['cyc', 'freq', 'VVA', 'c5','c9']. units are [#, MHz, V, #, #]
 		Inputs:
-		EF: Hz or kHz we're still debating
+		res: resonance frequency of target transition in MHz
 		bgVVA: <=VVA cutoff for the bg point(s)
 		nobg: Boolean (sets bg to zero)
 		track_bg: Boolean (fits a line to bg over cyc)
 		rabical: date string for desired Rabi cal; pulls from analysis/rfcalibrations/RabiCalibrations.csv
 					By default we should pull the most recent one (2025-10-21 atm)
+		pulse_type : string "square" or "blackman" for pulse area correction
 
 		TODO: ACCOUNT FOR SATURATION (LIN RESP), FINAL STATE CORRECTIONS
 		'''
-		###putting EF, trf into the data frame
-		if EF == 12000 and trf == 1e-6:
-			print(f'❗❗Default value of EF = {EF}, trf = {trf} used in analysis❗❗')
-		self.data['EF'] = EF
-		self.data['trf'] = trf
-		self.data['detuning'] = self.data['freq'] - res # MHz
-		self.data['scaleddetuning'] = self.data['detuning'] / (self.data['EF']/1e6) # dimless
+		### assert dataframe to have the necessary columns
+		required_cols = {'cyc', 'freq', 'VVA', 'c5','c9'}
+		assert required_cols.issubset(self.data.columns),\
+			f"Dataframe is missing columns: {required_cols - set(self.data.columns)}"
+		### check for various parameters, fill if needed.
 		if 'ff' not in self.data.columns:
 			print(f'❗❗Missing fudgefactor (ff) column in dataframe. Using default of ff=1.❗❗')
 			self.data['ff']=1
+		if 'EF' not in self.data.columns:
+			defEF = 12000 # Hz # UNITS TO USE ARE BEING DEBATED
+			print(f'❗❗Missing EF column in dataframe. Using default of EF={defEF}.❗❗')
+			self.data['EF'] = defEF 
+		if 'trf' not in self.data.columns:
+			deftrf = 0.000010 # s # UNITS TO USE ARE BEING DEBATED
+			print(f'❗❗Missing trf column in dataframe. Using default of trf={deftrf}.❗❗')
+			self.data['trf'] = deftrf 
+		self.data['detuning'] = self.data['freq'] - res # MHz
+		self.data['scaleddetuning'] = self.data['detuning'] / (self.data['EF']/1e6) # dimless
 		self.data['c9'] = self.data['c9'] * self.data['ff']
 
 		###grabbing OmegaR based on desired Rabical
@@ -102,7 +118,8 @@ class Data:
 		pulse_area_corr = np.sqrt(0.31) if pulse_type == "blackman" else 1 
 		self.data['OmegaR'] = phaseO_OmegaR(self.data['VVA'], self.data['freq']) *pulse_area_corr * 1000 # Hz
 		self.data['OmegaR2'] = self.data['OmegaR']**2
-		###option to have no background at all 
+
+		### Calculate background
 		if nobg:
 			self.data['c5bg'] = 0
 			self.data['c9bg'] = 0
@@ -122,16 +139,16 @@ class Data:
 			###if using a VVA value to find the bg then removing those points from the rest of the dataset
 				self.data = self.data[self.data['VVA'] > bgVVA]
 
-		###finding the transfer 
+		###finding the fractional transfer ("alpha")
 		self.data['alpha_dimer'] = (1 - self.data['c5']/self.data['c5bg'])/2
 		self.data['alpha_HFT'] = (self.data['c5'] - self.data['c5bg'])/(self.data['c5'] - self.data['c5bg'] + self.data['c9'])
 		self.data['loss'] = np.ones(len(self.data['c9']))-self.data['c9']/self.data['c9bg']
-		###finding the scaled tranfser 
+		###finding the scaled tranfser (dimless)
 		self.data['scaledtransfer_HFT'] = h*self.data['EF']/(hbar * np.pi * self.data['OmegaR2'] * self.data['trf']) * self.data['alpha_HFT']
 		self.data['scaledtransfer_dimer'] = h*self.data['EF']/(hbar * np.pi * self.data['OmegaR2'] * self.data['trf']) * self.data['alpha_dimer']
-		### contact from scaled transfer
-		self.data['contact_HFT'] = 2*np.sqrt(2)*np.pi**2*self.data['scaledtransfer_HFT'] * self.data['scaleddetuning']**(3/2) # Ctilde; dimless
-
+		### contact from scaled transfer and scaled detuning (Ctilde; dimless)
+		self.data['contact_HFT'] = 2*np.sqrt(2)*np.pi**2*self.data['scaledtransfer_HFT'] * self.data['scaleddetuning']**(3/2) 
+	
 		return self
 		
 	# exclude list of points
