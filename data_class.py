@@ -122,7 +122,7 @@ class Data:
 		phaseO_OmegaR = lambda VVA, freq: 2*np.pi*RabiPerVpp * Vpp_from_VVAfreq(VVA, freq)
 		# note that pulse area correction also depends on pulse length; sqrt(0.31) if long and (0.42) if short. See:.....
 		pulse_area_corr = np.sqrt(0.31) if pulse_type == "blackman" else 1 
-		self.data['OmegaR'] = phaseO_OmegaR(self.data['VVA'], self.data['freq']) *pulse_area_corr * 1000 # Hz
+		self.data['OmegaR'] = phaseO_OmegaR(self.data['VVA'], self.data['freq']) *pulse_area_corr * 1000 # 2 pi Hz
 		self.data['OmegaR2'] = self.data['OmegaR']**2
 
 		### Calculate background
@@ -138,10 +138,10 @@ class Data:
 			else:
 				self.data["c5bg"] = self.data[self.data['VVA'] <= bgVVA]['c5'].mean()
 				self.data['c9bg'] =  self.data[self.data['VVA'] <= bgVVA]['c9'].mean()
-				self.data["c5bg_sem"] = 1
-				self.data["c5bg_std"] = 1
-				self.data["c9bg_sem"] = 1
-				self.data["c9bg_std"] = 1
+				self.data["c5bg_sem"] = self.data[self.data['VVA'] <= bgVVA]['c5'].sem()
+				self.data["c5bg_std"] = self.data[self.data['VVA'] <= bgVVA]['c5'].std()
+				self.data["c9bg_sem"] = self.data[self.data['VVA'] <= bgVVA]['c9'].sem()
+				self.data["c9bg_std"] = self.data[self.data['VVA'] <= bgVVA]['c9'].std()
 			###if using a VVA value to find the bg then removing those points from the rest of the dataset
 				self.data = self.data[self.data['VVA'] > bgVVA]
 
