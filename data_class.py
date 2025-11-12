@@ -72,6 +72,20 @@ class Data:
 		if average_by:
 			self.group_by_mean(average_by)
 
+	def find_column(self, pattern):
+		matches = self.data.columns[self.data.columns.str.contains(pattern, case=False)]
+		if len(matches)==0:
+			raise ValueError(f"No columns found matching pattern: {pattern}")
+		elif len(matches) == 1:
+			print(f"Found column: {matches[0]}")
+			return matches[0]
+		else:
+			print(f"Multiple columns found matching pattern: {matches.tolist()}")
+			for i, col in enumerate(matches):
+				print(f"{i}: {col}")
+			choice = int(input("Enter the number of the column to use:"))
+			return matches[choice]
+		
 	def analysis(self, res=47.2227,bgVVA=0,  nobg=False, track_bg=False, rabical="2025-10-21", pulse_type="blackman"):
 		'''
 		Use Data('filename').analysis().data to run this. This fcn is designed to output a dataframe
