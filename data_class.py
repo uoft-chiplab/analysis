@@ -56,7 +56,10 @@ class Data:
 			self.__dict__.update(metadata)  # Store all the extra variables
 		
 		if path:
-			self.file = os.path.join(path, filename) # making manual path for the filename
+			if filename in path:
+				self.file = path
+			else:
+				self.file = os.path.join(path, filename) # making manual path for the filename
 		else:
 			print(data_folder + '\\' + filename[:4] + '\\*\\*\\*\\' + filename)
 			self.file = glob(data_folder + '\\' + filename[:4] + '\\*\\*\\*\\' + filename)[0] # EXTREMELY greedy ; for Fermium
