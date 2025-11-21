@@ -155,10 +155,12 @@ class Data:
 			else:
 				self.data["c5bg"] = self.data[self.data['VVA'] <= bgVVA]['c5'].mean()
 				self.data['c9bg'] =  self.data[self.data['VVA'] <= bgVVA]['c9'].mean()
+				self.data['c5bg_var'] = np.var(self.data[self.data['VVA'] <= bgVVA]['c5'])
 				self.data["c5bg_sem"] = self.data[self.data['VVA'] <= bgVVA]['c5'].sem()
 				self.data["c5bg_std"] = self.data[self.data['VVA'] <= bgVVA]['c5'].std()
 				self.data["c9bg_sem"] = self.data[self.data['VVA'] <= bgVVA]['c9'].sem()
 				self.data["c9bg_std"] = self.data[self.data['VVA'] <= bgVVA]['c9'].std()
+				self.data['c9bg_var'] = np.var(self.data[self.data['VVA'] <= bgVVA]['c9'])
 			###if using a VVA value to find the bg then removing those points from the rest of the dataset
 				self.data = self.data[self.data['VVA'] > bgVVA]
 
