@@ -5,6 +5,15 @@
 
 
 """
+import os
+import sys
+# paths
+proj_path = os.path.dirname(os.path.realpath(__file__))
+data_path = os.path.join(proj_path, 'saturation_data')
+root = os.path.dirname(proj_path)
+root_analysis = os.path.dirname(root)
+if root_analysis not in sys.path:
+	sys.path.append(root_analysis)
 from data_class import Data
 from scipy.optimize import curve_fit
 from library import paper_settings, styles, colors
@@ -16,10 +25,8 @@ import pickle as pkl
 
 from rfcalibrations.Vpp_from_VVAfreq import Vpp_from_VVAfreq
 
-# paths
-proj_path = os.path.dirname(os.path.realpath(__file__))
-data_path = os.path.join(proj_path, 'saturation_data')
-root = os.path.dirname(proj_path)
+# Export flag
+Export = True
 
 # plot error bands for saturation curves
 fill_between = True
@@ -426,4 +433,23 @@ plt.ylabel(r"1/e Power $\Omega_R^2$ [kHz$^2$]")
 plt.legend()
 plt.show()
 
-			 
+# output results to csv
+if Export:
+	output = pd.DataFrame(
+		{
+			'file':files,
+			'ToTF':x,
+			'e_ToTF':e_ToTFs,
+			'pulse_time_ms':pulse_times,
+			'x0_kHz2':y,
+			'e_x0_kHz2':yerr,
+			'x0_avg_kHz2':y_avg,
+			'e_x0_avg_kHz2':e_y_avg
+		}
+	)
+
+	csv_path = os.path.join(os.getcwd(), "saturation_dimer.csv")
+	output.to_csv(csv_path, index=False)
+	print(f'Output results to {csv_path}')
+
+				

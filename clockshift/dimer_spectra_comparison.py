@@ -31,7 +31,7 @@ gaussian_cloud = False
 fixed_width = True
 fixed_x0 = False
 free_offset = True
-save=True
+save=False
 plot_raw=False
 # Omega^2 [kHz^2] 1/e saturation value
 x0_trf_10 =  3225.60  # sq_weighted avg of all x0 from fit dimer sat curves
