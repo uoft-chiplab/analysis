@@ -305,7 +305,7 @@ def guessACdimer(field):
 	return -0.1145*field + 27.13 # MHz
 
 def a97(B, B0=202.14, B0zero=209.07, abg=167.6*a0): 
-	return abg * (1 - (B0zero - B0)/(B - B0));
+	return abg * (1 - (B0zero - B0)/(B - B0))
 
 def BlackmanFourier2(omega):
 	A = 1060.9629086785837
@@ -328,7 +328,11 @@ def fit_label(popts, perrs, paramnames, digits=1, sep = "\n", units=[]):
 	poptstr = []
 
 	for i, perr in enumerate(perrs):
-		if perr < 1:
+		if perr == 0:
+			perrstr.append(0)
+			poptstr.append(round(popts[i], n))
+
+		elif perr < 1:
 			# number of digits after decimal to round to 
 			n = int(np.floor(abs(np.log10(perr))))+digits
 			# round errs to 1 decimal point

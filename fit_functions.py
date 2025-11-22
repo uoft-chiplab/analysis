@@ -227,14 +227,11 @@ def Sinc2(data, guess=None):
 		return np.abs(A)*(np.sinc((x-x0) / sigma)**2) + C
 	return sinc2, guess, param_names
 
-def FixedSinc2(data):
+def FixedSinc2(data, sigma):
 	"""
 	Returns:   A*np.sinc((x-x0) / sigma) + C
 	"""
-	x_ofmin = data[np.abs(data[:,1]).argmin(),0]
 	x_ofmax = data[np.abs(data[:,1]).argmax(),0]
-	max_x = data[:,0].max()
-	min_x = data[:,0].min()
 	mean_y = data[:,1].mean()
 	max_y = data[:,1].max()
 	
@@ -244,8 +241,9 @@ def FixedSinc2(data):
 	def fixedsinc2(x, A, x0, C):
 # 		sigma=0.0380103777802075 avg value of sigmas from phaseshift using sinc2 np.absolute(plots(Sinc2)[4])
 # 		sigma = 0.054895027020569725 #abs value of sigmas from above and avg np.average(np.absolute(plots(Sinc2)[4]))
-		sigma = 0.04821735158888396		
+		# sigma = 0.04821735158888396		
 		return A*(np.sinc((x-x0) / sigma)**2) + C
+	
 	return fixedsinc2, guess, param_names
 
 def FixedSinc2_bg(data):
@@ -266,8 +264,6 @@ def FixedSinc2_bg(data):
 		C= 0	
 		return A*(np.sinc((x-x0) / sigma)**2) + C
 	return fixedsinc2, guess, param_names
-
-
 
 def MinSinc2(data):
 	"""
@@ -441,7 +437,7 @@ def SinplusCos(data):
 def FixedSin(data, f, guess=None):
 	"""
 	hard coded 10 kHz
-	Returns: A*np.sin(0.0628*x - p) + C
+	Returns: A*np.sin(2*pi*f*x - p) + C
 	"""
 	if guess is None:
 		mean_y = data[:,1].mean()
@@ -451,11 +447,12 @@ def FixedSin(data, f, guess=None):
 	param_names =  ['Amplitude','phase','offset']
 	
 	def FixedSin(t, A, p, C):
-		omega = f * 2 * np.pi # 10 kHz
+		omega = f * 2 * np.pi
 		return A*np.sin(omega*t - p) + C
 	
 	return FixedSin, guess, param_names
 
+# Can be replaced with above function
 def FixedSin5kHz(data):
 	"""
 	hard coded 5 kHz
