@@ -20,6 +20,9 @@ def Linear(data):
 		return m*x + b 
 	return linear, guess, param_names
 
+def line(x, m, b):
+	return m*x+b
+
 def Parabola(data, guess=None):
 	"""
 	Returns:  A*(x - x0)**2 + C

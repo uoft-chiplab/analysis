@@ -56,8 +56,8 @@ Save=False
 # save files 
 files = [
 		 'HFT_saturation_curves.pkl', 
-		 #'res_saturation_curves.pkl', #this was the original but I think it got overwritten with other datasets at some point
-		 'res_saturation_curves_2024-12-05_mostly.pkl' # this should be the original one used for the paper that were 2 ms blackman
+		 'res_saturation_curves_test.pkl', #this was the original but I think it got overwritten with other datasets at some point
+		#  'res_saturation_curves_2024-12-05_mostly.pkl' # this should be the original one used for the paper that were 2 ms blackman
 		#'res_saturation_curves_2024-11_200usblackman.pkl' #testing out the 200 us blackman
 		#'res_saturation_curves_2024-11_200usblackman_wrongpulseareacorr.pkl' #testing out the 200 us blackman w/ perhaps the wrong pulse area correction
 		 ]
@@ -183,7 +183,7 @@ yerr_ratio = np.abs(y_ratio*np.sqrt((yerr/y)**2 + (yerr_loss/y_loss)**2))
 
 sty = styles[2]
 color = colors[2]
-ax.errorbar(x, y_ratio, yerr=yerr_ratio, **sy)
+ax.errorbar(x, y_ratio, yerr=yerr_ratio, **sty)
 ax.vlines(trap_depth/EF_avg, 0, 1.05, color='k', linestyle='--') 
 handle = Line2D([0], [0], color='k', linestyle='--', marker='', label='trap depth')
 
