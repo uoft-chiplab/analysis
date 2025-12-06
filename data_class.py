@@ -93,7 +93,8 @@ class Data:
 		'''
 		Use Data('filename').analysis().data to run this. This fcn is designed to output a dataframe
 		that has columns that are needed for any analysis (e.g. transfer, c5bg, etc)
-		Requirements: expects self.data to have columns ['cyc', 'freq', 'VVA', 'c5','c9']. units are [#, MHz, V, #, #]
+		Requirements: expects self.data to have columns ['cyc', 'freq', 'VVA', 'c5','c9']. units are [#, MHz, V, #, #].
+			If these are not included it will use a default value. 
 		Inputs:
 		res: resonance frequency of target transition in MHz
 		bgVVA: <=VVA cutoff for the bg point(s)
@@ -150,19 +151,51 @@ class Data:
 			###find the background by either tracking the bg pts across the scan and fitting it or 
 			###using a VVA value default to 0
 			if track_bg:
+				run = self.filename[:12]
+				y, m, d, l = run[0:4], run[5:7], run[8:10], run[-1]
+				runpath = glob(f"{data_folder}/{y}/{m}*{y}/{d}*{y}/{l}*/")[0] # note backslash included at end
+				datfiles = glob(f"{runpath}*=*.dat")
+				print(datfiles)
 				# fit to line, calc it, append to df
-				a=1
+				def bg_over_scan(datfiles, plot=False):
+					# mscan = pd.read_csv(glob(f"{runpath}*.mscan")[0], skiprows=2)
+					df0VVA = pd.DataFrame()
+					for fpath in datfiles:
+						run_df = pd.read_csv(fpath)
+						df0VVA = pd.concat([df0VVA, run_df[run_df["VVA"] == 0]])
+					# sort by cycle to match mscan list
+					df0VVA.sort_values("cyc", inplace=True)
+					# fit trend in c5 vs time to line (cyc # as proxy for time)
+					popts, pcov = curve_fit(line, df0VVA.cyc, df0VVA.c5, [3000, -1])
+					perrs = np.sqrt(np.diag(pcov))
+					### plot if you want 
+					if plot:
+						fig, ax = plt.subplots(figsize=(3,2))
+						ax.plot(df0VVA['cyc'], df0VVA['c5'], marker='.')
+						ax.plot(df0VVA['cyc'], line(df0VVA['cyc'], *popts), ls='-', marker='')
+
+						ax.set(
+							ylabel = 'c5 bg shots',
+							xlabel='cyc'
+						)
+					
+					return popts, perrs
+				
+				popts_c5bg, perrs_c5bg = bg_over_scan(datfiles, plot=True)
+
+				self.data['c5bg'] = line(self.data['cyc'], *popts_c5bg)
+
 			else:
 				self.data["c5bg"] = self.data[self.data['VVA'] <= bgVVA]['c5'].mean()
-				self.data['c9bg'] =  self.data[self.data['VVA'] <= bgVVA]['c9'].mean()
-				self.data['c5bg_var'] = np.var(self.data[self.data['VVA'] <= bgVVA]['c5'])
-				self.data["c5bg_sem"] = self.data[self.data['VVA'] <= bgVVA]['c5'].sem()
-				self.data["c5bg_std"] = self.data[self.data['VVA'] <= bgVVA]['c5'].std()
-				self.data["c9bg_sem"] = self.data[self.data['VVA'] <= bgVVA]['c9'].sem()
-				self.data["c9bg_std"] = self.data[self.data['VVA'] <= bgVVA]['c9'].std()
-				self.data['c9bg_var'] = np.var(self.data[self.data['VVA'] <= bgVVA]['c9'])
+			self.data['c9bg'] =  self.data[self.data['VVA'] <= bgVVA]['c9'].mean()
+			self.data['c5bg_var'] = np.var(self.data[self.data['VVA'] <= bgVVA]['c5'])
+			self.data["c5bg_sem"] = self.data[self.data['VVA'] <= bgVVA]['c5'].sem()
+			self.data["c5bg_std"] = self.data[self.data['VVA'] <= bgVVA]['c5'].std()
+			self.data["c9bg_sem"] = self.data[self.data['VVA'] <= bgVVA]['c9'].sem()
+			self.data["c9bg_std"] = self.data[self.data['VVA'] <= bgVVA]['c9'].std()
+			self.data['c9bg_var'] = np.var(self.data[self.data['VVA'] <= bgVVA]['c9'])
 			###if using a VVA value to find the bg then removing those points from the rest of the dataset
-				self.data = self.data[self.data['VVA'] > bgVVA]
+			self.data = self.data[self.data['VVA'] > bgVVA]
 
 		###finding the fractional transfer ("alpha")
 		self.data['alpha_dimer'] = (1 - self.data['c5']/self.data['c5bg'])/2

@@ -38,7 +38,7 @@ root = os.path.dirname(proj_path)
 
 # plot error bands for saturation curves
 fill_between = True
-save = False
+save = True
 
 # ac loss correction switch
 AC_LOSS = True
@@ -119,7 +119,7 @@ if __name__ == '__main__':
   	# 		#  "2024-11-28_P_e_detuning=0.dat",
  	# 		#   "2024-11-28_P_e_detuning=-5.dat"
  	# 		  ]
-	pulse_time = 0.2  # ms
+	# pulse_time = 0.2  # ms
 	if pulse_time > 1:
 		pulse_area_correction = np.sqrt(0.31)
 	else: 

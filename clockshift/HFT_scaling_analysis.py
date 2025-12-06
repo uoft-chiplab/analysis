@@ -4,12 +4,18 @@
 @author: Chip Lab
 
 """
+
+import os, sys
+home = os.path.abspath(__file__ + 6 * '/..')
+analysis_path = os.path.join(home, 'Analysis Scripts\\analysis')
+if analysis_path not in sys.path:
+	sys.path.insert(0, analysis_path)
+
 from data_class import Data
 from scipy.optimize import curve_fit
 from library import plt_settings, pi, styles, colors
 import numpy as np
 import matplotlib.pyplot as plt
-import os
 import pickle as pkl
 
 from rfcalibrations.Vpp_from_VVAfreq import Vpp_from_VVAfreq
@@ -20,7 +26,7 @@ colors = colors + colors
 
 # paths
 proj_path = os.path.dirname(os.path.realpath(__file__))
-data_path = os.path.join(proj_path, 'saturation_data')
+data_path = os.path.join(proj_path, 'rf_saturation_analysis/saturation_data')
 root = os.path.dirname(proj_path)
 
 # plot error bands for saturation curves
