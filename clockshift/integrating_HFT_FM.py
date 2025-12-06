@@ -45,16 +45,17 @@ a13kF = df['a13kF'][idx]
 SW = df['SW_c5'][idx]
 detuning = 0.1 # MHz
 prefactor = 1/(2**(3/2)*pi**2)
-GammaTilde = prefactor * C * (detuning/EF)**(-3/2)
+xstar = df['x_star'][idx] # EF
+# FOR ZERO RANGE THEORY, NEED ZERO RANGE XSTAR OR OMEGA_A
+omega_a = hbar/mK/(a13(202.14)**2) /2/pi/ 1e6/ EF 
+
+GammaTilde = prefactor * C * (detuning/EF)**(-3/2) / (1+detuning/EF/omega_a)
 e_GammaTilde =  GammaTilde * e_C / C # this is because the total uncertainty was calculated inside e_C already
 
 # choice of SR value on denominator of CS calc
 sumrule = 0.5 # ideal
 #sumrule = 0.25 # empirical
 
-xstar = df['x_star'][idx] # EF
-# FOR ZERO RANGE THEORY, NEED ZERO RANGE XSTAR OR OMEGA_A
-omega_a = hbar/mK/(a13(202.14)**2) /2/pi/ 1e6/ EF 
 
 lowest_bound =False
 if lowest_bound:
@@ -144,16 +145,95 @@ axs[1].set(ylabel='SW NR', xlabel='near res-HFT cutoff [kHz]')
 fig.suptitle(fr'SW estimates for C={C:.1f} N $k_F$, $E_F \approx 14$ kHz')
 fig.tight_layout()
 
-# plotting
-fig, ax = plt.subplots()
-ax.plot(xx, yyFSE, '-', color='blue')
-ax.plot(xx, yy, '--', color='blue')
-ax.errorbar(detuning/EF, GammaTilde, yerr= e_GammaTilde, color='r', marker='o')
-ax.hlines(noisefloor, xx.min(), xx.max(), color='k', ls='--')
-ax.plot(omegamax, noisefloor, 'ro')
-ax.plot(omegamaxFSE, noisefloor, 'ro')
-ax.set(yscale='log',
+# estimated HFT tails based on single measurement
+# fix the lower bound, and scan over the final bound
+fig, axs = plt.subplots(1,2, figsize=(8,4))
+plt.rcParams.update({'font.size': 12}) # Adjust 
+xi = 50 / 1000 / EF # 50 kHz converted to EF units
+xf = 400
+xx = np.linspace(0, xf, xf*10) # units of EF
+yyFSE = HFTtailFSE(xx, prefactor*C, omega_a)
+yy = HFTtail(xx, prefactor*C)
+
+# also check how much CS responds to change in near res and HFT cutoff
+
+CS_list = []
+CS_FSE_list = []
+cutoff_list = []
+CS_NR_list = []
+SW_NR_list = []
+SW_FSE_list = []
+for i in np.arange(60, 5000, 100):
+	cutoff = i/1000/EF
+	cut = [(xx > xi) & (xx < cutoff)][0]
+	cut_FSE = [(xx > xi) & (xx < cutoff)][0]
+	CS = np.trapz(xx[cut]*yy[cut], xx[cut]) / sumrule
+	CS_FSE = np.trapz(xx[cut_FSE]*yyFSE[cut_FSE], xx[cut_FSE]) / sumrule
+	SW_FSE = np.trapz(yyFSE[cut_FSE], xx[cut_FSE])
+	CS_FSE_list.append(CS_FSE)
+	cutoff_list.append(cutoff)
+	SW_FSE_list.append(SW_FSE)
+	
+cutoff_list = np.array(cutoff_list)
+CS_FSE_list = np.array(CS_FSE_list)
+CS_NR_list = np.array(CS_NR_list)
+SW_NR_list = np.array(SW_NR_list)
+SW_FSE_list = np.array(SW_FSE_list)
+axs[0].plot(cutoff_list * EF, CS_FSE_list, 'orange', ls='-')
+axs[0].vlines(omegamaxFSE*EF, min(CS_FSE_list), max(CS_FSE_list), 'black', ls='--', label='Noise floor cutoff')
+axs[0].set(ylabel=r'$\Delta_\mathrm{HFT}$', xlabel='Upper integration bound [MHz]')
+axs[0].legend()
+# fig.suptitle(fr'$\hbar \Delta /E_F$ estimates for C={C:.1f} N $k_F$, assumes $\int \widetilde\Gamma d \tilde\omega = 0.5$, $E_F \approx 14$ kHz')
+# fig.suptitle(fr'$\hbar \Delta /E_F$ estimates for C={C:.1f} N $k_F$')
+
+# plotting gammatilde vs omegatilde
+plt.rcParams.update({'font.size': 12}) # Adjust the size as needed
+axs[1].plot(xx, yyFSE, '-', color='blue', label='Eqn. (1)')
+axs[1].plot(xx, yy, '--', color='blue', label=r'Eqn. (1), $\omega_a \to \infty$')
+axs[1].plot(detuning/EF, GammaTilde, ls='', color='r', marker='o', label=r'$\omega/\omega_a \approx 0.05$')
+axs[1].axhspan(0, noisefloor, alpha=0.2, color='red', label='Noise floor')
+axs[1].annotate('Noise floor',
+			xy=(xx.min()+0.2, noisefloor-5e-4),
+			xytext = (xx.min()+0.2, noisefloor-5e-4),
+			# arrowprops = dict(arrowstyle='->', color='black'),
+			fontsize=12
+)
+# ax.plot(omegamax, noisefloor, 'ro')
+# ax.plot(omegamaxFSE, noisefloor, 'ro')
+axs[1].set(yscale='log',
 	   xscale='log',
 	   ylabel=r'$\widetilde{\Gamma}$',
 	   xlabel=r'$\tilde{\omega} [E_F]$')
+axs[1].legend()
+fig.tight_layout()
+plt.savefig('figures/refereeA9_visual.png', dpi=300)
+
+# yoffset = 0.01
+# xoffset = -5
+# label = (r'$\omega/(2\pi) = 100$' + ' kHz\n' + 
+# 		 r'$\omega/\omega_a \approx 0.05$')
+# ax.annotate(label,
+# 			xy=(detuning/EF, GammaTilde),
+# 			xytext = (detuning/EF + xoffset, GammaTilde+yoffset),
+# 			arrowprops = dict(arrowstyle='->', color='black'),
+# 			fontsize=12
+# )
+
+# Create inset
+# from mpl_toolkits.axes_grid1.inset_locator import inset_axes, mark_inset
+# axins = fig.add_axes([0.25, 0.35, 0.2, 0.2])
+# plt.rcParams.update({'font.size': 12}) 
+# axins.plot(xx, yyFSE, '-', color='blue')
+# axins.plot(xx, yy, '--', color='blue')
+
+# # Zoom into a specific region
+# x1, x2, y1, y2 = 6.5, 7.7, 3.5e-3, 5e-3
+# axins.set_xlim(x1, x2)
+# axins.set_ylim(y1, y2)
+# axins.errorbar(detuning/EF, GammaTilde, yerr= e_GammaTilde, color='r', marker='o')
+# # Draw box and connecting lines
+# mark_inset(ax, axins, loc1=1, loc2=1, fc="none", ec="0.5")
+# mark_inset(ax, axins, loc1=4, loc2=4, fc="none", ec="0.5")
+
+
 
