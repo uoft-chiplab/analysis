@@ -61,11 +61,22 @@ class Data:
 			else:
 				self.file = os.path.join(path, filename) # making manual path for the filename
 		else:
-			print(data_folder + '\\' + filename[:4] + '\\*\\*\\*\\' + filename)
-			self.file = glob(data_folder + '\\' + filename[:4] + '\\*\\*\\*\\' + filename)[0] # EXTREMELY greedy ; for Fermium
+			run = f'{filename}'
+			# print(run)
+			y, m, d, l = run[0:4], run[5:7], run[8:10], run[-1]
+			print(f"{data_folder}/{y}/{m}*{y}/{d}*{y}/{l}*/")
+			runpath = glob(f"{data_folder}/{y}/{m}*{y}/{d}*{y}/{l}*/")[0] # note backslash included at end
+			print(runpath)
+			self.file = runpath+filename+'_e.dat'
+			# print(data_folder + '\\' + filename[:4] + '\\*\\*\\*\\' + filename)
+			# self.file = glob(data_folder + '\\' + filename[:4] + '\\*\\*\\*\\' + filename)[0] # EXTREMELY greedy ; for Fermium
+		try:
+			self.data = pd.read_table(self.file, delimiter=',') # making dataframe of chosen data
+		except FileNotFoundError:
+			self.file = runpath+filename+'_UHfit.dat'
+			print(f"Unitary Shots: {self.file}")
+			self.data = pd.read_table(self.file, delimiter=',')
 			
-		self.data = pd.read_table(self.file, delimiter=',') # making dataframe of chosen data
-		
 		if column_names:
 			self.data = self.data[column_names]
 		if exclude_list is not None:
