@@ -26,7 +26,7 @@ analysis_folder = os.path.join(root_project, r"contact_correlations\phaseshift")
 # Carmen_Santiago\\Data
 root_data = os.path.join(root, "Data")
 
-run = '2025-10-23_O'
+run = '2025-12-08_H'
 y, m, d, l = run[0:4], run[5:7], run[8:10], run[-1]
 runpath = glob(f"{root_data}/{y}/{m}*{y}/{d}*{y}/{l}*/")[0] # note backslash included at end
 datfiles = glob(f"{runpath}*=*.dat")

@@ -158,7 +158,7 @@ for file, VVA, tpulse in zip(files, VVAs, tpulses):
 	fig2, ax2 = plt.subplots()
 	for measure, sty in zip(measures, styles):
 		run.data['IFGR'+measure] = run.data['alpha_' + measure]*h*EF*1e6/(hbar*run.data['OmegaR2']*1e3**2*tpulse/1e6)
-		run.data['scaled_alpha'+measure] = run.data['alpha_' + measure]*(h*EF*1e6/hbar/run.data['OmegaR']*1e3)**2
+		run.data['scaled_alpha_'+measure] = run.data['alpha_' + measure]*(h*EF*1e6/hbar/run.data['OmegaR']*1e3)**2
 		run.data['MaxI'+measure] = max(run.data['IFGR'+measure])
 		def alpha(tpulse):
 			return tpulse**2*np.trapz((sinc2(run.data['detuning_EF']/2,tpulse)*run.data['alpha_' + measure])/(2*pi))
