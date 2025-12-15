@@ -9,6 +9,14 @@ Fitting functions for general analysis scripts
 import numpy as np
 import math
 
+def saturation_scale(x, x0):
+	""" x is OmegaR^2 and x0 is fit 1/e Omega_R^2 """
+	return x/x0*1/(1-np.exp(-x/x0))
+
+def one_minus_e(x, A, x0, xc):
+	""" x is OmegaR^2 and x0 is fit 1/e Omega_R^2 """
+	return A * (1-np.exp(-(x-xc)/x0))
+
 def Linear(data):
 	"""
 	Returns:  m*x + b 

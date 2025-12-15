@@ -26,6 +26,10 @@ gJ = gS
 mK = 39.96399848 * uatom
 ahf = -h * 285.7308E6 # For groundstate 
 gI = 0.000176490 # total nuclear g-factor
+Id_conv = 2
+
+spin_me = 32/42 #spin matrix element
+ell_d_CCC = spin_me * 42 * np.pi
 
 # plt settings
 frame_size = 1.5

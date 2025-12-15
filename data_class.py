@@ -108,7 +108,7 @@ class Data:
 			['ff', 'EF' , 'trf', 'detuning', 'scaleddetuning', 'OmegaR', 'OmegaR2', \
 				'c5bg','c9bg', ()'alpha', 'scaledtransfer', 'contact') for both HFT and dimer, \
 					uncertainties wherever applicable]
-		TODO: ACCOUNT FOR SATURATION (LIN RESP), FINAL STATE CORRECTIONS, UNCERTAINTIES, BG TRACKING
+		TODO: ACCOUNT FOR SATURATION (LIN RESP), FINAL STATE CORRECTIONS, UNCERTAINTIES
 
 		'''
 		### assert dataframe to have the necessary columns
@@ -147,6 +147,7 @@ class Data:
 		if nobg:
 			self.data['c5bg'] = 0
 			self.data['c9bg'] = 0
+			self.data['fraction95bg'] = 0
 		else:
 			###find the background by either tracking the bg pts across the scan and fitting it or 
 			###using a VVA value default to 0
@@ -187,7 +188,8 @@ class Data:
 
 			else:
 				self.data["c5bg"] = self.data[self.data['VVA'] <= bgVVA]['c5'].mean()
-			self.data['c9bg'] =  self.data[self.data['VVA'] <= bgVVA]['c9'].mean()
+				self.data['c9bg'] =  self.data[self.data['VVA'] <= bgVVA]['c9'].mean()
+				self.data['fraction95bg'] = self.data['c9bg']/self.data['c5bg']
 			self.data['c5bg_var'] = np.var(self.data[self.data['VVA'] <= bgVVA]['c5'])
 			self.data["c5bg_sem"] = self.data[self.data['VVA'] <= bgVVA]['c5'].sem()
 			self.data["c5bg_std"] = self.data[self.data['VVA'] <= bgVVA]['c5'].std()
@@ -197,16 +199,22 @@ class Data:
 			###if using a VVA value to find the bg then removing those points from the rest of the dataset
 			self.data = self.data[self.data['VVA'] > bgVVA]
 
-		###finding the fractional transfer ("alpha")
-		self.data['alpha_dimer'] = (1 - self.data['c5']/self.data['c5bg'])/2
-		self.data['alpha_HFT'] = (self.data['c5'] - self.data['c5bg'])/(self.data['c5'] - self.data['c5bg'] + self.data['c9'])
-		self.data['loss'] = np.ones(len(self.data['c9']))-self.data['c9']/self.data['c9bg']
-		###finding the scaled tranfser (dimless)
-		self.data['scaledtransfer_HFT'] = h*self.data['EF']/(hbar * np.pi * self.data['OmegaR2'] * self.data['trf']) * self.data['alpha_HFT']
-		self.data['scaledtransfer_dimer'] = h*self.data['EF']/(hbar * np.pi * self.data['OmegaR2'] * self.data['trf']) * self.data['alpha_dimer']
-		### contact from scaled transfer and scaled detuning (Ctilde; dimless)
-		self.data['contact_HFT'] = 2*np.sqrt(2)*np.pi**2*self.data['scaledtransfer_HFT'] * self.data['scaleddetuning']**(3/2) 
-	
+			###finding the fractional transfer ("alpha")
+			self.data['alpha_dimer'] = (1 - self.data['c5']/self.data['c5bg'])/2
+			self.data['alpha_HFT'] = (self.data['c5'] - self.data['c5bg'])/(self.data['c5'] - self.data['c5bg'] + self.data['c9'])
+			self.data['loss'] = np.ones(len(self.data['c9']))-self.data['c9']/self.data['c9bg']
+			###finding the scaled tranfser (dimless)
+			self.data['scaledtransfer_HFT'] = h*self.data['EF']/(hbar * np.pi * self.data['OmegaR2'] * self.data['trf']) * self.data['alpha_HFT']
+			self.data['scaledtransfer_dimer'] = h*self.data['EF']/(hbar * np.pi * self.data['OmegaR2'] * self.data['trf']) * self.data['alpha_dimer']
+			### contact from scaled transfer and scaled detuning (Ctilde; dimless)
+			self.data['contact_HFT'] = 2*np.sqrt(2)*np.pi**2*self.data['scaledtransfer_HFT'] * self.data['scaleddetuning']**(3/2) 
+			self.data['Id_conv'] = Id_conv
+			self.data['ell_d_CCC'] = ell_d_CCC
+			self.data['Id'] = self.data['scaledtransfer_dimer'] / self.data['trf'] / self.data['EF'] * Id_conv
+			# self.data['e_Id'] = self.data['e_scaledtransfer_dimer'] / self.data['scaledtransfer_dimer'] * self.data['Id']
+			self.data['kF'] = np.sqrt(2*mK*self.data['EF']*h)/hbar
+			self.data['contact_dimer'] =  self.data['Id'] * np.pi / (ell_d_CCC * self.data['kF'] * a0)
+		
 		return self
 		
 	# exclude list of points
