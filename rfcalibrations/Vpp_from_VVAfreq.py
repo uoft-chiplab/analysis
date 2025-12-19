@@ -17,9 +17,8 @@ else:
 	plotting = False
 
 # VVA to Vpp PHASEO
-VVAtoVpp = 'VVAtoVpp_47MHz_squarePhaseO_4GSps_scope.txt'
-print(f"PhaseO rf calibration using {VVAtoVpp}.")
-file_path = os.path.join(file_dir, VVAtoVpp)
+VVAtoVpp_PO = 'VVAtoVpp_47MHz_squarePhaseO_4GSps_scope.txt'
+file_path = os.path.join(file_dir, VVAtoVpp_PO)
 xname = 'VVA'
 yname = 'Vpp'
 cal_VVA_PO = pd.read_csv(file_path, sep='\t', skiprows=1, names=[xname,yname])
@@ -33,9 +32,8 @@ if plotting == True:
 	ax.plot(cal_VVA_PO[xname], cal_VVA_PO[yname], 'o')
 
 # VVA to Vpp MICRO
-VVAtoVpp = 'VVAtoVppMicro_43MHz.txt'
-print(f"MicrO rf calibration using {VVAtoVpp}.")
-file_path = os.path.join(file_dir, VVAtoVpp)
+VVAtoVpp_MO = 'VVAtoVppMicro_43MHz.txt'
+file_path = os.path.join(file_dir, VVAtoVpp_MO)
 xname = 'VVA'
 yname = 'Vpp'
 cal_VVA_MO = pd.read_csv(file_path, sep='\t', skiprows=1, names=[xname,yname])
@@ -67,7 +65,12 @@ if plotting == True:
 def Vpp_from_VVAfreq(VVA, freq, rfsource="phaseo"):
 	''' Returns ... '''
 	if rfsource == "phaseo":
+		print(f"PhaseO rf calibration using {VVAtoVpp_PO}.")
 		Vpp = calInterpVVA_PO(VVA)*calInterpFreq(freq)
+		
+	
 	elif rfsource == "micro":
-		Vpp = calInterpVVA_MO(VVA) * calInterpFreq(freq)
+		print(f"MicrO rf calibration using {VVAtoVpp_MO}.")
+		Vpp = calInterpVVA_MO(VVA)
+		
 	return Vpp

@@ -155,8 +155,8 @@ class Data:
 						(e_RabiperVpp_47MHz_2025/RabiperVpp_47MHz_2025)**2 +
 						(e_RabiperVpp_47MHz_2024/RabiperVpp_47MHz_2024)**2)
 			RabiPerVpp43 = RabiperVpp_43MHz_2025
-			assert "Vpp" in self.data.columns, "Dataframe needs a Vpp for this rf source."
-			OmegaR = lambda VVA, freq: 2*np.pi*RabiPerVpp43 * self.data['Vpp']
+			
+			OmegaR = lambda VVA, freq: 2*np.pi*RabiPerVpp43 * Vpp_from_VVAfreq(VVA, freq)
 		# note that pulse area correction also depends on pulse length; sqrt(0.31) if long and (0.42) if short. See:.....
 		pulse_area_corr = np.sqrt(0.31) if pulse_type == "blackman" else 1 
 		self.data['OmegaR'] = OmegaR(self.data['VVA'], self.data['freq']) *pulse_area_corr * 1000 # 2 pi Hz
