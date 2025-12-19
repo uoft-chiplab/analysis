@@ -89,7 +89,7 @@ class Data:
 			choice = int(input("Enter the number of the column to use:"))
 			return matches[choice]
 		
-	def analysis(self, res=47.2227,bgVVA=0,  nobg=False, track_bg=False, rabical="2025-10-21", pulse_type="blackman"):
+	def analysis(self, res=47.2227,bgVVA=0,  nobg=False, track_bg=False, rabical="2025-10-21", pulse_type="blackman", rfsource="phaseO"):
 		'''
 		Use Data('filename').analysis().data to run this. This fcn is designed to output a dataframe
 		that has columns that are needed for any analysis (e.g. transfer, c5bg, etc)
@@ -137,10 +137,29 @@ class Data:
 		rabi_df = rabi_df[rabi_df['date'] == rabical]
 		RabiPerVpp = rabi_df['kHz_per_Vpp'].values[0]
 		e_RabiPerVpp = rabi_df['e_kHz_per_Vpp'].values[0]
-		phaseO_OmegaR = lambda VVA, freq: 2*np.pi*RabiPerVpp * Vpp_from_VVAfreq(VVA, freq)
+		if rfsource == "phaseO":
+			OmegaR = lambda VVA, freq: 2*np.pi*RabiPerVpp * Vpp_from_VVAfreq(VVA, freq)
+		elif rfsource == "micrO":
+			### Calibrations (OLD AND COPIED FROM HFT_DIMER_BG_ANALYSIS)
+			RabiperVpp_47MHz_2024 = 17.05/0.728 # 2024-09-16
+			e_RabiperVpp_47MHz_2024 = 0.15
+			RabiperVpp_43MHz_2024 = 14.44/0.656 # kHz/Vpp - 2024-09-25 calibration
+			e_RabiperVpp_43MHz_2024 = 0.14
+			RabiperVpp_47MHz_2025 = 12.01/0.452 # 2025-02-12
+			e_RabiperVpp_47MHz_2025 = 0.28
+			# Fudge the 2024 based on the 2025/2024 47MHz ratio...
+			RabiperVpp_43MHz_2025 = RabiperVpp_43MHz_2024 * RabiperVpp_47MHz_2025/ \
+																RabiperVpp_47MHz_2024
+			e_RabiperVpp_43MHz_2025 = RabiperVpp_43MHz_2025 * np.sqrt(\
+					(e_RabiperVpp_43MHz_2024/RabiperVpp_43MHz_2024)**2 + \
+						(e_RabiperVpp_47MHz_2025/RabiperVpp_47MHz_2025)**2 +
+						(e_RabiperVpp_47MHz_2024/RabiperVpp_47MHz_2024)**2)
+			RabiPerVpp43 = RabiperVpp_43MHz_2025
+			assert "Vpp" in self.data.columns, "Dataframe needs a Vpp for this rf source."
+			OmegaR = lambda VVA, freq: 2*np.pi*RabiPerVpp43 * self.data['Vpp']
 		# note that pulse area correction also depends on pulse length; sqrt(0.31) if long and (0.42) if short. See:.....
 		pulse_area_corr = np.sqrt(0.31) if pulse_type == "blackman" else 1 
-		self.data['OmegaR'] = phaseO_OmegaR(self.data['VVA'], self.data['freq']) *pulse_area_corr * 1000 # 2 pi Hz
+		self.data['OmegaR'] = OmegaR(self.data['VVA'], self.data['freq']) *pulse_area_corr * 1000 # 2 pi Hz
 		self.data['OmegaR2'] = self.data['OmegaR']**2
 
 		### Calculate background
@@ -199,21 +218,21 @@ class Data:
 			###if using a VVA value to find the bg then removing those points from the rest of the dataset
 			self.data = self.data[self.data['VVA'] > bgVVA]
 
-			###finding the fractional transfer ("alpha")
-			self.data['alpha_dimer'] = (1 - self.data['c5']/self.data['c5bg'])/2
-			self.data['alpha_HFT'] = (self.data['c5'] - self.data['c5bg'])/(self.data['c5'] - self.data['c5bg'] + self.data['c9'])
-			self.data['loss'] = np.ones(len(self.data['c9']))-self.data['c9']/self.data['c9bg']
-			###finding the scaled tranfser (dimless)
-			self.data['scaledtransfer_HFT'] = h*self.data['EF']/(hbar * np.pi * self.data['OmegaR2'] * self.data['trf']) * self.data['alpha_HFT']
-			self.data['scaledtransfer_dimer'] = h*self.data['EF']/(hbar * np.pi * self.data['OmegaR2'] * self.data['trf']) * self.data['alpha_dimer']
-			### contact from scaled transfer and scaled detuning (Ctilde; dimless)
-			self.data['contact_HFT'] = 2*np.sqrt(2)*np.pi**2*self.data['scaledtransfer_HFT'] * self.data['scaleddetuning']**(3/2) 
-			self.data['Id_conv'] = Id_conv
-			self.data['ell_d_CCC'] = ell_d_CCC
-			self.data['Id'] = self.data['scaledtransfer_dimer'] / self.data['trf'] / self.data['EF'] * Id_conv
-			# self.data['e_Id'] = self.data['e_scaledtransfer_dimer'] / self.data['scaledtransfer_dimer'] * self.data['Id']
-			self.data['kF'] = np.sqrt(2*mK*self.data['EF']*h)/hbar
-			self.data['contact_dimer'] =  self.data['Id'] * np.pi / (ell_d_CCC * self.data['kF'] * a0)
+		###finding the fractional transfer ("alpha")
+		self.data['alpha_dimer'] = (1 - self.data['c5']/self.data['c5bg'])/2
+		self.data['alpha_HFT'] = (self.data['c5'] - self.data['c5bg'])/(self.data['c5'] - self.data['c5bg'] + self.data['c9'])
+		self.data['loss'] = np.ones(len(self.data['c9']))-self.data['c9']/self.data['c9bg']
+		###finding the scaled tranfser (dimless)
+		self.data['scaledtransfer_HFT'] = h*self.data['EF']/(hbar * np.pi * self.data['OmegaR2'] * self.data['trf']) * self.data['alpha_HFT']
+		self.data['scaledtransfer_dimer'] = h*self.data['EF']/(hbar * np.pi * self.data['OmegaR2'] * self.data['trf']) * self.data['alpha_dimer']
+		### contact from scaled transfer and scaled detuning (Ctilde; dimless)
+		self.data['contact_HFT'] = 2*np.sqrt(2)*np.pi**2*self.data['scaledtransfer_HFT'] * self.data['scaleddetuning']**(3/2) 
+		self.data['Id_conv'] = Id_conv
+		self.data['ell_d_CCC'] = ell_d_CCC
+		self.data['Id'] = self.data['scaledtransfer_dimer'] / self.data['trf'] / self.data['EF'] * Id_conv
+		# self.data['e_Id'] = self.data['e_scaledtransfer_dimer'] / self.data['scaledtransfer_dimer'] * self.data['Id']
+		self.data['kF'] = np.sqrt(2*mK*self.data['EF']*h)/hbar
+		self.data['contact_dimer'] =  self.data['Id'] * np.pi / (ell_d_CCC * self.data['kF'] * a0)
 		
 		return self
 		

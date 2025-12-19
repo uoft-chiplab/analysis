@@ -26,10 +26,9 @@ gJ = gS
 mK = 39.96399848 * uatom
 ahf = -h * 285.7308E6 # For groundstate 
 gI = 0.000176490 # total nuclear g-factor
-Id_conv = 2
-
+Id_conv = 2 # set to 1 if assuming sum rule = 0.5. Set to 2 if SR = 1.
 spin_me = 32/42 #spin matrix element
-ell_d_CCC = spin_me * 42 * np.pi
+ell_d_CCC = spin_me * 42 * np.pi # Paul Julienne CC calculation for dimer contact
 
 # plt settings
 frame_size = 1.5
