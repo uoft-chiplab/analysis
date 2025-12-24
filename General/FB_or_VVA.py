@@ -20,9 +20,9 @@ from scipy.stats import sem
 
 plt.rcParams.update({"figure.figsize": [5,3.5]})
 
-scan ='FB'
-FB_val =-3.4
-file = "2025-12-09_K_e.dat"
+scan ='VVA'
+FB_val =3.28
+file = "2025-12-22_F_e.dat"
 
 
 if (scan == 'FB') :
@@ -31,7 +31,7 @@ if (scan == 'FB') :
 	fit_func=Sinc2
 elif scan == 'VVA':
 	names = ['VVA', 'fraction95']
-	guess = [0.1,2,0.1]
+	guess = [0.1,2.1,0.1]
 	fit_func=Parabola
 
 elif scan == '5050':

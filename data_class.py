@@ -89,7 +89,7 @@ class Data:
 			choice = int(input("Enter the number of the column to use:"))
 			return matches[choice]
 		
-	def analysis(self, res=47.2227,bgVVA=0,  nobg=False, track_bg=False, rabical="2025-10-21", pulse_type="blackman", rfsource="phaseO"):
+	def analysis(self, res=47.2227,bgVVA=0,  nobg=False, track_bg=False, rabical="2025-10-21", pulse_type="blackman", rfsource="phaseo"):
 		'''
 		Use Data('filename').analysis().data to run this. This fcn is designed to output a dataframe
 		that has columns that are needed for any analysis (e.g. transfer, c5bg, etc)
@@ -137,9 +137,9 @@ class Data:
 		rabi_df = rabi_df[rabi_df['date'] == rabical]
 		RabiPerVpp = rabi_df['kHz_per_Vpp'].values[0]
 		e_RabiPerVpp = rabi_df['e_kHz_per_Vpp'].values[0]
-		if rfsource == "phaseO":
+		if rfsource == "phaseo":
 			OmegaR = lambda VVA, freq: 2*np.pi*RabiPerVpp * Vpp_from_VVAfreq(VVA, freq)
-		elif rfsource == "micrO":
+		elif rfsource == "micro":
 			### Calibrations (OLD AND COPIED FROM HFT_DIMER_BG_ANALYSIS)
 			RabiperVpp_47MHz_2024 = 17.05/0.728 # 2024-09-16
 			e_RabiperVpp_47MHz_2024 = 0.15
@@ -156,7 +156,7 @@ class Data:
 						(e_RabiperVpp_47MHz_2024/RabiperVpp_47MHz_2024)**2)
 			RabiPerVpp43 = RabiperVpp_43MHz_2025
 			
-			OmegaR = lambda VVA, freq: 2*np.pi*RabiPerVpp43 * Vpp_from_VVAfreq(VVA, freq)
+			OmegaR = lambda VVA, freq: 2*np.pi*RabiPerVpp43 * Vpp_from_VVAfreq(VVA, freq, rfsource=rfsource)
 		# note that pulse area correction also depends on pulse length; sqrt(0.31) if long and (0.42) if short. See:.....
 		pulse_area_corr = np.sqrt(0.31) if pulse_type == "blackman" else 1 
 		self.data['OmegaR'] = OmegaR(self.data['VVA'], self.data['freq']) *pulse_area_corr * 1000 # 2 pi Hz
@@ -186,24 +186,38 @@ class Data:
 					# sort by cycle to match mscan list
 					df0VVA.sort_values("cyc", inplace=True)
 					# fit trend in c5 vs time to line (cyc # as proxy for time)
-					popts, pcov = curve_fit(line, df0VVA.cyc, df0VVA.c5, [3000, -1])
-					perrs = np.sqrt(np.diag(pcov))
+					poptsc5, pcovc5 = curve_fit(line, df0VVA.cyc, df0VVA.c5, [3000, -1])
+					perrsc5 = np.sqrt(np.diag(pcovc5))
+					poptsc9, pcovc9 = curve_fit(line, df0VVA.cyc, df0VVA.c9, [3000, -1])
+					perrsc9 = np.sqrt(np.diag(pcovc9))
 					### plot if you want 
 					if plot:
-						fig, ax = plt.subplots(figsize=(3,2))
-						ax.plot(df0VVA['cyc'], df0VVA['c5'], marker='.')
-						ax.plot(df0VVA['cyc'], line(df0VVA['cyc'], *popts), ls='-', marker='')
+						fig, ax = plt.subplots(2, 1, figsize=(3,2), sharex=True)
+						ax[0].plot(df0VVA['cyc'], df0VVA['c5'], marker='.')
+						ax[0].plot(df0VVA['cyc'], line(df0VVA['cyc'], *poptsc5), ls='-', marker='')
 
-						ax.set(
-							ylabel = 'c5 bg shots',
-							xlabel='cyc'
+						ax[0].set_ylabel(
+							 'c5 bg shots', fontsize = 8
 						)
-					
-					return popts, perrs
+						ax[0].tick_params(axis='both', labelsize=8)
+						ax[1].plot(df0VVA['cyc'], df0VVA['c9'], marker='.')
+						ax[1].plot(df0VVA['cyc'], line(df0VVA['cyc'], *poptsc9), ls='-', marker='')
+
+						ax[1].set_ylabel(
+							 'c5 bg shots', fontsize = 8) 
+						ax[1].set_xlabel(
+							'cyc', fontsize = 8 
+						)		
+						ax[1].tick_params(axis='both', labelsize=8)
+						fig.tight_layout()			
+					return poptsc5, perrsc5, poptsc9, perrsc9
 				
-				popts_c5bg, perrs_c5bg = bg_over_scan(datfiles, plot=True)
+				popts_c5bg, perrs_c5bg,popts_c9bg, perrs_c9bg  = bg_over_scan(datfiles, plot=True)
 
 				self.data['c5bg'] = line(self.data['cyc'], *popts_c5bg)
+				self.data['c9bg'] = line(self.data['cyc'], *popts_c9bg)
+				self.data['fraction95bg'] = self.data['c9bg']/self.data['c5bg']
+				
 
 			else:
 				self.data["c5bg"] = self.data[self.data['VVA'] <= bgVVA]['c5'].mean()
