@@ -139,7 +139,10 @@ class Data:
 		e_RabiPerVpp = rabi_df['e_kHz_per_Vpp'].values[0]
 		phaseO_OmegaR = lambda VVA, freq: 2*np.pi*RabiPerVpp * Vpp_from_VVAfreq(VVA, freq)
 		# note that pulse area correction also depends on pulse length; sqrt(0.31) if long and (0.42) if short. See:.....
-		pulse_area_corr = np.sqrt(0.31) if pulse_type == "blackman" else 1 
+		if pulse_type == "blackman" and self.data['trf'] > 20e-5: # placeholder time bound TODO
+			pulse_area_corr = np.sqrt(0.31)
+		else: 
+			pulse_area_corr = 0.42
 		self.data['OmegaR'] = phaseO_OmegaR(self.data['VVA'], self.data['freq']) *pulse_area_corr * 1000 # 2 pi Hz
 		self.data['OmegaR2'] = self.data['OmegaR']**2
 
