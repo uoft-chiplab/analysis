@@ -369,7 +369,7 @@ x_max = 30
 
 #### SUBPLOT SETTINGS
 # plot alpha_transfer vs Rabi^2time^2
-ax.set(xlabel=r'$\Omega_{23}^2 t_\mathrm{rf}^2$', ylabel=r'Transfer $\alpha_\mathrm{res}$', ylim=[-0.02, 1],
+ax.set(xlabel=r'$\Omega_{R}^2 t_\mathrm{rf}^2$', ylabel=r'Transfer $\alpha_\mathrm{res}$', ylim=[-0.02, 1],
 		xlim=[-0.02, x_max]
 		)
 
@@ -377,7 +377,7 @@ ax.set(xlabel=r'$\Omega_{23}^2 t_\mathrm{rf}^2$', ylabel=r'Transfer $\alpha_\mat
 inset_ax = fig.add_axes([0.35, 0.35, 0.3, 0.25])
 inset_ax.set(xlim = [4, 17.5],
 			 ylim=[0.6, 1.0],
-			#  xlabel = r'$\Omega_{23}^2t_\mathrm{rf}^2$',
+			#  xlabel = r'$\Omega_{R}^2t_\mathrm{rf}^2$',
 			 ylabel=r'Loss $\alpha_\mathrm{res}$')
 
 # actual plotting and fitting loop
@@ -434,7 +434,7 @@ fig, ax = plt.subplots(figsize=(6,4))
 err_type = 'sem'
 x_max = 30
 
-ax.set(xlabel=r'$\Omega_{23}^2 t_\mathrm{rf}^2$', ylabel=r'Loss $\alpha$', ylim=[-0.02, 1],
+ax.set(xlabel=r'$\Omega_{R}^2 t_\mathrm{rf}^2$', ylabel=r'Loss $\alpha$', ylim=[-0.02, 1],
 		xlim=[-0.02, x_max]
 		)
 
@@ -442,7 +442,7 @@ ax.set(xlabel=r'$\Omega_{23}^2 t_\mathrm{rf}^2$', ylabel=r'Loss $\alpha$', ylim=
 inset_ax = fig.add_axes([0.2, 0.3, 0.35, 0.3])
 inset_ax.set(xlim = [-0.01, 0.4],
 			 ylim=[-0.01, 0.07],
-			 xlabel = r'$\Omega_{23}^2t_\mathrm{rf}^2$',
+			 xlabel = r'$\Omega_{R}^2t_\mathrm{rf}^2$',
 			 ylabel=r'$\alpha$')
 
 
@@ -486,10 +486,10 @@ x_max = 30
 
 #### SUBPLOT SETTINGS
 # plot alpha_transfer vs Rabi^2time^2
-axs[0].set(xlabel=r'$\Omega_{23}^2 t_\mathrm{rf}^2$', ylabel=r'Transfer $\alpha$', ylim=[-0.02, 1],
+axs[0].set(xlabel=r'$\Omega_{R}^2 t_\mathrm{rf}^2$', ylabel=r'Transfer $\alpha$', ylim=[-0.02, 1],
 		xlim=[-0.02, x_max]
 		)
-axs[1].set(xlabel=r'$\Omega_{23}^2 t_\mathrm{rf}^2$', ylabel=r'Loss $\alpha$', ylim=[-0.02, 1],
+axs[1].set(xlabel=r'$\Omega_{R}^2 t_\mathrm{rf}^2$', ylabel=r'Loss $\alpha$', ylim=[-0.02, 1],
 		xlim=[-0.02, x_max]
 		)
 
