@@ -396,7 +396,7 @@ for i, df in enumerate(df_list):
 
 ax.legend(frameon=False, loc='upper right')
 fig.tight_layout()
-plt.savefig(r'\\UNOBTAINIUM\E_Carmen_Santiago\Analysis Scripts\analysis\clockshift\manuscript\manuscript_figures\SM_Zfactors.pdf', dpi=300)
+# plt.savefig(r'\\UNOBTAINIUM\Carmen_Sandiego\Analysis Scripts\analysis\clockshift\manuscript\manuscript_figures\SM_Zfactors.pdf', dpi=300)
 plt.show()
 
 

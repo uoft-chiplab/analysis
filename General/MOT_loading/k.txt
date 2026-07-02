@@ -1,0 +1,10 @@
+Feedback for MW poster
+
+Bulk viscosity: 
+It's kind of a convenient fiction that we really measure the "bulk viscosity" or transport properties in a unitary Fermi gas with our measurement.
+Although I think it is conceptually easier to introduce in this way, you might want to be more specific re: our observable being contact correlator connected to a dynamical bulk viscosity.
+
+The Contact:
+
+
+Contact Correlations

@@ -1,0 +1,20 @@
+Notes about ac dimer binding energy measurements
+
+Link to lab book summary by 2023-09-28:
+https://docs.google.com/document/d/1nxyGxxMHCjFPCvEmUy827KyaVci6Rk46PDl1NFcbau4/edit?tab=t.0#heading=h.ircfpveb48un
+
+Other solid runs afterwards:
+2023-09-29_C 201.4 G 100 us VVA = ?
+2023-09-29_E 201 G 400 us VVA = ?
+'' _F 201.2G 300 us
+
+
+Lots of data but nuanced issue:
+2023-09-28_L: Uses an empirical calibration for Eb vs. B to estimate the needed rf frequency.
+Fixes VVA then scans from 201 G to 203 G.
+Technically not a binding energy measurement because Eb was estimated. Maybe that's okay, or plot with diff color.
+
+
+And another thing:
+BC spin mixtures into AC dimers! Proof that we need an interacting gas.
+2023-10_03_E binding energy measurement 202.1 G.

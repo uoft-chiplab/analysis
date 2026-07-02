@@ -26,7 +26,7 @@ analysis_folder = os.path.join(root_project, r"contact_correlations\phaseshift")
 # Carmen_Santiago\\Data
 root_data = os.path.join(root, "Data")
 
-run = '2025-12-08_H'
+run = '2026-01-09_J'
 y, m, d, l = run[0:4], run[5:7], run[8:10], run[-1]
 runpath = glob(f"{root_data}/{y}/{m}*{y}/{d}*{y}/{l}*/")[0] # note backslash included at end
 datfiles = glob(f"{runpath}*=*.dat")
@@ -49,7 +49,7 @@ trap_freq = True
 if trap_freq:
 	fit_func = TrapFreq2
 	names = [xname, 'G_ctr_y']
-	guess = [15, 2, 2, 2, 98]
+	guess = [5, 2, 2, 2, 100]
 
 #y names are G_ctr_x , G_ctr_y, and fCtr1 
 	

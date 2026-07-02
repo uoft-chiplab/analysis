@@ -21,7 +21,7 @@ from library import pi, h, hbar, mK, a0, paper_settings, generate_plt_styles
 colors = ['#c70808','#66a61e','#000000','#1c89cb','#4b13b4']
 
 styles = generate_plt_styles(colors, ts=0.6)
-Save = True
+Save = False
 # ### plot settings
 plt.rcdefaults()
 plt.rcParams.update(paper_settings) # from library.py
