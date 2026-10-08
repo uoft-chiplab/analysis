@@ -62,7 +62,7 @@ class Data:
 				self.file = os.path.join(path, filename) # making manual path for the filename
 		else:
 			print(data_folder + '\\' + filename[:4] + '\\*\\*\\*\\' + filename)
-			self.file = glob(data_folder + '\\' + filename[:4] + '\\*\\*\\*\\' + filename)[0] # EXTREMELY greedy ; for Fermium
+			self.file = glob(data_folder + '\\' + filename[:4] + '\\*\\*\\*\\' + filename)[-1] # EXTREMELY greedy ; for Fermium
 			
 		self.data = pd.read_table(self.file, delimiter=',') # making dataframe of chosen data
 		
