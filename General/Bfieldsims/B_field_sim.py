@@ -110,11 +110,38 @@ COILS = {
                       table=dict(MOT=1.8, chip=1.8)),
 }
 
+def biasToCurr(bias, val):
+    '''
+    Convert bias value on sequencer to amps
+    :string bias: 'z', 'x', or 'y'
+    :double val: The value as input on the sequencer gui
+    val to V is defined on sequencer. They convert the seq val into a voltage (V) that goes to a PS which finally outputs current (A).
+    As of today: PS's are Agilent 6552A for z, and HighFinesse BCS-5/5 for x and y.
+    '''
+    match bias:
+        case 'zrev':
+            V_in = val * 0.196
+            I_out = -V_in * 5
+        case 'zfor':
+            V_in = val * 0.196
+            I_out = -V_in * 5
+        case 'y':
+            V_in = val * 0.333 - 0.9
+            I_out = V_in / 2
+        case 'x':
+            V_in = val * 1.0117 - 0.0547
+            I_out = V_in / 2
+    return I_out
+
 # Tab. 4.3 operating currents (A). A positive current gives the field direction set by
 # COILS[name].polarity (see build_coil); a negative current reverses that coil.
-CURRENTS_MOT = dict(MOT=6.6, transfer=6.2, Zbias=0, Xbias=0, Ybias=0)
-CURRENTS_QMT_INIT = dict(MOT=26.65, transfer=23.4, Zbias=1.2, Xbias=1, Ybias=-5)
-CURRENTS_QMT_FINAL = dict(MOT=45.0, transfer=43, Zbias=0, Xbias=0, Ybias=0)
+# Inputs are Amps. For bias coils, there is an extra processing step to turn it into current. MOT and XFER are already in amps.
+# for Z bias, also specify if coil is in reverse or forward mode. (PS is not bipolar, needs switch).
+CURRENTS_MOT = dict(MOT=6.6, transfer=6.2, Zbias=biasToCurr('zfor', 0), Xbias=biasToCurr('x', 0), Ybias=biasToCurr('y', 0))
+# CURRENTS_QMT_INIT_OLD = dict(MOT=26, transfer=21.75, Zbias=biasToCurr('zrev', 0.9), Xbias=biasToCurr('x', 0.9), Ybias=biasToCurr('y', -10))
+CURRENTS_QMT_INIT_OLD = dict(MOT=26, transfer=21.75, Zbias=biasToCurr('zrev', 1.2), Xbias=biasToCurr('x', 1), Ybias=biasToCurr('y', -5))
+CURRENTS_QMT_INIT = dict(MOT=26.65, transfer=23.4, Zbias=biasToCurr('zrev', 1.2), Xbias=biasToCurr('x', 1), Ybias=biasToCurr('y', -5))
+CURRENTS_QMT_FINAL = dict(MOT=45.0, transfer=43, Zbias=biasToCurr('zrev', 0), Xbias=biasToCurr('x', 0), Ybias=biasToCurr('y', 0))
 #CURRENTS_ZTRAP = dict(MOT=0.0, transfer=0.0, Zbias=0.0, Xbias=2.0, Ybias=10.0)  # chip Z-wire not modelled
 
 #%% Coil building
@@ -318,7 +345,9 @@ def print_calibration(coils=COILS, chip=CHIP, tol=0.05):
 
 def print_trap_positions(presets=None, chip=CHIP, grid=None):
     """Quadrupole zero (atom position) for each current preset, and its distance below the chip."""
-    presets = presets or {'MOT': CURRENTS_MOT, 'QMT_INIT': CURRENTS_QMT_INIT, 'QMT_FINAL':CURRENTS_QMT_FINAL}
+    presets = presets or {'MOT': CURRENTS_MOT, 
+                          'QMT_INIT_OLD':CURRENTS_QMT_INIT_OLD,
+                          'QMT_INIT': CURRENTS_QMT_INIT, 'QMT_FINAL':CURRENTS_QMT_FINAL}
     for name, currents in presets.items():
         s = CoilSetup(currents, grid=grid)
         zero, _ = find_field_zero(s)
@@ -646,7 +675,7 @@ if __name__ == '__main__':
     RUN_MOT_TEST = False   # MOT coils only
     RUN_FULL = True       # all coils, Tab. 4.3 QMT currents
     RUN_BIAS = False       # field homogeneity of each bias pair at 1 A
-    RUN_3D = False        # traced 3D field lines (slower)
+    RUN_3D = False   # traced 3D field lines (slower)
     GRID = None           # filaments per winding pack: None = one per turn; (3, 3) is ~5x faster
 
     print_calibration()
@@ -665,7 +694,7 @@ if __name__ == '__main__':
         plot_line(mot, 'y', extent=0.12, ax=axs[2])
 
     if RUN_FULL:
-        full = CoilSetup(CURRENTS_QMT_INIT, grid=GRID)  # or CURRENTS_MOT, CURRENTS_ZTRAP, your own dict
+        full = CoilSetup(CURRENTS_QMT_INIT_OLD, grid=GRID)  # or CURRENTS_MOT, CURRENTS_ZTRAP, your own dict
         zero, b_res = find_field_zero(full)
         marks = {**MARKS, 'B = 0': zero}
         fig, axs = plt.subplots(1, 3, figsize=(18, 5.5), layout='constrained')
@@ -673,7 +702,7 @@ if __name__ == '__main__':
         plot_slice(full, 'xy', extent=0.2, ax=axs[1], marks=marks)
         plot_slice(full, 'xz', offset=zero[1], extent=0.2, ax=axs[2], marks=marks)  # top view through B = 0
         fig, axs = plt.subplots(1, 3, figsize=(18, 5.5), layout='constrained')
-        plot_slice(full, 'zy', offset=zero[0], center=(zero + CHIP)/2, extent=0.045,
+        plot_slice(full, 'zy', offset=zero[0], center=(zero + CHIP)/2, extent=0.03,
                    style='map+stream', ax=axs[0], marks=marks)  # atoms to chip
         plot_line(full, 'y', through=zero, extent=0.1, ax=axs[1], marks=marks)
         plot_homogeneity(full, 'zy', ref=zero, extent=0.02, ax=axs[2], marks=marks)
