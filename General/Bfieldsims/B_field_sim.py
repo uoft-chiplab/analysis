@@ -143,6 +143,8 @@ CURRENTS_QMT_INIT_OLD = dict(MOT=26, transfer=21.75, Zbias=biasToCurr('zrev', 1.
 CURRENTS_QMT_INIT = dict(MOT=26.65, transfer=23.4, Zbias=biasToCurr('zrev', 1.2), Xbias=biasToCurr('x', 1), Ybias=biasToCurr('y', -5))
 CURRENTS_QMT_FINAL = dict(MOT=45.0, transfer=43, Zbias=biasToCurr('zrev', 0), Xbias=biasToCurr('x', 0), Ybias=biasToCurr('y', 0))
 #CURRENTS_ZTRAP = dict(MOT=0.0, transfer=0.0, Zbias=0.0, Xbias=2.0, Ybias=10.0)  # chip Z-wire not modelled
+QMT_PRESETS = {'QMT_INIT_OLD': CURRENTS_QMT_INIT_OLD, 'QMT_INIT': CURRENTS_QMT_INIT,
+               'QMT_FINAL': CURRENTS_QMT_FINAL}  # used by print_trap_positions and trap_potential.py
 
 #%% Coil building
 
@@ -345,9 +347,7 @@ def print_calibration(coils=COILS, chip=CHIP, tol=0.05):
 
 def print_trap_positions(presets=None, chip=CHIP, grid=None):
     """Quadrupole zero (atom position) for each current preset, and its distance below the chip."""
-    presets = presets or {'MOT': CURRENTS_MOT, 
-                          'QMT_INIT_OLD':CURRENTS_QMT_INIT_OLD,
-                          'QMT_INIT': CURRENTS_QMT_INIT, 'QMT_FINAL':CURRENTS_QMT_FINAL}
+    presets = presets or {'MOT': CURRENTS_MOT, **QMT_PRESETS}
     for name, currents in presets.items():
         s = CoilSetup(currents, grid=grid)
         zero, _ = find_field_zero(s)
