@@ -124,7 +124,7 @@ def biasToCurr(bias, val):
             I_out = -V_in * 5
         case 'zfor':
             V_in = val * 0.196
-            I_out = -V_in * 5
+            I_out = V_in * 5
         case 'y':
             V_in = val * 0.333 - 0.9
             I_out = V_in / 2
@@ -138,13 +138,20 @@ def biasToCurr(bias, val):
 # Inputs are Amps. For bias coils, there is an extra processing step to turn it into current. MOT and XFER are already in amps.
 # for Z bias, also specify if coil is in reverse or forward mode. (PS is not bipolar, needs switch).
 CURRENTS_MOT = dict(MOT=6.6, transfer=6.2, Zbias=biasToCurr('zfor', 0), Xbias=biasToCurr('x', 0), Ybias=biasToCurr('y', 0))
-# CURRENTS_QMT_INIT_OLD = dict(MOT=26, transfer=21.75, Zbias=biasToCurr('zrev', 0.9), Xbias=biasToCurr('x', 0.9), Ybias=biasToCurr('y', -10))
-CURRENTS_QMT_INIT_OLD = dict(MOT=26, transfer=21.75, Zbias=biasToCurr('zrev', 1.2), Xbias=biasToCurr('x', 1), Ybias=biasToCurr('y', -5))
+CURRENTS_QMT_INIT_OLD = dict(MOT=26, transfer=21.75, Zbias=biasToCurr('zrev', 0.9), Xbias=biasToCurr('x', 0.9), Ybias=biasToCurr('y', -12))
+# CURRENTS_QMT_INIT_OLD = dict(MOT=26, transfer=21.75, Zbias=biasToCurr('zrev', 1.2), Xbias=biasToCurr('x', 1), Ybias=biasToCurr('y', -5))
 CURRENTS_QMT_INIT = dict(MOT=26.65, transfer=23.4, Zbias=biasToCurr('zrev', 1.2), Xbias=biasToCurr('x', 1), Ybias=biasToCurr('y', -5))
 CURRENTS_QMT_FINAL = dict(MOT=45.0, transfer=43, Zbias=biasToCurr('zrev', 0), Xbias=biasToCurr('x', 0), Ybias=biasToCurr('y', 0))
 #CURRENTS_ZTRAP = dict(MOT=0.0, transfer=0.0, Zbias=0.0, Xbias=2.0, Ybias=10.0)  # chip Z-wire not modelled
-QMT_PRESETS = {'QMT_INIT_OLD': CURRENTS_QMT_INIT_OLD, 'QMT_INIT': CURRENTS_QMT_INIT,
+QMT_PRESETS = {'QMT_INIT_OLD': CURRENTS_QMT_INIT_OLD, 
+               'QMT_INIT': CURRENTS_QMT_INIT,
                'QMT_FINAL': CURRENTS_QMT_FINAL}  # used by print_trap_positions and trap_potential.py
+
+CURRENTS_BIAS_ONLY = dict(MOT=0, transfer=0,
+                          Zbias = biasToCurr('zrev',1.2),
+                          Xbias = biasToCurr('x', 1),
+                          Ybias = biasToCurr('y',-5))
+
 
 #%% Coil building
 
@@ -673,8 +680,9 @@ def show_coils(setup, backend='matplotlib', **kwargs):
 
 if __name__ == '__main__':
     RUN_MOT_TEST = False   # MOT coils only
-    RUN_FULL = True       # all coils, Tab. 4.3 QMT currents
-    RUN_BIAS = False       # field homogeneity of each bias pair at 1 A
+    RUN_FULL = True      # all coils, Tab. 4.3 QMT currents  
+    RUN_BIAS = True     # just bias coils
+    RUN_BIAS_HOMOG = False # homogeneity of bias coils at 1A
     RUN_3D = False   # traced 3D field lines (slower)
     GRID = None           # filaments per winding pack: None = one per turn; (3, 3) is ~5x faster
 
@@ -694,7 +702,8 @@ if __name__ == '__main__':
         plot_line(mot, 'y', extent=0.12, ax=axs[2])
 
     if RUN_FULL:
-        full = CoilSetup(CURRENTS_QMT_INIT_OLD, grid=GRID)  # or CURRENTS_MOT, CURRENTS_ZTRAP, your own dict
+        full = CoilSetup(CURRENTS_QMT_INIT, grid=GRID)  # or CURRENTS_MOT, CURRENTS_ZTRAP, your own dict
+
         zero, b_res = find_field_zero(full)
         marks = {**MARKS, 'B = 0': zero}
         fig, axs = plt.subplots(1, 3, figsize=(18, 5.5), layout='constrained')
@@ -708,6 +717,20 @@ if __name__ == '__main__':
         plot_homogeneity(full, 'zy', ref=zero, extent=0.02, ax=axs[2], marks=marks)
 
     if RUN_BIAS:
+        full = CoilSetup(CURRENTS_BIAS_ONLY, grid=GRID)  # or CURRENTS_MOT, CURRENTS_ZTRAP, your own dict
+        zero = np.array([0.0, -0.01722, 0.00052]) # field zero that was found for a different preset with QMT on. Use here to help define plot positions
+        marks = {**MARKS}
+        fig, axs = plt.subplots(1, 3, figsize=(18, 5.5), layout='constrained')
+        plot_slice(full, 'zy', extent=0.2, ax=axs[0], marks=marks)
+        plot_slice(full, 'xy', extent=0.2, ax=axs[1], marks=marks)
+        plot_slice(full, 'xz', offset=zero[1], extent=0.2, ax=axs[2], marks=marks)  # top view through B = 0
+        fig, axs = plt.subplots(1, 3, figsize=(18, 5.5), layout='constrained')
+        plot_slice(full, 'zy', offset=zero[0], center=(zero + CHIP)/2, extent=0.03,
+                   style='map+stream', ax=axs[0], marks=marks)  # atoms to chip
+        plot_line(full, 'y', through=zero, extent=0.1, ax=axs[1], marks=marks)
+        plot_homogeneity(full, 'zy', ref=zero, extent=0.02, ax=axs[2], marks=marks)
+
+    if RUN_BIAS_HOMOG:
         fig, axs = plt.subplots(1, 3, figsize=(17, 5), layout='constrained')
         for ax, name in zip(axs, ['Zbias', 'Xbias', 'Ybias']):
             plot_homogeneity(CoilSetup({name: 1.0}, grid=GRID), 'zy', extent=0.04, ax=ax)

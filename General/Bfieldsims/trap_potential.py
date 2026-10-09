@@ -27,10 +27,8 @@ from matplotlib.colors import Normalize
 from matplotlib.ticker import MaxNLocator
 from scipy.constants import atomic_mass as AMU, g as G_EARTH, h as H_PLANCK, k as K_B
 from scipy.constants import physical_constants
-
 from B_field_sim import (CHIP, CM, MARKS, QMT_PRESETS, T2G, CoilSetup, draw_marks,
                          find_field_zero, plane_grid, _cm, _plane_axes, _range, _style_slice)
-
 MU_B = physical_constants['Bohr magneton'][0]  # J/T
 
 #%% Atoms
@@ -247,7 +245,7 @@ def plot_qmt_potentials(preset='QMT_INIT', atoms=('Rb87', 'K40'), planes=('zy', 
 #%% Main
 
 if __name__ == '__main__':
-    PLOT_PRESETS = ['QMT_INIT', 'QMT_FINAL']  # keys of QMT_PRESETS (B_field_sim.py)
+    PLOT_PRESETS = ['QMT_INIT_OLD', 'QMT_INIT', 'QMT_FINAL']  # keys of QMT_PRESETS (B_field_sim.py)
     ATOM_KEYS = ('Rb87', 'K40')
     EXTENT = 0.005    # m, half-width of the plots about the trap centre
     UNIT = 'uK'       # 'uK', 'mK' or 'MHz'
