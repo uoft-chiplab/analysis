@@ -681,7 +681,7 @@ def show_coils(setup, backend='matplotlib', **kwargs):
 if __name__ == '__main__':
     RUN_MOT_TEST = False   # MOT coils only
     RUN_FULL = True      # all coils, Tab. 4.3 QMT currents  
-    RUN_BIAS = True     # just bias coils
+    RUN_BIAS = False     # just bias coils
     RUN_BIAS_HOMOG = False # homogeneity of bias coils at 1A
     RUN_3D = False   # traced 3D field lines (slower)
     GRID = None           # filaments per winding pack: None = one per turn; (3, 3) is ~5x faster
