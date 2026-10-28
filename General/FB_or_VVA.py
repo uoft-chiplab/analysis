@@ -23,18 +23,20 @@ from scipy.optimize import curve_fit
 plt.rcParams.update({"figure.figsize": [5,3.5]})
 
 scan ='FB'
-FB_val = 7.03
+FB_val = 48.39
 freq_centre = 3.22
-file = "2026-08-11_F_e.csv"
+file = "2026-10-27_D_e.csv"
 
 
 if (scan == 'FB') :
-	names = ['FB', 'fraction95']
-	guess = [0.25, FB_val, 0.05, 0]
+	names = ['FB', 'Li.nfit']
+	names = ['phaseO', 'c5']
+	# guess = [0.25, FB_val, 0.05, 0]
+	guess = [20000, FB_val, 0.05, 70000]
 	fit_func=Sinc2
 
 elif scan == 'VVA':
-	names = ['VVA', 'fraction95']
+	names = ['VVA', 'ROIsum']
 	guess = [0.1,2.1,0.1]
 	fit_func=Parabola
 
@@ -62,6 +64,8 @@ elif scan == 'VVA':
 print("--------------------------")
 # print(names)
 run = Data(file)
+# run.data = run.data.dropna()
+
 # rundata = run.data.drop(9)
 
 # y=rundata['fraction95']

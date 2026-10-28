@@ -91,7 +91,7 @@ light_colors = []
 dark_colors = []
 
 # Maggie Wang colors
-MW_colors = ['hotpink', 'cornflowerblue']
+MW_colors = ['hotpink', 'cornflowerblue', 'darkgreen', 'rebeccapurple', 'mediumvioletred', 'mediumblue']
 MW_light_colors = []
 MW_dark_colors = []
 
